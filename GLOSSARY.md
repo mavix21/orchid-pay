@@ -47,7 +47,7 @@ _Avoid_: Transaction when referring to the user's instruction rather than its ne
 _Avoid_: Order when referring to the entry before it has an id.
 
 **Unclaimed funds**: An asset amount that has left its sender and that the network holds until someone claims it, because no wallet can receive it yet: a **Payment link** holds one, and so does a payment to a wallet that cannot hold the **Asset** yet. The sender takes it back by claiming it. An identifier, which only the network can interpret, tells it apart from all other unclaimed funds.
-_Avoid_: Claimable balance; escrow, because nobody has custody of the funds; balance, which is what a wallet holds.
+_Avoid_: Claimable balance; escrow, because nobody has custody of the funds, with one caveat: on Solana the Orchid links program that holds them stays upgradeable, so its upgrade authority could change how they are released until the program is frozen or that authority moves to a multisig; balance, which is what a wallet holds.
 
 **Payment link**: A URL that carries the **Link code** for **Unclaimed funds**, so whoever opens it can receive them or send them to another address.
 
