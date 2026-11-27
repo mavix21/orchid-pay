@@ -14,6 +14,7 @@
   "vars": {
     "PASSKEY_ORIGINS": "http://localhost:3000,http://localhost:4173,https://orchid-pay-devnet.getorchid.workers.dev",
     "PAYOUT_PARTNER": "sandbox",
+    "TURNSTILE_SITE_KEY": "0x4AAAAAAGRtRm_DCTacI7v8",
   },
   "secrets": {
     "required": [
@@ -27,12 +28,12 @@
   "ratelimits": [
     {
       "name": "WALLET_RATE_LIMITER",
-      "namespace_id": "4801",
+      "namespace_id": "4811",
       "simple": { "limit": 120, "period": 60 },
     },
     {
       "name": "PUBLIC_RATE_LIMITER",
-      "namespace_id": "4802",
+      "namespace_id": "4812",
       "simple": { "limit": 300, "period": 60 },
     },
   ],
