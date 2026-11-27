@@ -12,7 +12,7 @@ Keep no temporary records in any tracked file (.md, .txt, .json or otherwise): n
 
 Docs describe only code that exists. Write no docs for unbuilt designs. Keep docs minimal and update them in place; delete a doc that goes stale instead of growing it. Exception: the product sections of the root `README.md`, everything before "Run it locally", describe the finished product and its roadmap; keep them aligned with the issue tracker rather than with the current code.
 
-Never write code comments, including JSDoc, inline explanations, TODOs, or commented-out code. Convey meaning and functionality through precise names, domain language from `GLOSSARY.md`, and clear code structure. Preserve executable shebangs and machine-required migration separators. Generated files (`apps/web/src/routeTree.gen.ts`, `apps/web/worker-configuration.d.ts`) are exempt from this rule and from linting and formatting; keep them exactly as their generators write them.
+Never write code comments, including JSDoc, inline explanations, TODOs, or commented-out code. Convey meaning and functionality through precise names, domain language from `GLOSSARY.md`, and clear code structure. Preserve executable shebangs and machine-required migration separators. Rust sources (`.rs`) are exempt from this rule: comments are allowed there. Generated files (`apps/web/src/routeTree.gen.ts`, `apps/web/worker-configuration.d.ts`) are exempt from this rule and from linting and formatting; keep them exactly as their generators write them.
 
 ## Safety
 
@@ -32,7 +32,7 @@ Extend an existing case at the lowest public boundary that exposes the regressio
 
 ### Issue tracker
 
-Use GitHub Issues in `mavix21/orchid` for tickets and specs. Read `docs/agents/issue-tracker.md` before tracker operations.
+Use GitHub Issues in `mavix21/orchid-pay` for tickets and specs. Read `docs/agents/issue-tracker.md` before tracker operations.
 
 Work each change on its own branch named `<type>/<name>` after its commit type, such as `feat/send-flow`, cut from `main` before the first change, and end it in a pull request from that branch. Agents never merge.
 
