@@ -1,6 +1,7 @@
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { addressRules } from "../address-rules";
+import { accountAddressSchemas } from "./address-schemas";
 
 export const usernameMinLength = 3;
 export const usernameMaxLength = 20;
@@ -57,15 +58,13 @@ export function usernameIssue(text: string): Option.Option<UsernameIssue> {
   return Option.none();
 }
 
-export const DestinationAddress = Schema.String.check(
-  Schema.makeFilter(addressRules.isDestinationAddress),
-).pipe(Schema.brand("DestinationAddress"));
+const schemas = accountAddressSchemas(addressRules);
+
+export const DestinationAddress = schemas.destination;
 
 export type DestinationAddress = typeof DestinationAddress.Type;
 
-export const AccountAddress = DestinationAddress.check(
-  Schema.makeFilter(addressRules.isAccountAddress),
-).pipe(Schema.brand("AccountAddress"));
+export const AccountAddress = schemas.account;
 
 export type AccountAddress = typeof AccountAddress.Type;
 
