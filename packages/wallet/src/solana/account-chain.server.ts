@@ -15,7 +15,10 @@ const standingOf = (sponsor: Address) =>
     Absent: (): AccountStanding => "absent",
     Foreign: (): AccountStanding => "foreign",
     Held: ({ closeAuthority }): AccountStanding =>
-      Option.contains(closeAuthority, sponsor) ? "open" : "incomplete",
+      Option.match(closeAuthority, {
+        onNone: () => "incomplete",
+        onSome: (holder) => (holder === sponsor ? "open" : "foreignIncomplete"),
+      }),
   });
 
 const balanceOf = UsdcAccount.$match({

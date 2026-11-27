@@ -36,3 +36,11 @@ export const memoFromData = (data: ReadonlyUint8Array): TextMemo => {
 
   return memo;
 };
+
+export const textMemoOf = (
+  memo: PaymentMemo | undefined,
+): TextMemo | undefined => {
+  if (memo === undefined || memo.type === "text") return memo;
+
+  throw new RangeError("A Solana payment carries only a text memo");
+};

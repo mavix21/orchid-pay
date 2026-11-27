@@ -1,6 +1,13 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { createServer } from "node:net";
+import { TOKEN_PROGRAM_ADDRESS, getMintEncoder } from "@solana-program/token";
+import { getBase16Decoder, none } from "@solana/kit";
+import {
+  ORCHID_LINKS_PROGRAM_ADDRESS,
+  USDC_MINT_ADDRESS,
+} from "@workspace/orchid-links";
 import * as Context from "effect/Context";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -10,6 +17,15 @@ import * as Schema from "effect/Schema";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import * as HttpClient from "effect/http/HttpClient";
 import { type SolanaRpc, solanaRpc } from "../src/solana/rpc.server";
+
+const slotMilliseconds = 40;
+
+const programPath = new URL(
+  "../../../target/deploy/orchid_links.so",
+  import.meta.url,
+);
+
+const base16Decoder = getBase16Decoder();
 
 const Bound = Schema.decodeUnknownSync(Schema.Struct({ port: Schema.Int }));
 
@@ -39,6 +55,8 @@ const surfpool = (port: number, subscriptionPort: number) =>
           String(port),
           "--ws-port",
           String(subscriptionPort),
+          "--slot-time",
+          String(slotMilliseconds),
           "--log-level",
           "none",
         ],
@@ -76,6 +94,36 @@ export const surfnetLayer = Layer.effect(
     yield* rpc
       .call("getHealth", [], Schema.Literal("ok"))
       .pipe(Effect.retry({ schedule: Schedule.spaced(100), times: 100 }));
+
+    const program = yield* Effect.promise(() => readFile(programPath));
+
+    yield* rpc.call(
+      "surfnet_writeProgram",
+      [ORCHID_LINKS_PROGRAM_ADDRESS, base16Decoder.decode(program), 0],
+      Schema.Json,
+    );
+
+    yield* rpc.call(
+      "surfnet_setAccount",
+      [
+        USDC_MINT_ADDRESS,
+        {
+          owner: TOKEN_PROGRAM_ADDRESS,
+          data: base16Decoder.decode(
+            getMintEncoder().encode({
+              mintAuthority: none(),
+              supply: 1_000_000_000_000n,
+              decimals: 6,
+              isInitialized: true,
+              freezeAuthority: none(),
+            }),
+          ),
+          lamports: 10_000_000,
+          executable: false,
+        },
+      ],
+      Schema.Json,
+    );
 
     return rpc;
   }),
