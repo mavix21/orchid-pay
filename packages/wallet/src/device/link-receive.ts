@@ -165,21 +165,30 @@ export const openLink = Effect.fn("Device.openLink")(function* (
     : status;
 });
 
+export const concludedReceive = (
+  port: Pick<WalletPort, "manage">,
+  order: AssetOrder,
+  step: AssetStep,
+): Effect.Effect<AssetStep, WalletUnavailable> =>
+  Predicate.isTagged(step, "AssetPending")
+    ? Effect.repeat(port.manage(order, Option.none()), {
+        schedule: pollSchedule<AssetStep>(
+          (current) => Predicate.isTagged(current, "AssetPending"),
+          () => true,
+        ).pipe(Schedule.upTo({ times: pendingSteps - 2 })),
+      })
+    : Effect.succeed(step);
+
 export const releaseReceive = Effect.fn("Device.releaseReceive")(function* (
   port: Pick<WalletPort, "manage">,
   order: AssetOrder,
   approval: Approval,
 ): Effect.fn.Return<AssetStep, WalletUnavailable> {
-  const released = yield* port.manage(order, Option.some(approval));
-
-  if (!Predicate.isTagged(released, "AssetPending")) return released;
-
-  return yield* Effect.repeat(port.manage(order, Option.none()), {
-    schedule: pollSchedule<AssetStep>(
-      (step) => Predicate.isTagged(step, "AssetPending"),
-      () => true,
-    ).pipe(Schedule.upTo({ times: pendingSteps - 2 })),
-  });
+  return yield* concludedReceive(
+    port,
+    order,
+    yield* port.manage(order, Option.some(approval)),
+  );
 });
 
 export function deviceLinkReceive(

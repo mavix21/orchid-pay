@@ -6,6 +6,7 @@ import * as Option from "effect/Option";
 import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import { AccountAddress } from "../contract";
+import { isSolanaKeypair } from "./seal.server";
 import { base58AddressOf } from "./signing-scheme";
 
 const base58Encoder = getBase58Encoder();
@@ -20,7 +21,7 @@ const decodeKeypair = Option.liftThrowable(
 
 export const sponsorKeypairOf = (secret: Redacted.Redacted<string>) =>
   Option.getOrThrowWith(
-    decodeKeypair(Redacted.value(secret)),
+    Option.filter(decodeKeypair(Redacted.value(secret)), isSolanaKeypair),
     () => new RangeError("The sponsor secret is not a base58 Solana keypair"),
   );
 
