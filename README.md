@@ -79,6 +79,8 @@ Local Hyperdrive connects directly to Postgres without production pooling or cac
 
 To develop against Neon, `bunx neon checkout dev` selects the database branch and pulls its credentials into the gitignored root `.env.local`. `bun run db:migrate` applies wallet migrations through `DATABASE_URL_UNPOOLED`. `bun run --cwd apps/web dev:neon` uses that URL for its local Hyperdrive connection; an explicit `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` takes precedence.
 
+`programs/orchid-links` is the Anchor program that holds a payment link's unclaimed funds on Solana, and `packages/orchid-links` is its hand-written `@solana/kit` client. `bun run --cwd packages/orchid-links test` builds the program with `anchor build` (Anchor 1.2.2 and the Solana CLI) and runs its LiteSVM suite against the real SPL Token program. The program's deploy keypair is the gitignored `target/deploy/orchid_links-keypair.json`; its address is pinned in `Anchor.toml`, the program's `declare_id!` and the client.
+
 `packages/db` exports `Database` and `databaseLayer`; the web server builds the layer from `env.HYPERDRIVE` inside each request. Wallet tables and their Drizzle migrations live in `packages/wallet`; see the [wallet README](packages/wallet/README.md) for its behaviour, tests and the Hyperdrive caching prerequisite for deployment. The design rationale is in [docs/architecture/wallet-testnet](docs/architecture/wallet-testnet/rationale.md).
 
 ## Team
