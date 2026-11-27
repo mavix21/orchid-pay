@@ -1,4 +1,4 @@
-import { stellarAddressRules } from "./stellar/address-rules";
+import { chainProfile } from "./binding/profile";
 
 export interface AddressRules {
   readonly isAccountAddress: (text: string) => boolean;
@@ -8,6 +8,4 @@ export interface AddressRules {
   readonly hasValidChecksum: (text: string) => boolean;
 }
 
-export const addressNetwork = "stellar";
-
-export const addressRules: AddressRules = stellarAddressRules;
+export const { addressRules } = chainProfile;

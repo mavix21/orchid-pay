@@ -1,7 +1,11 @@
 import { expect, it } from "@effect/vitest";
 import { bech32, bech32m } from "@scure/base";
 import * as Option from "effect/Option";
-import { type AddressNetwork, recogniseAddress } from "../src/contract";
+import {
+  type OtherAddressNetwork,
+  RecognisedAddress,
+  recogniseAddress,
+} from "../src/contract";
 
 const stellarAccount =
   "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOOHSUJUJ6";
@@ -18,31 +22,43 @@ const flipLowestBit = (address: string, fromEnd: number) => {
   return `${address.slice(0, position)}${base32Alphabet.charAt(index ^ 1)}${address.slice(position + 1)}`;
 };
 
-it.each<{ name: string; address: string; network: AddressNetwork }>([
-  { name: "Stellar account", address: stellarAccount, network: "stellar" },
-  { name: "Stellar muxed account", address: stellarMuxed, network: "stellar" },
+const { WalletNetworkAddress, OtherNetworkAddress } = RecognisedAddress;
+
+const on = (network: OtherAddressNetwork) => OtherNetworkAddress({ network });
+
+it.each<{ name: string; address: string; recognised: RecognisedAddress }>([
+  {
+    name: "Stellar account",
+    address: stellarAccount,
+    recognised: WalletNetworkAddress(),
+  },
+  {
+    name: "Stellar muxed account",
+    address: stellarMuxed,
+    recognised: WalletNetworkAddress(),
+  },
   {
     name: "EVM checksummed",
     address: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
-    network: "evm",
+    recognised: on("evm"),
   },
   {
     name: "Solana",
     address: "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB",
-    network: "solana",
+    recognised: on("solana"),
   },
   {
     name: "Tron",
     address: "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
-    network: "tron",
+    recognised: on("tron"),
   },
   {
     name: "Bitcoin taproot",
     address: "bc1p0xlxvlhemja6c4dqv22uapctqupfhlxm9h8z3k2e72q4k9hcz7vqzk5jj0",
-    network: "bitcoin",
+    recognised: on("bitcoin"),
   },
-])("recognises a $name address", ({ address, network }) => {
-  expect(recogniseAddress(address)).toEqual(Option.some(network));
+])("recognises a $name address", ({ address, recognised }) => {
+  expect(recogniseAddress(address)).toEqual(Option.some(recognised));
 });
 
 it.each<{ name: string; address: string }>([

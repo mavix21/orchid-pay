@@ -3,12 +3,14 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import {
   AccountAddress,
-  type Asset,
+  Asset,
   AssetCode,
   AssetId,
-  nativeAsset,
   sameAsset,
 } from "../contract";
+import { stellarNativeTerms } from "./profile";
+
+export const lumens: Asset = Schema.decodeSync(Asset)(stellarNativeTerms);
 
 export function issuedAsset(code: string, issuer: string): Asset {
   const account = Schema.decodeSync(AccountAddress)(issuer);
@@ -21,12 +23,12 @@ export function issuedAsset(code: string, issuer: string): Asset {
 
 export function fromStellarAsset(asset: StellarAsset): Asset {
   return asset.isNative()
-    ? nativeAsset
+    ? lumens
     : issuedAsset(asset.code, asset.getIssuer() ?? "");
 }
 
 const parseId = Option.liftThrowable((id: string) => {
-  if (id === nativeAsset.id) return StellarAsset.native();
+  if (id === lumens.id) return StellarAsset.native();
 
   const [code = "", issuer = ""] = id.split(":");
 

@@ -85,8 +85,6 @@ export const receiveReviewOf = (
     receive.link !== action.link ||
     action.link !== target.link ||
     receive.link === wallet.address ||
-    receive.channel === receive.link ||
-    receive.channel === wallet.address ||
     receive.unclaimedFunds !== action.unclaimedFunds ||
     action.unclaimedFunds !== target.unclaimedFunds ||
     !sameAsset(receive.asset, target.asset) ||

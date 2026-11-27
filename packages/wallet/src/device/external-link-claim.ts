@@ -71,7 +71,6 @@ export const externalReviewOf = (
     order.unclaimedFunds !== target.unclaimedFunds ||
     receive.destination !== order.destination ||
     baseDestination === receive.link ||
-    receive.channel === receive.link ||
     receive.reserveSponsor === receive.link ||
     !sameAsset(receive.asset, target.asset) ||
     receive.amount !== target.amount ||

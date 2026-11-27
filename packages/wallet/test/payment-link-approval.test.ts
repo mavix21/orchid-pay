@@ -24,9 +24,8 @@ import {
   type TransferOrder,
   UnsignedEnvelope,
   baseAsset,
-  nativeAsset,
 } from "../src/contract";
-import { issuedAsset } from "../src/stellar/assets";
+import { issuedAsset, lumens } from "../src/stellar/assets";
 import {
   DraftRejected,
   PaymentLinkIntent,
@@ -127,7 +126,7 @@ const tamperedDrafts: ReadonlyArray<
     (order, at) => ({
       envelope: actors.paymentLink({
         to: linkTarget(order),
-        asset: nativeAsset,
+        asset: lumens,
         amount: linkAmount,
         at,
       }),
@@ -324,7 +323,7 @@ it.live.each([
     baseAsset,
     cancelBalance,
   ],
-  ["trustline repair on native link", nativeAsset, baseAsset, cancelBalance],
+  ["trustline repair on native link", lumens, baseAsset, cancelBalance],
   ["draft for other unclaimed funds", baseAsset, undefined, otherBalance],
 ] as const)(
   "reclaim review rejects %s",
@@ -432,7 +431,7 @@ const tamperedReceives: ReadonlyArray<
     (at) => receiveDraft({ unclaimedFunds: otherBalance }, at),
   ],
   ["paying another amount", (at) => receiveDraft({ amount: otherAmount }, at)],
-  ["paying another asset", (at) => receiveDraft({ asset: nativeAsset }, at)],
+  ["paying another asset", (at) => receiveDraft({ asset: lumens }, at)],
   [
     "handing cleanup to another sponsor",
     (at) => receiveDraft({ reserveSponsor: actors.stranger }, at),
@@ -444,6 +443,11 @@ const tamperedReceives: ReadonlyArray<
         { channel: new Account(addressOf(receivedLink), "100") },
         at,
       ),
+  ],
+  [
+    "using the receiving wallet as channel",
+    (at) =>
+      receiveDraft({ channel: new Account(actors.wallet.address, "100") }, at),
   ],
   ["with an extra operation", withExtraPayment],
 ];

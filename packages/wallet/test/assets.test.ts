@@ -11,7 +11,6 @@ import {
   ClaimUnclaimedFunds,
   CloseTrustline,
   InsufficientBalance,
-  nativeAsset,
   OpenTrustline,
   PositiveAmount,
   RecipientCannotReceive,
@@ -41,6 +40,7 @@ import {
   assetOrder,
   manage,
 } from "./stellar-harness";
+import { lumens } from "../src/stellar/assets";
 
 useDisposableDatabase();
 
@@ -233,7 +233,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           expect(
             Schema.decodeUnknownOption(AssetOrder)({
               ...opening,
-              action: { ...opening.action, asset: nativeAsset },
+              action: { ...opening.action, asset: lumens },
             }),
           ).toEqual(Option.none());
         }),
@@ -261,7 +261,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
                 value: Schema.decodeSync(Username)("nativeowner"),
               }),
             ),
-            asset: nativeAsset,
+            asset: lumens,
           });
 
           expect(yield* send(native)).toEqual(
@@ -281,7 +281,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           assertTagged(draft, "TransferDraft");
           expect(
             Option.getOrThrow(readEnvelope(draft.request.envelope)),
-          ).toMatchObject({ asset: nativeAsset });
+          ).toMatchObject({ asset: lumens });
 
           const close = assetOrder(key, CloseTrustline.make({ asset: euro }));
           const removal = yield* manage(close);

@@ -1,9 +1,10 @@
 import {
-  type AddressNetwork,
+  type OtherAddressNetwork,
   DestinationAddress,
   AddressRecipient,
   type Asset,
   PaymentMemo,
+  RecognisedAddress,
   type Recipient,
   TransferIntent,
   Username,
@@ -42,7 +43,7 @@ export const memoByteLimit = 28;
 export const memoBytes = (memo: string) =>
   new TextEncoder().encode(memo.trim()).length;
 
-export const otherNetworkName = (network: Exclude<AddressNetwork, "stellar">) =>
+export const otherNetworkName = (network: OtherAddressNetwork) =>
   Match.value(network).pipe(
     Match.when("evm", () => m.common_network_evm()),
     Match.when("solana", () => "Solana"),
@@ -54,10 +55,11 @@ export const otherNetworkName = (network: Exclude<AddressNetwork, "stellar">) =>
 const addressProblem = (typed: string) =>
   Option.match(recogniseAddress(typed), {
     onNone: () => m.common_address_invalid(),
-    onSome: (network) =>
-      network === "stellar"
-        ? m.common_address_invalid()
-        : m.send_other_network({ network: otherNetworkName(network) }),
+    onSome: RecognisedAddress.$match({
+      WalletNetworkAddress: () => m.common_address_invalid(),
+      OtherNetworkAddress: ({ network }) =>
+        m.send_other_network({ network: otherNetworkName(network) }),
+    }),
   });
 
 export const recipientOf = (

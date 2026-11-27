@@ -1,5 +1,5 @@
 import type { Asset } from "./contract";
-import { stellarRecordNetwork } from "./stellar/record-network";
+import { recordNetwork } from "./binding/networks";
 
 export interface AssetColumns {
   readonly code: string;
@@ -12,8 +12,6 @@ export interface RecordNetwork {
   readonly assetColumns: (asset: Asset) => AssetColumns;
   readonly assetFromColumns: (columns: AssetColumns) => Asset;
 }
-
-const recordNetwork: RecordNetwork = stellarRecordNetwork;
 
 export const { network, epochAt, assetColumns, assetFromColumns } =
   recordNetwork;

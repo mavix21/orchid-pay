@@ -1,6 +1,6 @@
 import * as Schema from "effect/Schema";
 import { SigningRequest } from "./approval";
-import { Amount, TrustlineAsset } from "./assets";
+import { Amount, NonNativeAsset } from "./assets";
 import { UnclaimedFundsId } from "./unclaimed-funds";
 import { AccountAddress } from "./identity";
 
@@ -11,11 +11,11 @@ export const AssetOrderId = Schema.String.check(Schema.isUUID(4)).pipe(
 export type AssetOrderId = typeof AssetOrderId.Type;
 
 export const OpenTrustline = Schema.TaggedStruct("OpenTrustline", {
-  asset: TrustlineAsset,
+  asset: NonNativeAsset,
 });
 
 export const CloseTrustline = Schema.TaggedStruct("CloseTrustline", {
-  asset: TrustlineAsset,
+  asset: NonNativeAsset,
 });
 
 export const ClaimUnclaimedFunds = Schema.TaggedStruct("ClaimUnclaimedFunds", {

@@ -32,14 +32,12 @@ import {
   parseAmount,
   precisionOf,
 } from "../src/contract";
+import { Applied, Chain, Rejected } from "../src/server/Chain.server";
 import {
-  Applied,
-  Chain,
-  Rejected,
   type SettlementReader,
   resolveSettlement,
   settlementFromResponse,
-} from "../src/server/Chain.server";
+} from "../src/stellar/settlement.server";
 import { channelKeypair } from "../src/stellar/channel-pool.server";
 import {
   type AccountState,

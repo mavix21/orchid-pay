@@ -12,7 +12,6 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import { type PaymentLinkIntent, type WalletClient } from "@workspace/wallet";
 import { AssetOrders } from "../src/server/AssetOrders.server";
 import { Backups } from "../src/server/Backups.server";
-import { Chain } from "../src/server/Chain.server";
 import { Deposits } from "../src/server/Deposits.server";
 import { Directory } from "../src/server/Directory.server";
 import { HumanCheck } from "../src/server/HumanCheck.server";
@@ -22,6 +21,7 @@ import { Transfers } from "../src/server/Transfers.server";
 import { Wallet } from "../src/server/Wallet.server";
 import { WalletSettings } from "../src/server/settings.server";
 import { WorkQueue } from "../src/server/work-queue.server";
+import { chainLayer } from "../src/binding/chain.server";
 
 export const rpcUrl = "https://soroban-testnet.stellar.org";
 
@@ -57,7 +57,7 @@ const acceptingHumanCheck = Layer.succeed(
 
 const dependencies = Layer.mergeAll(
   acceptingHumanCheck,
-  Chain.layer,
+  chainLayer,
   Directory.layer,
   Transfers.layer,
   AssetOrders.layer,

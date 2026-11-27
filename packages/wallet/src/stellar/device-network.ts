@@ -7,9 +7,17 @@ import { type EnvelopeFacts, readEnvelope } from "./envelopes";
 import { network } from "./network";
 import { stellarSigningScheme } from "./signing-scheme";
 
+const channelIsAParty = (facts: EnvelopeFacts) =>
+  (Predicate.isTagged(facts, "OpeningFacts") &&
+    facts.channel === facts.address) ||
+  (Predicate.isTagged(facts, "LinkReceiveFacts") &&
+    (facts.channel === facts.link ||
+      facts.channel === baseAccountOf(facts.destination)));
+
 const reviewedFacts = (facts: EnvelopeFacts): Option.Option<DraftFacts> =>
   Predicate.isTagged(facts, "TrustlineFacts") ||
-  Predicate.isTagged(facts, "TrustlineRemovalFacts")
+  Predicate.isTagged(facts, "TrustlineRemovalFacts") ||
+  channelIsAParty(facts)
     ? Option.none()
     : Option.some(facts);
 
