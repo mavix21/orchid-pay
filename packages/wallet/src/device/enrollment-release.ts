@@ -24,6 +24,7 @@ import { type Held, claimOf, sameCandidate } from "./enrollment-state";
 import { PublicDeviceWallet, SealedDeviceWallet } from "./key-store";
 import { type LinkCode, opensLink } from "./link-code";
 import {
+  concludedReceive,
   linkReceiveKind,
   receiveReviewOf,
   releaseReceive,
@@ -178,17 +179,14 @@ export const enrollmentRelease = (
         reserveSponsor: reserveSponsor.value,
       });
 
-      const drafted = yield* deps.port.manage(shown.order, Option.none());
+      const step = yield* deps.port.manage(shown.order, Option.none());
 
-      if (!Predicate.isTagged(drafted, "AssetDraft")) return Option.none();
+      if (!Predicate.isTagged(step, "AssetDraft"))
+        return Option.some(
+          yield* concludedReceive(deps.port, shown.order, step),
+        );
 
-      const derived = receiveReviewOf(
-        wallet,
-        shown.order,
-        drafted,
-        true,
-        shown,
-      );
+      const derived = receiveReviewOf(wallet, shown.order, step, true, shown);
 
       const now = DateTime.toEpochMillis(yield* DateTime.now);
 
@@ -203,7 +201,7 @@ export const enrollmentRelease = (
         yield* releaseReceive(
           deps.port,
           shown.order,
-          approveWithLinkCode(code, [drafted.request])[0],
+          approveWithLinkCode(code, [step.request])[0],
         ),
       );
     },

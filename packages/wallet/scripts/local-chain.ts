@@ -109,37 +109,43 @@ export const startLocalChain = async (): Promise<ChildProcess> => {
     { stdio: "ignore" },
   );
 
-  await healthy();
+  try {
+    await healthy();
 
-  await call("surfnet_writeProgram", [
-    ORCHID_LINKS_PROGRAM_ADDRESS,
-    base16Decoder.decode(await readFile(programPath)),
-    0,
-  ]);
+    await call("surfnet_writeProgram", [
+      ORCHID_LINKS_PROGRAM_ADDRESS,
+      base16Decoder.decode(await readFile(programPath)),
+      0,
+    ]);
 
-  await call("surfnet_setAccount", [
-    USDC_MINT_ADDRESS,
-    {
-      owner: TOKEN_PROGRAM_ADDRESS,
-      data: base16Decoder.decode(
-        getMintEncoder().encode({
-          mintAuthority: none(),
-          supply: 1_000_000_000_000n,
-          decimals: 6,
-          isInitialized: true,
-          freezeAuthority: none(),
-        }),
-      ),
-      lamports: 10_000_000,
-      executable: false,
-    },
-  ]);
+    await call("surfnet_setAccount", [
+      USDC_MINT_ADDRESS,
+      {
+        owner: TOKEN_PROGRAM_ADDRESS,
+        data: base16Decoder.decode(
+          getMintEncoder().encode({
+            mintAuthority: none(),
+            supply: 1_000_000_000_000n,
+            decimals: 6,
+            isInitialized: true,
+            freezeAuthority: none(),
+          }),
+        ),
+        lamports: 10_000_000,
+        executable: false,
+      },
+    ]);
 
-  await call("surfnet_setAccount", [
-    localSponsor,
-    { lamports: 100_000_000_000 },
-  ]);
-  await setUsdcAccount(sandboxPartnerOf(localSponsorSecret), { amount: 0 });
+    await call("surfnet_setAccount", [
+      localSponsor,
+      { lamports: 100_000_000_000 },
+    ]);
+    await setUsdcAccount(sandboxPartnerOf(localSponsorSecret), { amount: 0 });
+  } catch (failure) {
+    await stopLocalChain(chain);
+
+    throw failure;
+  }
 
   return chain;
 };

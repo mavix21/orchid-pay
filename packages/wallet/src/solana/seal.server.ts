@@ -28,19 +28,18 @@ const addressEncoder = getAddressEncoder();
 const addressDecoder = getAddressDecoder();
 const base58Decoder = getBase58Decoder();
 
+export const isSolanaKeypair = (keypair: Uint8Array) =>
+  keypair.length === 64 &&
+  equalBytes(ed25519.getPublicKey(keypair.slice(0, 32)), keypair.slice(32));
+
 export const solanaSponsor = (keypair: Uint8Array): SolanaSponsor => {
   const seed = keypair.slice(0, 32);
 
-  if (keypair.length !== 64)
-    throw new RangeError("The sponsor keypair is not a Solana keypair");
-
-  const publicKey = ed25519.getPublicKey(seed);
-
-  if (!equalBytes(publicKey, keypair.slice(32)))
+  if (!isSolanaKeypair(keypair))
     throw new RangeError("The sponsor keypair is not a Solana keypair");
 
   return {
-    address: addressDecoder.decode(publicKey),
+    address: addressDecoder.decode(keypair.slice(32)),
     sign: (message) => ed25519.sign(new Uint8Array(message), seed),
   };
 };
