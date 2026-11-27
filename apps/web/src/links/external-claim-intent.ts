@@ -2,6 +2,7 @@ import {
   DestinationAddress,
   ExternalLinkIntent,
   PaymentMemo,
+  RecognisedAddress,
   forbidsMemo,
   recogniseAddress,
 } from "@workspace/wallet";
@@ -29,10 +30,11 @@ export interface ExternalClaimForm {
 const destinationProblem = (typed: string) =>
   Option.match(recogniseAddress(typed), {
     onNone: () => m.common_address_invalid(),
-    onSome: (network) =>
-      network === "stellar"
-        ? m.common_address_invalid()
-        : m.external_other_network({ network: otherNetworkName(network) }),
+    onSome: RecognisedAddress.$match({
+      WalletNetworkAddress: () => m.common_address_invalid(),
+      OtherNetworkAddress: ({ network }) =>
+        m.external_other_network({ network: otherNetworkName(network) }),
+    }),
   });
 
 export function externalClaimIntentOf(
@@ -43,7 +45,10 @@ export function externalClaimIntentOf(
 
   if (
     Option.isNone(decoded) ||
-    !Option.contains(recogniseAddress(typed), "stellar")
+    !Option.exists(
+      recogniseAddress(typed),
+      RecognisedAddress.$is("WalletNetworkAddress"),
+    )
   )
     return Result.fail(
       new ExternalClaimFieldProblem("destination", destinationProblem(typed)),

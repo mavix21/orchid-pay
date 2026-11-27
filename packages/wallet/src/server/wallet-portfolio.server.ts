@@ -39,10 +39,10 @@ export const portfolioFlow = Effect.gen(function* () {
             new Balance({ asset: line.asset, amount: line.balance }),
           );
 
-        if (state.value.nativeTotal > 0n)
+        if (state.value.nativeTotal > 0n && Option.isSome(nativeAsset))
           balances.push(
             new Balance({
-              asset: nativeAsset,
+              asset: nativeAsset.value,
               amount: state.value.nativeTotal,
             }),
           );

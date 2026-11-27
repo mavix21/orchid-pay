@@ -7,10 +7,10 @@ import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import * as HttpClient from "effect/http/HttpClient";
 import type * as HttpClientRequest from "effect/http/HttpClientRequest";
-import { Chain } from "../src/server/Chain.server";
 import { WalletSettings } from "../src/server/settings.server";
 import { bodyText, httpClientAnswering, jsonResponse } from "./http-answering";
 import { dbLayer } from "./test-database";
+import { stellarChainLayer } from "../src/stellar/chain.server";
 
 export { bodyText, httpClientAnswering, jsonResponse };
 
@@ -117,7 +117,7 @@ export const chainWithHttp = (
       : base,
   );
 
-  return Chain.layer.pipe(
+  return stellarChainLayer.pipe(
     Layer.provide(cfg),
     Layer.provide(http),
     Layer.provide(dbLayer),

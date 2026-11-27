@@ -1,5 +1,6 @@
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import { chainProfile } from "../binding/profile";
 
 export const AssetCode = Schema.String.check(
   Schema.isPattern(/^[a-zA-Z0-9]{1,12}$/u),
@@ -15,37 +16,32 @@ export const Asset = Schema.Struct({ id: AssetId, code: AssetCode });
 
 export type Asset = typeof Asset.Type;
 
-export const nativeAsset = Asset.make({
-  id: Schema.decodeSync(AssetId)("native"),
-  code: Schema.decodeSync(AssetCode)("XLM"),
-});
+export const baseAsset: Asset = Schema.decodeSync(Asset)(
+  chainProfile.baseAsset,
+);
 
-export const baseAsset = Asset.make({
-  id: Schema.decodeSync(AssetId)(
-    "USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5",
-  ),
-  code: Schema.decodeSync(AssetCode)("USDC"),
-});
+export const nativeAsset: Option.Option<Asset> = Option.map(
+  Option.fromUndefinedOr(chainProfile.nativeAsset),
+  (terms) => Schema.decodeSync(Asset)(terms),
+);
 
 export const sameAsset = (left: Asset, right: Asset) =>
   left.id === right.id && left.code === right.code;
 
-export const needsTrustline = (asset: Asset) => asset.id !== nativeAsset.id;
+export const isNativeAsset = (asset: Asset) =>
+  Option.exists(nativeAsset, (native) => native.id === asset.id);
 
-export const TrustlineAsset = Asset.check(Schema.makeFilter(needsTrustline));
+export const NonNativeAsset = Asset.check(
+  Schema.makeFilter((asset: Asset) => !isNativeAsset(asset)),
+);
 
 export interface AssetPrecision {
   readonly decimals: number;
   readonly maximum: bigint;
 }
 
-const sevenDecimals: AssetPrecision = {
-  decimals: 7,
-  maximum: 9223372036854775807n,
-};
-
-export const precisionOf: (asset: Asset) => AssetPrecision = () =>
-  sevenDecimals;
+export const precisionOf = (asset: Asset): AssetPrecision =>
+  chainProfile.precisionOf(asset.id);
 
 export const Amount = Schema.BigIntFromString.check(
   Schema.isGreaterThanOrEqualToBigInt(0n),

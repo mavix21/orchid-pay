@@ -41,10 +41,9 @@ export const concealFailure = <E>(
     return Effect.fail(new ServiceFailed());
 
   if (Predicate.isTagged(failure, "ChainUnreachable"))
-    return Effect.logWarning(
-      "Stellar RPC unreachable",
-      Cause.pretty(cause),
-    ).pipe(Effect.andThen(Effect.fail(new LedgerUnreachable())));
+    return Effect.logWarning("RPC unreachable", Cause.pretty(cause)).pipe(
+      Effect.andThen(Effect.fail(new LedgerUnreachable())),
+    );
 
   return unexpected(cause);
 };

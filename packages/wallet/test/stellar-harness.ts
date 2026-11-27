@@ -27,10 +27,10 @@ import {
   type Sealed,
   Undecided,
 } from "../src/server/Chain.server";
-import { accountChain } from "../src/server/chain-accounts.server";
-import { destinationChain } from "../src/server/chain-destinations.server";
-import { draftChain } from "../src/server/chain-drafts.server";
-import { linkChain } from "../src/server/chain-links.server";
+import { accountChain } from "../src/stellar/account-chain.server";
+import { destinationChain } from "../src/stellar/destination-chain.server";
+import { draftChain } from "../src/stellar/draft-chain.server";
+import { linkChain } from "../src/stellar/link-chain.server";
 import { PayoutPartner } from "../src/server/PayoutPartner.server";
 import { Wallet } from "../src/server/Wallet.server";
 import {
@@ -80,6 +80,7 @@ import {
   walletScenarios,
   world,
 } from "./wallet-scenarios";
+import { stellarChainLayer } from "../src/stellar/chain.server";
 
 export * from "./wallet-scenarios";
 
@@ -92,7 +93,7 @@ export const recordClaimableBalance = (balance: ClaimableBalance) =>
 
 const settings = settingsFor();
 
-const realChain = Chain.layer.pipe(
+const realChain = stellarChainLayer.pipe(
   Layer.provide(settings),
   Layer.provide(ledgersHttp),
   Layer.provide(dbLayer),

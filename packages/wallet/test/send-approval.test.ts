@@ -10,7 +10,6 @@ import {
   AddressRecipient,
   ExternalRecipient,
   Holding,
-  nativeAsset,
   Offline,
   Profile,
   Settled,
@@ -45,6 +44,7 @@ import {
   toMuxed,
   toPedro,
 } from "./send-fixtures";
+import { lumens } from "../src/stellar/assets";
 
 const deviceWith = (...args: Parameters<typeof memoryDrafting>) => {
   const drafting = memoryDrafting(...args);
@@ -102,7 +102,7 @@ const mismatches: ReadonlyArray<
   ],
   [
     "a payment of another asset",
-    new TransferIntent({ ...toExchange, asset: nativeAsset }),
+    new TransferIntent({ ...toExchange, asset: lumens }),
     () => payment(),
   ],
   [

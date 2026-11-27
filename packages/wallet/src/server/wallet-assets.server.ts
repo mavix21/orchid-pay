@@ -22,7 +22,7 @@ import {
   Unchanged,
   baseAsset,
   sameAsset,
-  needsTrustline,
+  isNativeAsset,
 } from "../contract";
 import { type AssetPlan, ClaimPlan } from "./asset-plan.server";
 import { maxSponsoredTrustlines } from "../policy";
@@ -200,7 +200,7 @@ export const assetFlow = Effect.gen(function* () {
 
       plan = ClaimPlan.make({ unclaimedFunds: action.unclaimedFunds });
 
-      if (needsTrustline(entry.asset)) {
+      if (!isNativeAsset(entry.asset)) {
         const blocker = yield* chain.receiveBlocker(
           order.wallet,
           entry.asset,

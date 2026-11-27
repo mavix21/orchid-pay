@@ -15,7 +15,6 @@ import {
   ExternalLinkDraft,
   ExternalLinkSettled,
   MemoNotAllowed,
-  nativeAsset,
   PaymentLinkOpen,
   PaymentMemo,
   PositiveAmount,
@@ -39,6 +38,7 @@ import { SoftwareAuthenticator } from "./software-authenticator";
 import { assertTagged } from "./tagged";
 import { addressOf } from "./test-keys";
 import { linkFixture, sendActors } from "./stellar-device-fixtures";
+import { lumens } from "../src/stellar/assets";
 
 const actors = sendActors();
 const passkeys = new SoftwareAuthenticator("https://orchid.example").passkeys;
@@ -167,11 +167,7 @@ const tamperedExternalDrafts: ReadonlyArray<
     (at) => externalDraft({ amount: otherAmount }, at),
     {},
   ],
-  [
-    "paying another asset",
-    (at) => externalDraft({ asset: nativeAsset }, at),
-    {},
-  ],
+  ["paying another asset", (at) => externalDraft({ asset: lumens }, at), {}],
   [
     "using the link account as channel",
     (at) => externalDraft({ channel: new Account(addressOf(link), "100") }, at),

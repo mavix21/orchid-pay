@@ -18,7 +18,7 @@ import {
   SigningRequest,
   UnclaimedFundsId,
   UnsignedEnvelope,
-  needsTrustline,
+  isNativeAsset,
   sameAsset,
 } from "../src/contract";
 import { isIssuedBy } from "../src/device-network";
@@ -37,7 +37,7 @@ import {
 } from "../src/server/Chain.server";
 import { EventsStart } from "../src/server/chain-deposits.server";
 import type { UnclaimedFundsEntry } from "../src/server/unclaimed-funds.server";
-import { approvalMargin, paymentLifetime } from "../src/policy";
+import { approvalMargin, draftLifetime } from "../src/policy";
 import { accountState, amount, holdingsReader, world } from "./ledger-world";
 import { randomAddress, signedBy } from "./test-keys";
 
@@ -169,7 +169,7 @@ const recordedDraft = (
   change: DraftedChange,
 ): Effect.Effect<SigningRequest> =>
   Effect.map(Clock.currentTimeMillis, (now) => {
-    const expiresAt = (Math.floor(now / 1000) + paymentLifetime) * 1000;
+    const expiresAt = (Math.floor(now / 1000) + draftLifetime) * 1000;
 
     const envelope = Schema.decodeSync(UnsignedEnvelope)(
       `memory-draft-${crypto.randomUUID()}`,
@@ -229,7 +229,7 @@ const receiveBlocker: Chain["Service"]["receiveBlocker"] = (
     Effect.map((found) => {
       if (Option.isNone(found)) return Option.some("no_account");
 
-      if (!needsTrustline(asset)) return Option.none();
+      if (isNativeAsset(asset)) return Option.none();
 
       const line = found.value.lines.find((candidate) =>
         sameAsset(candidate.asset, asset),

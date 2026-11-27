@@ -418,7 +418,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
               key,
               AddressRecipient.make({ value: addressOf(destKey) }),
             ),
-            asset: nativeAsset,
+            asset: Option.getOrThrow(nativeAsset),
           });
 
           world.ledgerDown = true;

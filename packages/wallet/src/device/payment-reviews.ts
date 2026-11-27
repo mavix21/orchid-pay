@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import type { SigningRequest, TransferDraft, TransferOrder } from "../contract";
-import { approvalMargin, paymentLifetime } from "../policy";
+import { approvalMargin, draftLifetime } from "../policy";
 import type { PublicDeviceWallet } from "./key-store";
 import {
   type ClaimableFacts,
@@ -38,7 +38,7 @@ export const draftTiming = (
   request: SigningRequest,
   nowMillis: number,
 ): DraftTiming => {
-  if (maxTime > Math.floor(nowMillis / 1000) + paymentLifetime + clockAllowance)
+  if (maxTime > Math.floor(nowMillis / 1000) + draftLifetime + clockAllowance)
     return "stale";
 
   const deadline = approvalDeadline(maxTime, request);

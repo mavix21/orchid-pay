@@ -345,7 +345,7 @@ layer(testLayer, { excludeTestServices: true, concurrent: false })(
     );
 
     it.effect.each([
-      ["the native asset", nativeAsset],
+      ["the native asset", Option.getOrThrow(nativeAsset)],
       [
         "another issuer's USDC",
         {

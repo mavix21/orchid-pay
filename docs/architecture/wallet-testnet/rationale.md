@@ -19,7 +19,7 @@ The ledger is the truth for balances and for whether a payment happened. Postgre
 
 ## Synthesis decision
 
-**Base: a server ledger.** The server stores and finishes every transfer, so a payment completes after the caller is gone. Settlement and balances are read from the chain. The Stellar account type is private to the `stellar/` and `Chain` modules.
+**Base: a server ledger.** The server stores and finishes every transfer, so a payment completes after the caller is gone. Settlement and balances are read from the chain. Stellar types are private to `stellar/`, which implements the chain-neutral `Chain` service. Only `binding/` imports from it, and selects the chain's address rules, assets, draft timing, device and record networks, `Chain` layer and payout sandbox.
 
 **Rejected:** a device outbox, where the phone builds and submits and the server only co-signs, because transaction rules would live twice. Contract accounts as the base, because a contract call cannot carry a memo. A staged `prepare`/`submit`/`status` API, because the caller would own the order of three calls for one operation.
 
