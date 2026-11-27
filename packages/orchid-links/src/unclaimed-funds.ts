@@ -80,6 +80,24 @@ export const getOrderIdEncoder = () =>
     },
   );
 
+export const getUnclaimedFundsSeeds = (
+  sender: Address,
+  link: Address,
+  orderId: ReadonlyUint8Array,
+): ReadonlyUint8Array[] => [
+  getUtf8Encoder().encode("link"),
+  getAddressEncoder().encode(sender),
+  getAddressEncoder().encode(link),
+  getOrderIdEncoder().encode(orderId),
+];
+
+export const getVaultSeeds = (
+  unclaimedFunds: Address,
+): ReadonlyUint8Array[] => [
+  getUtf8Encoder().encode("vault"),
+  getAddressEncoder().encode(unclaimedFunds),
+];
+
 export const findUnclaimedFundsAddress = async (
   sender: Address,
   link: Address,
@@ -87,12 +105,7 @@ export const findUnclaimedFundsAddress = async (
 ): Promise<ProgramDerivedAddress> =>
   getProgramDerivedAddress({
     programAddress: ORCHID_LINKS_PROGRAM_ADDRESS,
-    seeds: [
-      getUtf8Encoder().encode("link"),
-      getAddressEncoder().encode(sender),
-      getAddressEncoder().encode(link),
-      getOrderIdEncoder().encode(orderId),
-    ],
+    seeds: getUnclaimedFundsSeeds(sender, link, orderId),
   });
 
 export const findVaultAddress = (
@@ -100,8 +113,5 @@ export const findVaultAddress = (
 ): Promise<ProgramDerivedAddress> =>
   getProgramDerivedAddress({
     programAddress: ORCHID_LINKS_PROGRAM_ADDRESS,
-    seeds: [
-      getUtf8Encoder().encode("vault"),
-      getAddressEncoder().encode(unclaimedFunds),
-    ],
+    seeds: getVaultSeeds(unclaimedFunds),
   });
