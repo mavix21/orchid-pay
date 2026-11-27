@@ -8,7 +8,7 @@ import {
   Rejected,
   Undecided,
 } from "../server/chain-settlement.server";
-import { type SolanaRpc, inContext } from "./rpc.server";
+import { type SolanaRpc, inContext, readCommitment } from "./rpc.server";
 
 export interface SentTransaction {
   readonly signature: string;
@@ -44,7 +44,10 @@ export const resolveSettlement = Effect.fn("Chain.resolveSettlement")(
   function* (rpc: SolanaRpc, sent: SentTransaction) {
     const lookUp = rpc.call(
       "getSignatureStatuses",
-      [[sent.signature], { searchTransactionHistory: true }],
+      [
+        [sent.signature],
+        { searchTransactionHistory: true, commitment: readCommitment },
+      ],
       SignatureLookup,
     );
 
