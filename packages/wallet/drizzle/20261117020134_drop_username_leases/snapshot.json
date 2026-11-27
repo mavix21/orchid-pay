@@ -1,0 +1,74 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "53a71b46-0745-4d2f-af6e-8fc51001c490",
+  "prevIds": ["77c1739f-8037-427d-86ed-b57d83cacdd3"],
+  "footprints": [
+    {
+      "statementType": "drop_unique",
+      "statementTarget": ["table", "public", "wallets"],
+      "writes": [
+        "s|uq|public.wallets.wallets_username_key",
+        "n|uq|public.wallets.wallets_username_key",
+        "e|uq|public.wallets.wallets_username_key",
+        "n|con|public.wallets.wallets_username_key",
+        "n|rel|public.wallets_username_key"
+      ],
+      "reads": [
+        "n|tbl|public.wallets",
+        "n|sch|public",
+        "e|col|public.wallets.username"
+      ],
+      "sharedWrites": ["e|uniqueness|public.wallets.username"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "username"],
+      "writes": [
+        "s|col|public.wallets.username",
+        "n|col|public.wallets.username",
+        "e|col|public.wallets.username"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "claimedAt"],
+      "writes": [
+        "s|col|public.wallets.claimedAt",
+        "n|col|public.wallets.claimedAt",
+        "e|col|public.wallets.claimedAt"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "ownershipBound"],
+      "writes": [
+        "s|col|public.wallets.ownershipBound",
+        "n|col|public.wallets.ownershipBound",
+        "e|col|public.wallets.ownershipBound"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"username\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"claimedAt\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"ownershipBound\"]"
+    },
+    {
+      "op": "drop",
+      "key": "uniques\u0000[\"public\",\"wallets\",\"wallets_username_key\"]"
+    }
+  ]
+}

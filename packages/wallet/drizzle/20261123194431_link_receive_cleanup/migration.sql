@@ -1,0 +1,1 @@
+ALTER TABLE "asset_orders" ADD COLUMN "linkCleanedAt" timestamp with time zone;

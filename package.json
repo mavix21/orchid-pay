@@ -1,0 +1,45 @@
+{
+  "name": "orchid",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "db:migrate": "bun --env-file=.env.local packages/wallet/scripts/migrate.server.ts",
+    "db:migrate:local": "DATABASE_URL_UNPOOLED=postgres://orchid:orchid-local@127.0.0.1:55432/orchid bun packages/wallet/scripts/migrate.server.ts",
+    "build": "bun tools/wallet/check-boundary.mjs && turbo build",
+    "dev": "turbo dev",
+    "setup": "bun tools/setup.mjs",
+    "dev:phone": "bun tools/dev-phone.mjs start",
+    "dev:phone:stop": "bun tools/dev-phone.mjs stop",
+    "lint": "bun tools/comments/check.mjs && oxlint",
+    "typecheck": "turbo typecheck",
+    "prepare": "git config core.hooksPath .githooks && effect-tsgo patch --typescript --no-oxlint",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "test:lint": "node --experimental-strip-types --test tools/oxlint/test-rules.test.ts"
+  },
+  "dependencies": {
+    "@neon/config": "^1.14.2",
+    "@neon/env": "^2.1.5"
+  },
+  "devDependencies": {
+    "@effect/tsgo": "0.73.2",
+    "@oxlint/plugins": "1.93.0",
+    "@shadcn/lint": "^0.2.5",
+    "@workspace/wallet": "workspace:*",
+    "eslint-plugin-playwright": "2.12.2",
+    "oxc-parser": "0.148.0",
+    "oxfmt": "^0.78.0",
+    "oxlint": "1.93.0",
+    "turbo": "^2.11.10",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "bun@1.4.4"
+}

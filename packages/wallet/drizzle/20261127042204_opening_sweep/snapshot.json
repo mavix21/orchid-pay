@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "5797596a-e714-407e-acf8-245793e1bc0e",
+  "prevIds": ["f4388edd-301b-4736-9865-f8b08486c370"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "wallets", "sweepCheckedAt"],
+      "writes": [
+        "s|col|public.wallets.sweepCheckedAt",
+        "n|col|public.wallets.sweepCheckedAt",
+        "e|col|public.wallets.sweepCheckedAt"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "wallets",
+        "name": "sweepCheckedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

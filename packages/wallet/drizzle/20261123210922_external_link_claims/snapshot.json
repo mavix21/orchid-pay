@@ -1,0 +1,60 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3eb113e2-43f1-4d28-88a7-b6862dc7c820",
+  "prevIds": ["a247264e-bee0-45a8-8ee1-740c7863e396"],
+  "footprints": [
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "asset_orders", "wallet"],
+      "writes": ["s|colprop|public.asset_orders.wallet.notNull"],
+      "reads": [
+        "n|tbl|public.asset_orders",
+        "n|sch|public",
+        "n|col|public.asset_orders.wallet"
+      ],
+      "sqlHash": "b584a71ce3505cc6"
+    },
+    {
+      "statementType": "recreate_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "asset_orders",
+        "asset_orders_one_in_flight"
+      ],
+      "writes": [
+        "s|idx|public.asset_orders_one_in_flight",
+        "n|idx|public.asset_orders_one_in_flight",
+        "e|idx|public.asset_orders_one_in_flight",
+        "n|rel|public.asset_orders_one_in_flight"
+      ],
+      "reads": [
+        "n|tbl|public.asset_orders",
+        "n|sch|public",
+        "n|col|public.asset_orders.wallet",
+        "n|col|public.asset_orders.network",
+        "n|col|public.asset_orders.testnetEpoch"
+      ],
+      "sharedWrites": [],
+      "sqlHash": "03c32a7490f90c10"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"asset_orders\",\"wallet\"]",
+      "set": {
+        "notNull": false
+      }
+    },
+    {
+      "op": "alter",
+      "key": "indexes\u0000[\"public\",\"asset_orders_one_in_flight\"]",
+      "set": {
+        "where": "\"status\" = 'authorized' and \"wallet\" is not null"
+      }
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "e180e2af-6de5-4d30-bea2-65a6f44e9868",
+  "prevIds": ["68a264fc-8195-4c29-a1be-ef97a57c492f"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "transfers", "sweepCheckedAt"],
+      "writes": [
+        "s|col|public.transfers.sweepCheckedAt",
+        "n|col|public.transfers.sweepCheckedAt",
+        "e|col|public.transfers.sweepCheckedAt"
+      ],
+      "reads": ["n|tbl|public.transfers", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "wallets", "ownershipBound"],
+      "writes": [
+        "s|col|public.wallets.ownershipBound",
+        "n|col|public.wallets.ownershipBound",
+        "e|col|public.wallets.ownershipBound"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "wallets", "sweepCheckedAt"],
+      "writes": [
+        "s|col|public.wallets.sweepCheckedAt",
+        "n|col|public.wallets.sweepCheckedAt",
+        "e|col|public.wallets.sweepCheckedAt"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "transfers",
+        "name": "sweepCheckedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "wallets",
+        "name": "ownershipBound",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "true",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "wallets",
+        "name": "sweepCheckedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

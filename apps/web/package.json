@@ -1,0 +1,53 @@
+{
+  "name": "web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "messages": "paraglide-js compile --silent",
+    "dev": "vite dev --port 3000",
+    "dev:neon": "vite dev --port 3000 --mode neon",
+    "generate-routes": "tsr generate",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "bun run messages && tsc --noEmit",
+    "deploy": "bun run check:hyperdrive && bun run build && wrangler deploy",
+    "check:hyperdrive": "bun ../../tools/wallet/check-hyperdrive-caching.mjs",
+    "cf-typegen": "wrangler types",
+    "test:e2e": "playwright test",
+    "test": "bun run messages && vitest run"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.9.0",
+    "@tailwindcss/vite": "^4",
+    "@tanstack/react-devtools": "latest",
+    "@tanstack/react-router": "latest",
+    "@tanstack/react-router-devtools": "latest",
+    "@tanstack/react-start": "latest",
+    "@workspace/db": "workspace:*",
+    "@workspace/ui": "workspace:*",
+    "@workspace/wallet": "workspace:*",
+    "effect": "4.1.5",
+    "lucide-react": "^1.73.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4",
+    "uqr": "0.1.3"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.69.1",
+    "@inlang/paraglide-js": "^3.2.2",
+    "@playwright/test": "1.65.1",
+    "@stellar/stellar-sdk": "17.4.0",
+    "@tanstack/devtools-vite": "latest",
+    "@tanstack/router-cli": "^1.168.0",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6",
+    "typescript": "7.0.2",
+    "vite": "^8",
+    "vitest": "5.1.1",
+    "wrangler": "^4.162.0"
+  }
+}

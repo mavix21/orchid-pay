@@ -1,0 +1,94 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "dd5c893f-07a7-4a39-91e7-7022f2d75576",
+  "prevIds": ["fb38ff0d-fe80-471c-8ce0-bd3c1bbe34d5"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "wallets", "pairedRecoveryDraft"],
+      "writes": [
+        "s|col|public.wallets.pairedRecoveryDraft",
+        "n|col|public.wallets.pairedRecoveryDraft",
+        "e|col|public.wallets.pairedRecoveryDraft"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "wallets",
+        "pairedRecoveryEnvelope"
+      ],
+      "writes": [
+        "s|col|public.wallets.pairedRecoveryEnvelope",
+        "n|col|public.wallets.pairedRecoveryEnvelope",
+        "e|col|public.wallets.pairedRecoveryEnvelope"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "wallets", "pairedRecoveryHash"],
+      "writes": [
+        "s|col|public.wallets.pairedRecoveryHash",
+        "n|col|public.wallets.pairedRecoveryHash",
+        "e|col|public.wallets.pairedRecoveryHash"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "wallets",
+        "name": "pairedRecoveryDraft",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "wallets",
+        "name": "pairedRecoveryEnvelope",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "wallets",
+        "name": "pairedRecoveryHash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

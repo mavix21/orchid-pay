@@ -1,0 +1,231 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": [
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".pi/**",
+    ".roo/**",
+    ".windsurf/**",
+    "tools/oxlint/anti-slop/**",
+    "apps/web/src/routeTree.gen.ts",
+    "apps/web/worker-configuration.d.ts"
+  ],
+  "jsPlugins": [
+    {
+      "name": "anti-slop",
+      "specifier": "./tools/oxlint/anti-slop/index.ts"
+    },
+    {
+      "name": "anti-slop-effect",
+      "specifier": "./tools/oxlint/anti-slop/effect/index.ts"
+    },
+    "@shadcn/lint",
+    {
+      "name": "orchid",
+      "specifier": "./tools/oxlint/no-comments.ts"
+    }
+  ],
+  "settings": {
+    "shadcn": {
+      "ui": "@workspace/ui/components"
+    }
+  },
+  "rules": {
+    "oxc/no-accumulating-spread": "error",
+    "anti-slop/no-array-filter-map": "error",
+    "anti-slop/no-reduce-accumulator-copy": "error",
+    "anti-slop/no-chained-type-assertions": "error",
+    "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-known-value-widening": "error",
+    "anti-slop/no-module-mocking": "error",
+    "anti-slop/no-object-parameters": "error",
+    "anti-slop/no-reflect-apply": "error",
+    "anti-slop/no-reflect-get": "error",
+    "anti-slop/no-runtime-typeof": "error",
+    "anti-slop/no-shape-in-symbol-names": "error",
+    "anti-slop/no-unknown-parameters": "error",
+    "anti-slop/no-unknown-returns": "error",
+    "anti-slop/no-unknown-type-aliases": "error",
+    "anti-slop/no-unsafe-dictionary-type": "error",
+    "anti-slop/no-widen-then-assert": "error",
+    "anti-slop/require-readable-spacing": "error",
+    "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "anti-slop-effect/no-manual-effect-error-tag": "error",
+    "anti-slop-effect/no-manual-tag-comparison": "error",
+    "anti-slop-effect/no-manual-tagged-construction": "error",
+    "anti-slop-effect/no-service-constructor-imports": "error",
+    "anti-slop-effect/prefer-effect-match": "error",
+    "shadcn/no-raw-colors": "error",
+    "shadcn/no-arbitrary-values": "error",
+    "shadcn/no-inline-styles": "error",
+    "shadcn/no-unknown-classes": "error",
+    "shadcn/require-static-classes": "error",
+    "shadcn/no-restyle": [
+      "error",
+      {
+        "allow": ["layout"]
+      }
+    ],
+    "orchid/no-comments": "error",
+    "eslint/no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "regex": "^\\.{1,2}/(.*/)?(packages|apps)/|^(\\.\\./)+(db|ui|wallet|web)(/|$)",
+            "message": "Import another package by its name and exports, never by a relative path."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["packages/ui/src/components/**"],
+      "rules": {
+        "shadcn/no-restyle": "off",
+        "shadcn/no-arbitrary-values": "off"
+      }
+    },
+    {
+      "files": ["**/*.test.{ts,tsx,js,mjs}", "packages/**/*.spec.{ts,tsx,js}"],
+      "plugins": ["unicorn", "typescript", "oxc", "vitest"],
+      "rules": {
+        "vitest/no-conditional-in-test": "error",
+        "vitest/no-focused-tests": "error",
+        "vitest/no-disabled-tests": "error",
+        "vitest/no-restricted-matchers": [
+          "error",
+          {
+            "toMatchSnapshot": null,
+            "not.toMatchSnapshot": null,
+            "resolves.toMatchSnapshot": null,
+            "resolves.not.toMatchSnapshot": null,
+            "rejects.toMatchSnapshot": null,
+            "rejects.not.toMatchSnapshot": null,
+            "toMatchInlineSnapshot": null,
+            "not.toMatchInlineSnapshot": null,
+            "resolves.toMatchInlineSnapshot": null,
+            "resolves.not.toMatchInlineSnapshot": null,
+            "rejects.toMatchInlineSnapshot": null,
+            "rejects.not.toMatchInlineSnapshot": null,
+            "toThrowErrorMatchingSnapshot": null,
+            "not.toThrowErrorMatchingSnapshot": null,
+            "resolves.toThrowErrorMatchingSnapshot": null,
+            "resolves.not.toThrowErrorMatchingSnapshot": null,
+            "rejects.toThrowErrorMatchingSnapshot": null,
+            "rejects.not.toThrowErrorMatchingSnapshot": null,
+            "toThrowErrorMatchingInlineSnapshot": null,
+            "not.toThrowErrorMatchingInlineSnapshot": null,
+            "resolves.toThrowErrorMatchingInlineSnapshot": null,
+            "resolves.not.toThrowErrorMatchingInlineSnapshot": null,
+            "rejects.toThrowErrorMatchingInlineSnapshot": null,
+            "rejects.not.toThrowErrorMatchingInlineSnapshot": null,
+            "toBeTruthy": null,
+            "not.toBeTruthy": null,
+            "resolves.toBeTruthy": null,
+            "resolves.not.toBeTruthy": null,
+            "rejects.toBeTruthy": null,
+            "rejects.not.toBeTruthy": null,
+            "toBeFalsy": null,
+            "not.toBeFalsy": null,
+            "resolves.toBeFalsy": null,
+            "resolves.not.toBeFalsy": null,
+            "rejects.toBeFalsy": null,
+            "rejects.not.toBeFalsy": null,
+            "toHaveBeenCalled": null,
+            "not.toHaveBeenCalled": null,
+            "resolves.toHaveBeenCalled": null,
+            "resolves.not.toHaveBeenCalled": null,
+            "rejects.toHaveBeenCalled": null,
+            "rejects.not.toHaveBeenCalled": null,
+            "toHaveBeenCalledAfter": null,
+            "not.toHaveBeenCalledAfter": null,
+            "resolves.toHaveBeenCalledAfter": null,
+            "resolves.not.toHaveBeenCalledAfter": null,
+            "rejects.toHaveBeenCalledAfter": null,
+            "rejects.not.toHaveBeenCalledAfter": null,
+            "toHaveBeenCalledBefore": null,
+            "not.toHaveBeenCalledBefore": null,
+            "resolves.toHaveBeenCalledBefore": null,
+            "resolves.not.toHaveBeenCalledBefore": null,
+            "rejects.toHaveBeenCalledBefore": null,
+            "rejects.not.toHaveBeenCalledBefore": null,
+            "toHaveBeenCalledExactlyOnceWith": null,
+            "not.toHaveBeenCalledExactlyOnceWith": null,
+            "resolves.toHaveBeenCalledExactlyOnceWith": null,
+            "resolves.not.toHaveBeenCalledExactlyOnceWith": null,
+            "rejects.toHaveBeenCalledExactlyOnceWith": null,
+            "rejects.not.toHaveBeenCalledExactlyOnceWith": null,
+            "toHaveBeenCalledOnce": null,
+            "not.toHaveBeenCalledOnce": null,
+            "resolves.toHaveBeenCalledOnce": null,
+            "resolves.not.toHaveBeenCalledOnce": null,
+            "rejects.toHaveBeenCalledOnce": null,
+            "rejects.not.toHaveBeenCalledOnce": null,
+            "toHaveBeenCalledTimes": null,
+            "not.toHaveBeenCalledTimes": null,
+            "resolves.toHaveBeenCalledTimes": null,
+            "resolves.not.toHaveBeenCalledTimes": null,
+            "rejects.toHaveBeenCalledTimes": null,
+            "rejects.not.toHaveBeenCalledTimes": null,
+            "toHaveBeenCalledWith": null,
+            "not.toHaveBeenCalledWith": null,
+            "resolves.toHaveBeenCalledWith": null,
+            "resolves.not.toHaveBeenCalledWith": null,
+            "rejects.toHaveBeenCalledWith": null,
+            "rejects.not.toHaveBeenCalledWith": null,
+            "toHaveBeenLastCalledWith": null,
+            "not.toHaveBeenLastCalledWith": null,
+            "resolves.toHaveBeenLastCalledWith": null,
+            "resolves.not.toHaveBeenLastCalledWith": null,
+            "rejects.toHaveBeenLastCalledWith": null,
+            "rejects.not.toHaveBeenLastCalledWith": null,
+            "toHaveBeenNthCalledWith": null,
+            "not.toHaveBeenNthCalledWith": null,
+            "resolves.toHaveBeenNthCalledWith": null,
+            "resolves.not.toHaveBeenNthCalledWith": null,
+            "rejects.toHaveBeenNthCalledWith": null,
+            "rejects.not.toHaveBeenNthCalledWith": null
+          }
+        ],
+        "vitest/no-standalone-expect": "off",
+        "vitest/expect-expect": "off",
+        "orchid/no-test-in-loop": "error",
+        "orchid/no-error-message-assertion": "error",
+        "orchid/no-filtered-effect-test": "error"
+      }
+    },
+    {
+      "files": ["apps/web/e2e/**"],
+      "rules": {
+        "playwright/no-raw-locators": "error",
+        "playwright/prefer-native-locators": "error",
+        "playwright/no-force-option": "error",
+        "playwright/no-networkidle": "error",
+        "playwright/no-wait-for-timeout": "error",
+        "playwright/no-conditional-in-test": "error",
+        "playwright/prefer-web-first-assertions": "error",
+        "playwright/no-restricted-matchers": [
+          "error",
+          {
+            "toHaveText": "Assert an observable outcome.",
+            "toContainText": "Assert an observable outcome.",
+            "toMatchSnapshot": "Assert an observable outcome.",
+            "toHaveScreenshot": "Assert an observable outcome."
+          }
+        ],
+        "orchid/no-test-in-loop": "error",
+        "orchid/no-error-message-assertion": "error",
+        "orchid/no-copy-literal-in-e2e": "error"
+      },
+      "jsPlugins": ["eslint-plugin-playwright"]
+    }
+  ]
+}

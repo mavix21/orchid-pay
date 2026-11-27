@@ -1,0 +1,1 @@
+ALTER TABLE "wallets" ADD COLUMN "sweepCheckedAt" timestamp with time zone;

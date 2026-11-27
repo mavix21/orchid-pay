@@ -1,0 +1,633 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "72c18e7b-caf9-4587-bd6c-962181c633e6",
+  "prevIds": ["53a71b46-0745-4d2f-af6e-8fc51001c490"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "asset_orders"],
+      "writes": [
+        "s|tbl|public.asset_orders",
+        "n|tbl|public.asset_orders",
+        "e|tbl|public.asset_orders",
+        "n|rel|public.asset_orders",
+        "n|type|public.asset_orders",
+        "n|rel|public.asset_orders_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "trustlines"],
+      "writes": [
+        "s|tbl|public.trustlines",
+        "n|tbl|public.trustlines",
+        "e|tbl|public.trustlines",
+        "n|rel|public.trustlines",
+        "n|type|public.trustlines",
+        "n|rel|public.trustlines_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "transfers", "balanceId"],
+      "writes": [
+        "s|col|public.transfers.balanceId",
+        "n|col|public.transfers.balanceId",
+        "e|col|public.transfers.balanceId"
+      ],
+      "reads": ["n|tbl|public.transfers", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "transfers", "balanceClosedAt"],
+      "writes": [
+        "s|col|public.transfers.balanceClosedAt",
+        "n|col|public.transfers.balanceClosedAt",
+        "e|col|public.transfers.balanceClosedAt"
+      ],
+      "reads": ["n|tbl|public.transfers", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "asset_orders",
+        "asset_orders_one_in_flight"
+      ],
+      "writes": [
+        "s|idx|public.asset_orders_one_in_flight",
+        "n|idx|public.asset_orders_one_in_flight",
+        "e|idx|public.asset_orders_one_in_flight",
+        "n|rel|public.asset_orders_one_in_flight"
+      ],
+      "reads": [
+        "n|tbl|public.asset_orders",
+        "n|sch|public",
+        "n|col|public.asset_orders.wallet",
+        "n|col|public.asset_orders.network",
+        "n|col|public.asset_orders.testnetEpoch"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "transfers",
+        "transfers_open_balances"
+      ],
+      "writes": [
+        "s|idx|public.transfers_open_balances",
+        "n|idx|public.transfers_open_balances",
+        "e|idx|public.transfers_open_balances",
+        "n|rel|public.transfers_open_balances"
+      ],
+      "reads": [
+        "n|tbl|public.transfers",
+        "n|sch|public",
+        "n|col|public.transfers.balanceId"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "asset_orders"],
+      "writes": [
+        "s|fk|public.asset_orders.asset_orders_wallet_wallets_address_fkey",
+        "n|fk|public.asset_orders.asset_orders_wallet_wallets_address_fkey",
+        "e|fk|public.asset_orders.asset_orders_wallet_wallets_address_fkey",
+        "n|con|public.asset_orders.asset_orders_wallet_wallets_address_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.asset_orders",
+        "n|sch|public",
+        "n|tbl|public.wallets",
+        "n|sch|public",
+        "n|col|public.asset_orders.wallet",
+        "n|col|public.wallets.address",
+        "e|uniqueness|public.wallets.address"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "trustlines"],
+      "writes": [
+        "s|fk|public.trustlines.trustlines_address_wallets_address_fkey",
+        "n|fk|public.trustlines.trustlines_address_wallets_address_fkey",
+        "e|fk|public.trustlines.trustlines_address_wallets_address_fkey",
+        "n|con|public.trustlines.trustlines_address_wallets_address_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.trustlines",
+        "n|sch|public",
+        "n|tbl|public.wallets",
+        "n|sch|public",
+        "n|col|public.trustlines.address",
+        "n|col|public.wallets.address",
+        "e|uniqueness|public.wallets.address"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "asset_orders",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "trustlines",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "wallet",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "order",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "opens",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "network",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "testnetEpoch",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "status",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "envelope",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "expiresAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "failure",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "concludedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "sweepCheckedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "transfers",
+        "name": "balanceId",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "transfers",
+        "name": "balanceClosedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "trustlines",
+        "name": "address",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "trustlines",
+        "name": "network",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "trustlines",
+        "name": "testnetEpoch",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "trustlines",
+        "name": "code",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "trustlines",
+        "name": "issuer",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "trustlines",
+        "name": "openedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "asset_orders_one_in_flight",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "wallet",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "network",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "testnetEpoch",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"status\" = 'authorized'",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "transfers",
+        "name": "transfers_open_balances",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "balanceId",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": "\"balanceId\" is not null and \"balanceClosedAt\" is null",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "asset_orders_wallet_wallets_address_fkey",
+        "nameExplicit": false,
+        "columns": ["wallet"],
+        "schemaTo": "public",
+        "tableTo": "wallets",
+        "columnsTo": ["address"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "trustlines",
+        "name": "trustlines_address_wallets_address_fkey",
+        "nameExplicit": false,
+        "columns": ["address"],
+        "schemaTo": "public",
+        "tableTo": "wallets",
+        "columnsTo": ["address"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "trustlines",
+        "name": "trustlines_pkey",
+        "columns": ["address", "network", "testnetEpoch", "code", "issuer"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "asset_orders_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "asset_orders_signed_has_hash",
+        "value": "\"status\" = 'proposed' or \"hash\" is not null",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

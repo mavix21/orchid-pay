@@ -1,0 +1,446 @@
+import { expect, layer } from "@effect/vitest";
+import { Database } from "@workspace/db";
+import { sql } from "drizzle-orm";
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
+import * as Predicate from "effect/Predicate";
+import * as Schema from "effect/Schema";
+import {
+  NewPaymentRequest,
+  PaymentRequestId,
+  PaymentRequestRequesterUnavailable,
+  PositiveAmount,
+  type SigningRequest,
+  type TransferOrder,
+  Username,
+  UsernameRecipient,
+  baseAsset,
+} from "../src/contract";
+import { Rejected, Sealed } from "../src/server/Chain.server";
+import { Directory } from "../src/server/Directory.server";
+import { PaymentRequests } from "../src/server/PaymentRequests.server";
+import { RequestPayments } from "../src/server/RequestPayments.server";
+import { Transfers } from "../src/server/Transfers.server";
+import { Wallet } from "../src/server/Wallet.server";
+import { assertTagged } from "./tagged";
+import {
+  accountState,
+  addressOf,
+  approve,
+  authorizeTransfer,
+  authorizedTransfers,
+  draftTransfer,
+  findTransfer,
+  findWallet,
+  fundedWallet,
+  orderFor,
+  send,
+  settleHash,
+  sweep,
+  useDisposableDatabase,
+  walletTestLayer,
+  world,
+} from "./wallet-harness";
+import { randomKey, type TestKey } from "./test-keys";
+
+const requestId = (text: string) =>
+  Schema.decodeSync(PaymentRequestId)(text.padStart(10, "a"));
+
+const toMaria = UsernameRecipient.make({
+  value: Schema.decodeSync(Username)("maria"),
+});
+
+const askedBy = Effect.fn(function* (requester: TestKey, name = "1") {
+  const request = new NewPaymentRequest({
+    id: requestId(name),
+    asset: baseAsset,
+    amount: Schema.decodeSync(PositiveAmount)("10000000"),
+  });
+
+  const requests = yield* PaymentRequests;
+
+  assertTagged(
+    yield* requests.create(addressOf(requester), request),
+    "PaymentRequestOpen",
+  );
+
+  return request.id;
+});
+
+const parties = Effect.gen(function* () {
+  const maria = yield* fundedWallet("maria");
+  const rosa = yield* fundedWallet("rosa");
+
+  return { maria, rosa, id: yield* askedBy(maria) };
+});
+
+const pay = (
+  id: PaymentRequestId,
+  order: TransferOrder,
+  approval: ReturnType<typeof approve> = Option.none(),
+) => RequestPayments.use((payments) => payments.pay(id, order, approval));
+
+const draftPay = Effect.fn(function* (
+  id: PaymentRequestId,
+  order: TransferOrder,
+) {
+  const draft = yield* pay(id, order);
+
+  assertTagged(draft, "TransferDraft");
+
+  return draft;
+});
+
+const signedHash = Effect.fn(function* (order: TransferOrder) {
+  const stored = Option.getOrThrow(yield* findTransfer(order.id));
+
+  assertTagged(stored, "Authorized");
+
+  return stored.sealed.hash;
+});
+
+const payUntilPending = Effect.fn(function* (
+  payer: TestKey,
+  id: PaymentRequestId,
+  order: TransferOrder,
+) {
+  const draft = yield* draftPay(id, order);
+
+  assertTagged(yield* pay(id, order, approve(draft.request, payer)), "Pending");
+
+  return { draft, hash: yield* signedHash(order) };
+});
+
+const boundTo = (id: PaymentRequestId) =>
+  PaymentRequests.use((requests) => requests.inspect(id)).pipe(
+    Effect.map((inspected) =>
+      Option.getOrThrow(inspected).binding.pipe(
+        Option.map((binding) => binding.payment),
+      ),
+    ),
+  );
+
+const bindDraft = Effect.fn(function* (
+  id: PaymentRequestId,
+  order: TransferOrder,
+  request: SigningRequest,
+) {
+  const requests = yield* PaymentRequests;
+
+  expect(yield* requests.bind(id, order.id, request.expiresAt)).toBe(true);
+});
+
+const lapseBindings = Database.use((db) =>
+  db.execute(
+    sql`update payment_requests set "paymentExpiresAt" = now() - interval '1 second' where payment is not null and status = 'open'`,
+  ),
+);
+
+const cancel = (requester: TestKey, id: PaymentRequestId) =>
+  RequestPayments.use((payments) => payments.cancel(addressOf(requester), id));
+
+const publicRead = (id: PaymentRequestId) =>
+  RequestPayments.use((payments) => payments.read(id));
+
+const authorizingDraftsOutside = (payer: TestKey) =>
+  Layer.fresh(
+    RequestPayments.serviceLayer.pipe(
+      Layer.provide(
+        Layer.effect(
+          Wallet,
+          Effect.map(Wallet, (wallet) =>
+            Wallet.of({
+              ...wallet,
+              transfer: (order, approval) =>
+                wallet
+                  .transfer(order, approval)
+                  .pipe(
+                    Effect.tap((step) =>
+                      Predicate.isTagged(step, "TransferDraft")
+                        ? wallet.transfer(order, approve(step.request, payer))
+                        : Effect.void,
+                    ),
+                  ),
+            }),
+          ),
+        ),
+      ),
+    ),
+  );
+
+const testLayer = RequestPayments.serviceLayer.pipe(
+  Layer.provideMerge(PaymentRequests.serviceLayer),
+  Layer.provideMerge(walletTestLayer),
+);
+
+useDisposableDatabase();
+
+layer(testLayer, { excludeTestServices: true, concurrent: false })(
+  "request payments",
+  (it) => {
+    it.effect(
+      "a settled payment pays the request, and replaying its order answers the same",
+      () =>
+        Effect.gen(function* () {
+          const { rosa, id } = yield* parties;
+          const order = orderFor(rosa, toMaria);
+          const { draft, hash } = yield* payUntilPending(rosa, id, order);
+
+          settleHash(hash);
+
+          const settled = yield* pay(id, order);
+
+          assertTagged(settled, "Settled");
+          assertTagged(yield* publicRead(id), "PaymentRequestPaid");
+          expect(yield* boundTo(id)).toEqual(Option.some(order.id));
+          expect(yield* pay(id, order)).toEqual(settled);
+          expect(yield* pay(id, order, approve(draft.request, rosa))).toEqual(
+            settled,
+          );
+        }),
+    );
+
+    it.effect("a paid or cancelled request refuses another payment", () =>
+      Effect.gen(function* () {
+        const { maria, rosa, id } = yield* parties;
+        const paying = orderFor(rosa, toMaria);
+
+        settleHash((yield* payUntilPending(rosa, id, paying)).hash);
+
+        assertTagged(
+          yield* pay(id, orderFor(rosa, toMaria)),
+          "PaymentRequestPaid",
+        );
+
+        const withdrawn = yield* askedBy(maria, "2");
+
+        yield* cancel(maria, withdrawn);
+
+        const late = orderFor(rosa, toMaria);
+
+        assertTagged(yield* pay(withdrawn, late), "PaymentRequestCancelled");
+        expect(Option.isNone(yield* findTransfer(late.id))).toBe(true);
+      }),
+    );
+
+    it.effect(
+      "holds a request for one payer until that payment can no longer settle",
+      () =>
+        Effect.gen(function* () {
+          const { rosa, id } = yield* parties;
+          const pedro = yield* fundedWallet("pedro");
+          const first = orderFor(rosa, toMaria);
+          const second = orderFor(pedro, toMaria);
+          const { hash } = yield* payUntilPending(rosa, id, first);
+
+          assertTagged(yield* pay(id, second), "PaymentRequestBeingPaid");
+
+          world.evidence.set(hash, new Rejected({ code: "txFailed" }));
+
+          const draft = yield* draftPay(id, second);
+
+          const unsigned = yield* pay(
+            id,
+            second,
+            approve(draft.request, randomKey()),
+          );
+
+          assertTagged(unsigned, "TransferDraft");
+          expect(yield* boundTo(id)).toEqual(Option.none());
+          expect(Option.isNone(yield* findTransfer(second.id))).toBe(true);
+
+          const abandoned = yield* draftPay(id, second);
+          const stale = Option.getOrThrow(yield* findTransfer(second.id));
+
+          assertTagged(stale, "Proposed");
+          yield* bindDraft(id, second, abandoned.request);
+
+          const third = orderFor(rosa, toMaria);
+
+          assertTagged(yield* pay(id, third), "PaymentRequestBeingPaid");
+          yield* lapseBindings;
+
+          world.evidence.clear();
+
+          const next = yield* draftPay(id, third);
+
+          yield* Transfers.use((transfers) =>
+            transfers.authorize(
+              stale,
+              new Sealed({
+                envelope: stale.request.envelope,
+                hash: "late",
+                expiresAt: stale.request.expiresAt,
+              }),
+            ),
+          ).pipe(Effect.flip);
+          expect(yield* authorizedTransfers).toEqual([]);
+
+          assertTagged(
+            yield* pay(id, third, approve(next.request, rosa)),
+            "Pending",
+          );
+          expect(yield* boundTo(id)).toEqual(Option.some(third.id));
+        }),
+    );
+
+    it.effect(
+      "a transfer made outside the request or held by another cannot pay it",
+      () =>
+        Effect.gen(function* () {
+          const { maria, rosa, id } = yield* parties;
+          const outside = orderFor(rosa, toMaria);
+
+          const { draft, authorized } = yield* authorizeTransfer(rosa, outside);
+
+          settleHash(authorized.sealed.hash);
+          assertTagged(yield* send(outside), "Settled");
+
+          assertTagged(yield* pay(id, outside), "PaymentRequestPaymentTaken");
+          assertTagged(
+            yield* pay(id, outside, approve(draft.request, rosa)),
+            "PaymentRequestPaymentTaken",
+          );
+
+          const other = yield* askedBy(maria, "2");
+          const shared = orderFor(rosa, toMaria);
+          const proposed = yield* draftTransfer(shared);
+
+          yield* bindDraft(other, shared, proposed.request);
+
+          assertTagged(
+            yield* pay(id, shared, approve(proposed.request, rosa)),
+            "PaymentRequestPaymentTaken",
+          );
+          expect(yield* boundTo(id)).toEqual(Option.none());
+          expect(yield* boundTo(other)).toEqual(Option.some(shared.id));
+          assertTagged(yield* publicRead(id), "PaymentRequestOpen");
+        }),
+    );
+
+    it.effect(
+      "cannot be cancelled while a payment is bound, and cancelling reconciles an applied one",
+      () =>
+        Effect.gen(function* () {
+          const { maria, rosa, id } = yield* parties;
+          const order = orderFor(rosa, toMaria);
+          const { hash } = yield* payUntilPending(rosa, id, order);
+
+          assertTagged(yield* cancel(maria, id), "PaymentRequestBeingPaid");
+
+          settleHash(hash);
+
+          assertTagged(yield* cancel(maria, id), "PaymentRequestPaid");
+        }),
+    );
+
+    it.effect(
+      "a payment that settles after its payer left shows as paid publicly and in activity",
+      () =>
+        Effect.gen(function* () {
+          const { maria, rosa, id } = yield* parties;
+          const order = orderFor(rosa, toMaria);
+
+          settleHash((yield* payUntilPending(rosa, id, order)).hash);
+          yield* sweep;
+
+          assertTagged(yield* publicRead(id), "PaymentRequestPaid");
+
+          const activity = yield* RequestPayments.use((payments) =>
+            payments.activity(addressOf(maria)),
+          );
+
+          assertTagged(activity, "RequestActivityPage");
+          expect(activity.paidRequests).toMatchObject([
+            { payment: order.id, request: { id } },
+          ]);
+        }),
+    );
+
+    it.effect("refuses its own requester as payer", () =>
+      Effect.gen(function* () {
+        const { maria, id } = yield* parties;
+
+        assertTagged(
+          yield* pay(id, orderFor(maria, toMaria)),
+          "PaymentRequestSelfPay",
+        );
+      }),
+    );
+
+    it.effect(
+      "never answers with a transfer authorized outside while refusing its draft",
+      () =>
+        Effect.gen(function* () {
+          const { maria, rosa, id } = yield* parties;
+          const order = orderFor(rosa, toMaria);
+
+          world.accounts.set(
+            addressOf(maria),
+            accountState({ balance: Option.none() }),
+          );
+
+          const answered = yield* pay(id, order).pipe(
+            Effect.provide(authorizingDraftsOutside(rosa)),
+          );
+
+          assertTagged(answered, "PaymentRequestPaymentTaken");
+          assertTagged(
+            Option.getOrThrow(yield* findTransfer(order.id)),
+            "Authorized",
+          );
+          expect(yield* boundTo(id)).toEqual(Option.none());
+        }),
+    );
+
+    it.effect("refuses a payment the requester cannot receive directly", () =>
+      Effect.gen(function* () {
+        const { maria, rosa, id } = yield* parties;
+        const direct = orderFor(rosa, toMaria);
+
+        world.accounts.set(
+          addressOf(maria),
+          accountState({ balance: Option.none() }),
+        );
+        expect(yield* pay(id, direct)).toEqual(
+          new PaymentRequestRequesterUnavailable(),
+        );
+        expect(Option.isNone(yield* findTransfer(direct.id))).toBe(true);
+
+        const held = orderFor(rosa, toMaria);
+        const claimable = yield* draftTransfer(held);
+
+        expect(claimable.unclaimedFunds).toBeDefined();
+        expect(yield* pay(id, held, approve(claimable.request, rosa))).toEqual(
+          new PaymentRequestRequesterUnavailable(),
+        );
+        expect(Option.isNone(yield* findTransfer(held.id))).toBe(true);
+        expect(yield* authorizedTransfers).toEqual([]);
+
+        const diverted = orderFor(rosa, toMaria);
+        const unclaimed = yield* draftTransfer(diverted);
+
+        yield* bindDraft(id, diverted, unclaimed.request);
+        assertTagged(
+          yield* send(diverted, approve(unclaimed.request, rosa)),
+          "Pending",
+        );
+        settleHash(yield* signedHash(diverted));
+        assertTagged(yield* send(diverted), "Settled");
+
+        assertTagged(yield* pay(id, diverted), "PaymentRequestPaymentTaken");
+        assertTagged(yield* publicRead(id), "PaymentRequestOpen");
+
+        world.accounts.set(addressOf(maria), accountState());
+
+        const row = Option.getOrThrow(yield* findWallet(addressOf(maria)));
+
+        yield* Directory.use((directory) => directory.recover(row));
+        expect(yield* pay(id, orderFor(rosa, toMaria))).toEqual(
+          new PaymentRequestRequesterUnavailable(),
+        );
+      }),
+    );
+  },
+);

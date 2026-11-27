@@ -1,0 +1,89 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "fb38ff0d-fe80-471c-8ce0-bd3c1bbe34d5",
+  "prevIds": ["2ff42e38-13df-4cee-94b2-fcd37571ca32"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "asset_orders", "balanceId"],
+      "writes": [
+        "s|col|public.asset_orders.balanceId",
+        "n|col|public.asset_orders.balanceId",
+        "e|col|public.asset_orders.balanceId"
+      ],
+      "reads": ["n|tbl|public.asset_orders", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "transfers", "claimableKind"],
+      "writes": [
+        "s|col|public.transfers.claimableKind",
+        "n|col|public.transfers.claimableKind",
+        "e|col|public.transfers.claimableKind"
+      ],
+      "reads": ["n|tbl|public.transfers", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "transfers", "attemptBalanceIds"],
+      "writes": [
+        "s|col|public.transfers.attemptBalanceIds",
+        "n|col|public.transfers.attemptBalanceIds",
+        "e|col|public.transfers.attemptBalanceIds"
+      ],
+      "reads": ["n|tbl|public.transfers", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "balanceId",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "transfers",
+        "name": "claimableKind",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "transfers",
+        "name": "attemptBalanceIds",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

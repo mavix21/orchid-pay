@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a247264e-bee0-45a8-8ee1-740c7863e396",
+  "prevIds": ["dd5c893f-07a7-4a39-91e7-7022f2d75576"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "asset_orders", "linkCleanedAt"],
+      "writes": [
+        "s|col|public.asset_orders.linkCleanedAt",
+        "n|col|public.asset_orders.linkCleanedAt",
+        "e|col|public.asset_orders.linkCleanedAt"
+      ],
+      "reads": ["n|tbl|public.asset_orders", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "linkCleanedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

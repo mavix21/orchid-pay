@@ -1,0 +1,194 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "4357cb83-a648-4951-9d95-e6b55cb3f799",
+  "prevIds": ["0f9fc77e-f952-4d0b-a1cf-6659363f23d1"],
+  "footprints": [
+    {
+      "statementType": "drop_check",
+      "statementTarget": ["table", "public", "wallets"],
+      "writes": [
+        "s|ck|public.wallets.wallets_active_has_recovery",
+        "n|ck|public.wallets.wallets_active_has_recovery",
+        "e|ck|public.wallets.wallets_active_has_recovery",
+        "n|con|public.wallets.wallets_active_has_recovery"
+      ],
+      "reads": [
+        "n|tbl|public.wallets",
+        "n|sch|public",
+        "e|col|public.wallets.status",
+        "e|col|public.wallets.recoveryEnvelope",
+        "e|col|public.wallets.recoveryHash",
+        "e|col|public.wallets.recoverySequence",
+        "e|col|public.wallets.recoveryMinTime",
+        "e|col|public.wallets.recoveryMaxTime"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "recoveryDraft"],
+      "writes": [
+        "s|col|public.wallets.recoveryDraft",
+        "n|col|public.wallets.recoveryDraft",
+        "e|col|public.wallets.recoveryDraft"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "recoveryEnvelope"],
+      "writes": [
+        "s|col|public.wallets.recoveryEnvelope",
+        "n|col|public.wallets.recoveryEnvelope",
+        "e|col|public.wallets.recoveryEnvelope"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "recoveryHash"],
+      "writes": [
+        "s|col|public.wallets.recoveryHash",
+        "n|col|public.wallets.recoveryHash",
+        "e|col|public.wallets.recoveryHash"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "recoverySequence"],
+      "writes": [
+        "s|col|public.wallets.recoverySequence",
+        "n|col|public.wallets.recoverySequence",
+        "e|col|public.wallets.recoverySequence"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "recoveryMinTime"],
+      "writes": [
+        "s|col|public.wallets.recoveryMinTime",
+        "n|col|public.wallets.recoveryMinTime",
+        "e|col|public.wallets.recoveryMinTime"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "recoveryMaxTime"],
+      "writes": [
+        "s|col|public.wallets.recoveryMaxTime",
+        "n|col|public.wallets.recoveryMaxTime",
+        "e|col|public.wallets.recoveryMaxTime"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "sweepCheckedAt"],
+      "writes": [
+        "s|col|public.wallets.sweepCheckedAt",
+        "n|col|public.wallets.sweepCheckedAt",
+        "e|col|public.wallets.sweepCheckedAt"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "pairedRecoveryDraft"],
+      "writes": [
+        "s|col|public.wallets.pairedRecoveryDraft",
+        "n|col|public.wallets.pairedRecoveryDraft",
+        "e|col|public.wallets.pairedRecoveryDraft"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "wallets",
+        "pairedRecoveryEnvelope"
+      ],
+      "writes": [
+        "s|col|public.wallets.pairedRecoveryEnvelope",
+        "n|col|public.wallets.pairedRecoveryEnvelope",
+        "e|col|public.wallets.pairedRecoveryEnvelope"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "pairedRecoveryHash"],
+      "writes": [
+        "s|col|public.wallets.pairedRecoveryHash",
+        "n|col|public.wallets.pairedRecoveryHash",
+        "e|col|public.wallets.pairedRecoveryHash"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "wallets", "depositOpening"],
+      "writes": [
+        "s|col|public.wallets.depositOpening",
+        "n|col|public.wallets.depositOpening",
+        "e|col|public.wallets.depositOpening"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"recoveryDraft\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"recoveryEnvelope\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"recoveryHash\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"recoverySequence\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"recoveryMinTime\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"recoveryMaxTime\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"sweepCheckedAt\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"pairedRecoveryDraft\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"pairedRecoveryEnvelope\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"pairedRecoveryHash\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"wallets\",\"depositOpening\"]"
+    },
+    {
+      "op": "drop",
+      "key": "checks\u0000[\"public\",\"wallets\",\"wallets_active_has_recovery\"]"
+    }
+  ]
+}

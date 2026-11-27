@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "0f9fc77e-f952-4d0b-a1cf-6659363f23d1",
+  "prevIds": ["5bce0748-2d88-4dd9-8330-eef042f08b6c"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "wallets", "depositOpening"],
+      "writes": [
+        "s|col|public.wallets.depositOpening",
+        "n|col|public.wallets.depositOpening",
+        "e|col|public.wallets.depositOpening"
+      ],
+      "reads": ["n|tbl|public.wallets", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "wallets",
+        "name": "depositOpening",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "489ac9da-528e-40a5-8966-4877c3040753",
+  "prevIds": ["e180e2af-6de5-4d30-bea2-65a6f44e9868"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "usernames"],
+      "writes": [
+        "s|tbl|public.usernames",
+        "n|tbl|public.usernames",
+        "e|tbl|public.usernames",
+        "n|rel|public.usernames",
+        "n|type|public.usernames",
+        "n|rel|public.usernames_pkey",
+        "n|rel|public.usernames_address_key"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "usernames"],
+      "writes": [
+        "s|fk|public.usernames.usernames_address_wallets_address_fkey",
+        "n|fk|public.usernames.usernames_address_wallets_address_fkey",
+        "e|fk|public.usernames.usernames_address_wallets_address_fkey",
+        "n|con|public.usernames.usernames_address_wallets_address_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.usernames",
+        "n|sch|public",
+        "n|tbl|public.wallets",
+        "n|sch|public",
+        "n|col|public.usernames.address",
+        "n|col|public.wallets.address",
+        "e|uniqueness|public.wallets.address"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "usernames",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "usernames",
+        "name": "username",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "usernames",
+        "name": "address",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "usernames",
+        "name": "boundAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "usernames",
+        "name": "usernames_address_wallets_address_fkey",
+        "nameExplicit": false,
+        "columns": ["address"],
+        "schemaTo": "public",
+        "tableTo": "wallets",
+        "columnsTo": ["address"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "usernames",
+        "name": "usernames_pkey",
+        "columns": ["username"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "usernames",
+        "name": "usernames_address_key",
+        "nameExplicit": false,
+        "columns": ["address"],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    }
+  ]
+}

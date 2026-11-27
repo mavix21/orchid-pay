@@ -1,0 +1,218 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "5b4e06b7-8458-41a8-b58f-3cd0f53307c4",
+  "prevIds": ["5797596a-e714-407e-acf8-245793e1bc0e"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "payment_requests", "payment"],
+      "writes": [
+        "s|col|public.payment_requests.payment",
+        "n|col|public.payment_requests.payment",
+        "e|col|public.payment_requests.payment"
+      ],
+      "reads": ["n|tbl|public.payment_requests", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "payment_requests",
+        "paymentExpiresAt"
+      ],
+      "writes": [
+        "s|col|public.payment_requests.paymentExpiresAt",
+        "n|col|public.payment_requests.paymentExpiresAt",
+        "e|col|public.payment_requests.paymentExpiresAt"
+      ],
+      "reads": ["n|tbl|public.payment_requests", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "payment_requests", "paidAt"],
+      "writes": [
+        "s|col|public.payment_requests.paidAt",
+        "n|col|public.payment_requests.paidAt",
+        "e|col|public.payment_requests.paidAt"
+      ],
+      "reads": ["n|tbl|public.payment_requests", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "payment_requests",
+        "payment_requests_payment"
+      ],
+      "writes": [
+        "s|idx|public.payment_requests_payment",
+        "n|idx|public.payment_requests_payment",
+        "e|idx|public.payment_requests_payment",
+        "n|rel|public.payment_requests_payment"
+      ],
+      "reads": [
+        "n|tbl|public.payment_requests",
+        "n|sch|public",
+        "n|col|public.payment_requests.payment"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": ["table", "public", "payment_requests"],
+      "writes": [
+        "s|ck|public.payment_requests.payment_requests_paid_by_payment",
+        "n|ck|public.payment_requests.payment_requests_paid_by_payment",
+        "e|ck|public.payment_requests.payment_requests_paid_by_payment",
+        "n|con|public.payment_requests.payment_requests_paid_by_payment"
+      ],
+      "reads": [
+        "n|tbl|public.payment_requests",
+        "n|sch|public",
+        "n|col|public.payment_requests.status",
+        "n|col|public.payment_requests.payment",
+        "n|col|public.payment_requests.paidAt"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": ["table", "public", "payment_requests"],
+      "writes": [
+        "s|ck|public.payment_requests.payment_requests_cancelled_unbound",
+        "n|ck|public.payment_requests.payment_requests_cancelled_unbound",
+        "e|ck|public.payment_requests.payment_requests_cancelled_unbound",
+        "n|con|public.payment_requests.payment_requests_cancelled_unbound"
+      ],
+      "reads": [
+        "n|tbl|public.payment_requests",
+        "n|sch|public",
+        "n|col|public.payment_requests.status",
+        "n|col|public.payment_requests.payment"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": ["table", "public", "payment_requests"],
+      "writes": [
+        "s|ck|public.payment_requests.payment_requests_binding_expires",
+        "n|ck|public.payment_requests.payment_requests_binding_expires",
+        "e|ck|public.payment_requests.payment_requests_binding_expires",
+        "n|con|public.payment_requests.payment_requests_binding_expires"
+      ],
+      "reads": [
+        "n|tbl|public.payment_requests",
+        "n|sch|public",
+        "n|col|public.payment_requests.status",
+        "n|col|public.payment_requests.payment",
+        "n|col|public.payment_requests.paymentExpiresAt"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payment_requests",
+        "name": "payment",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payment_requests",
+        "name": "paymentExpiresAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payment_requests",
+        "name": "paidAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payment_requests",
+        "name": "payment_requests_payment",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "payment",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"payment\" is not null",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payment_requests",
+        "name": "payment_requests_paid_by_payment",
+        "value": "\"status\" <> 'paid' or (\"payment\" is not null and \"paidAt\" is not null)",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payment_requests",
+        "name": "payment_requests_cancelled_unbound",
+        "value": "\"status\" <> 'cancelled' or \"payment\" is null",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "payment_requests",
+        "name": "payment_requests_binding_expires",
+        "value": "\"status\" <> 'open' or ((\"payment\" is null) = (\"paymentExpiresAt\" is null))",
+        "entityType": "checks"
+      }
+    }
+  ]
+}
