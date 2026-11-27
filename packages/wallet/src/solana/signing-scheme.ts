@@ -2,9 +2,11 @@ import { ed25519 } from "@noble/curves/ed25519.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { getBase58Decoder } from "@solana/kit";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { AccountAddress } from "../contract";
 import type { SigningScheme } from "../device/signing-scheme";
+import { decodeEnvelope } from "./envelope-codec";
 import { chainId } from "./network";
 
 const encoder = new TextEncoder();
@@ -18,7 +20,7 @@ export const base58AddressOf = (publicKey: Uint8Array) =>
 const address = (publicKey: Uint8Array) =>
   Schema.decodeSync(AccountAddress)(base58AddressOf(publicKey));
 
-export const solanaSigningScheme: Omit<SigningScheme, "signingPayload"> = {
+export const solanaSigningScheme: SigningScheme = {
   derivationPath: "m/44'/501'/0'/0'",
   address,
   withLinkKey: (entropy, use) => {
@@ -33,4 +35,6 @@ export const solanaSigningScheme: Omit<SigningScheme, "signingPayload"> = {
       seed.fill(0);
     }
   },
+  signingPayload: (envelope) =>
+    new Uint8Array(Option.getOrThrow(decodeEnvelope(envelope)).messageBytes),
 };
