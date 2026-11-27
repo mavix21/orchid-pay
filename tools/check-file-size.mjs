@@ -6,6 +6,7 @@ const bytesPerToken = 4;
 
 const ignored = [
   /(^|\/)bun\.lock$/,
+  /(^|\/)Cargo\.lock$/,
   /(^|\/)[^/]*-lock\.json$/,
   /\.gen\.ts$/,
   /(^|\/)worker-configuration\.d\.ts$/,
