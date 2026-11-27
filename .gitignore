@@ -21,3 +21,9 @@ playwright-report
 # typescript
 *.tsbuildinfo
 .neon
+
+# anchor
+target
+.anchor
+test-ledger
+.surfpool
