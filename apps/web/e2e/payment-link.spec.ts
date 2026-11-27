@@ -1,6 +1,7 @@
 import { type Page, expect, test } from "@playwright/test";
 import { readLinkCode } from "@workspace/wallet";
-import { fundWithUsdc, usdc } from "@workspace/wallet/testnet";
+import { baseAsset } from "@workspace/wallet";
+import { fundUsdc } from "@workspace/wallet/local-chain";
 import * as Option from "effect/Option";
 
 import {
@@ -46,7 +47,7 @@ const sharedFundedLink = async (page: Page, senderUsername: string) => {
 
   const { address } = await enrollWallet(page, senderUsername);
 
-  await fundWithUsdc(address, "1");
+  await fundUsdc(address, 1_000_000);
   await reviewLink(page);
   await page.getByTestId("confirm-link").click();
   await expect(page.getByTestId("link-created")).toBeVisible({
@@ -98,7 +99,7 @@ const createUnsavedLink = async (page: Page) => {
 
 const reviewLink = async (page: Page) => {
   await page.goto("/send");
-  await page.getByTestId(`send-asset-USDC:${usdc.getIssuer()}`).click();
+  await page.getByTestId(`send-asset-${baseAsset.id}`).click();
   await page.getByTestId("choose-link").click();
   await page.getByRole("textbox").fill("0.5");
   await page.getByTestId("review-link").click();
@@ -133,7 +134,7 @@ Object.defineProperty(navigator, "clipboard", { configurable: true, value: { wri
 
   const { address, authenticator } = await enrollWallet(page, freshUsername());
 
-  await fundWithUsdc(address, "1");
+  await fundUsdc(address, 1_000_000);
 
   await reviewLink(page);
   await page.getByTestId("confirm-link").click();
@@ -382,7 +383,7 @@ test("discards an unsaved link's code when the page is hidden before sharing, wh
 
   const { address } = await enrollWallet(page, freshUsername());
 
-  await fundWithUsdc(address, "2");
+  await fundUsdc(address, 2_000_000);
 
   await createUnsavedLink(page);
   await hidePage(page);
@@ -415,7 +416,7 @@ test("closes a revealed saved link when the page is hidden, and when a share fro
 
   const { address } = await enrollWallet(page, freshUsername());
 
-  await fundWithUsdc(address, "1");
+  await fundUsdc(address, 1_000_000);
   await reviewLink(page);
   await page.getByTestId("confirm-link").click();
   await expect(page.getByTestId("link-created")).toBeVisible({

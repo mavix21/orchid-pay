@@ -21,11 +21,6 @@ const humanCheckTestKeys = {
   TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
 };
 
-const testnetAccounts = [
-  { key: "RESERVE_SPONSOR_SECRET", role: "reserve sponsor" },
-  { key: "FEE_PAYER_SECRET", role: "fee payer" },
-];
-
 const fail = (message) => {
   process.stderr.write(`setup: ${message}\n`);
   process.exit(1);
@@ -114,71 +109,43 @@ const readDevVars = () => {
   );
 };
 
-const testnetAddressOf = (testnet, key, secret) => {
+const sponsorAddressOf = (devnet, secret) => {
   try {
-    return testnet.testnetAddress(secret);
+    return devnet.sponsorAddressOf(secret);
   } catch {
     return fail(
-      `${key} in apps/web/.dev.vars is not a valid Stellar secret key. Remove the line and run setup again to create a new one.`,
+      "SPONSOR_SECRET in apps/web/.dev.vars is not a base58 Solana keypair. Remove the line and run setup again to create a new one.",
     );
   }
 };
 
-const ensureTestnetAccount = async (testnet, existing, { key, role }) => {
-  const secret = existing.get(key);
+const ensureSponsor = async (devnet, existing, rpcUrl) => {
+  const existingSecret = existing.get("SPONSOR_SECRET");
+  const secret = existingSecret ?? devnet.newSponsorSecret();
+  const address = sponsorAddressOf(devnet, secret);
 
-  if (secret === undefined) {
-    const keypair = await testnet.fundedTestnetKeypair();
+  if (existingSecret === undefined) {
+    await devnet.airdrop(rpcUrl, address);
+    report(`created and airdropped the sponsor ${address}.`);
+  } else report(`the sponsor is ${address}.`);
 
-    report(`created and funded the ${role} ${keypair.publicKey()}.`);
+  if (await devnet.openSandboxPartner(rpcUrl, secret))
+    report("the sponsor opened the sandbox payout partner's USDC account.");
 
-    return [[key, keypair.secret()]];
-  }
-
-  const address = testnetAddressOf(testnet, key, secret);
-
-  if (await testnet.isOpenOnTestnet(address)) {
-    report(`the ${role} ${address} is open on testnet.`);
-
-    return [];
-  }
-
-  await testnet.fundWithFriendbot(address);
-  report(`funded the ${role} ${address} again after a testnet reset.`);
-
-  return [];
+  return existingSecret === undefined ? [["SPONSOR_SECRET", secret]] : [];
 };
 
 const ensureDevVars = async () => {
   if (!existsSync(devVarsPath) && linkMainCheckoutDevVars())
     report("linked apps/web/.dev.vars to the main checkout.");
 
-  const testnet = await import("@workspace/wallet/testnet");
+  const devnet = await import("@workspace/wallet/devnet");
   const existing = readDevVars();
-  const funded = [];
-
-  for (const account of testnetAccounts)
-    funded.push(...(await ensureTestnetAccount(testnet, existing, account)));
-
-  const secrets = new Map([...existing, ...funded]);
-
-  const channels = await testnet.openChannels(
-    secrets.get("RESERVE_SPONSOR_SECRET"),
-    secrets.get("FEE_PAYER_SECRET"),
-  );
-
-  if (channels > 0)
-    report(`the reserve sponsor opened ${channels} channel accounts.`);
-
-  if (
-    await testnet.openSandboxPartner(
-      secrets.get("RESERVE_SPONSOR_SECRET"),
-      secrets.get("FEE_PAYER_SECRET"),
-    )
-  )
-    report("the reserve sponsor opened the sandbox payout partner.");
+  const rpcUrl = existing.get("SOLANA_RPC_URL") ?? devnet.publicDevnetRpcUrl;
+  const funded = await ensureSponsor(devnet, existing, rpcUrl);
 
   const generated = [
+    ["SOLANA_RPC_URL", devnet.publicDevnetRpcUrl],
     ...funded,
     ["SESSION_SECRET", randomBytes(32).toString("base64url")],
     ...Object.entries(humanCheckTestKeys),

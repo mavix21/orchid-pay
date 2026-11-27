@@ -1,4 +1,3 @@
-import { Account, Keypair, MuxedAccount } from "@stellar/stellar-sdk";
 import { baseAsset } from "@workspace/wallet";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -6,7 +5,7 @@ import { expect, it } from "vitest";
 
 import { intentOf } from "../src/send/intent";
 
-const destination = Keypair.random().publicKey();
+const destination = "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB";
 
 const intentFor = (memo: string, recipient = destination) =>
   intentOf({ recipient, amount: "1", memo }, "address", baseAsset);
@@ -20,15 +19,8 @@ it.each([
   ).toEqual(Option.some({ type: "text", value: sent }));
 });
 
-it.each([
-  ["empty after trimming", "  ", destination],
-  [
-    "for a muxed address",
-    "12345",
-    new MuxedAccount(new Account(destination, "0"), "42").accountId(),
-  ],
-])("a memo %s is not sent", (_, memo, recipient) => {
-  expect(Result.getOrThrow(intentFor(memo, recipient)).memo).toBeUndefined();
+it("a memo empty after trimming is not sent", () => {
+  expect(Result.getOrThrow(intentFor("  ")).memo).toBeUndefined();
 });
 
 it("an address from another network is refused on the recipient field", () => {

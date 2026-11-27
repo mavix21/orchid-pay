@@ -1,13 +1,10 @@
-import { Account, Keypair, MuxedAccount } from "@stellar/stellar-sdk";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import { expect, it } from "vitest";
 
 import { externalClaimIntentOf } from "../src/links/external-claim-intent";
 
-const destination = Keypair.random().publicKey();
-
-const muxed = new MuxedAccount(new Account(destination, "0"), "42").accountId();
+const destination = "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB";
 
 it.each([
   ["digits stay MEMO_TEXT unchanged", "001234", "001234"],
@@ -26,19 +23,21 @@ it.each([
   ).toEqual(Option.some({ type: "text", value: sent }));
 });
 
-it.each([
-  ["empty after trimming", "  \n ", destination],
-  ["leftover memo on muxed address", "12345", muxed],
-])("external claim omits memo when %s", (_name, memo, target) => {
+it("external claim omits a memo that is empty after trimming", () => {
   expect(
-    Result.getOrThrow(externalClaimIntentOf({ destination: target, memo }))
+    Result.getOrThrow(externalClaimIntentOf({ destination, memo: "  \n " }))
       .memo,
   ).toBeUndefined();
 });
 
 it.each([
   ["memo over 28 UTF-8 bytes", destination, "é".repeat(15), "memo"],
-  ["invalid Stellar checksum", `G${"A".repeat(55)}`, "", "destination"],
+  [
+    "Solana address with an extra leading zero byte",
+    `1${destination}`,
+    "",
+    "destination",
+  ],
   [
     "EVM address",
     "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",

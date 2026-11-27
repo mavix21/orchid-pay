@@ -1,4 +1,3 @@
-import { Keypair } from "@stellar/stellar-sdk";
 import {
   AccountAddress,
   UnclaimedFundsId,
@@ -18,19 +17,21 @@ import { type Delivery, LinkStep, concealedStep } from "../src/links/link-step";
 const code = Schema.decodeSync(LinkCode)("Bcru1zp9FViPqN8CJTvQuS2zg");
 
 const unclaimedFunds = Schema.decodeSync(UnclaimedFundsId)(
-  `00000000${"ab".repeat(32)}`,
+  "8EiF91LJfbatqHRY3k2jp8dwrFY3yDQeEovpMDZnpJiP",
 );
 
-const amount = Schema.decodeSync(PositiveAmount)("5000000");
+const amount = Schema.decodeSync(PositiveAmount)("500000");
 
 const created = new PaymentLinkCreated({
   id: Schema.decodeSync(TransferId)(crypto.randomUUID()),
-  address: Schema.decodeSync(AccountAddress)(Keypair.random().publicKey()),
+  address: Schema.decodeSync(AccountAddress)(
+    "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB",
+  ),
   code,
   unclaimedFunds,
   asset: baseAsset,
   amount,
-  network: "testnet",
+  network: "devnet",
   path: `/r#${code}`,
   settledAt: DateTime.makeUnsafe(0),
   savedOnDevice: false,

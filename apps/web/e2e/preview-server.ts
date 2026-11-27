@@ -4,10 +4,11 @@ import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import {
-  fundedTestnetKeypair,
-  openChannels,
-  openSandboxPartner,
-} from "@workspace/wallet/testnet";
+  localChainUrl,
+  localSponsorSecret,
+  startLocalChain,
+  stopLocalChain,
+} from "@workspace/wallet/local-chain";
 
 const humanCheckTestKeys = {
   TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
@@ -17,19 +18,6 @@ const humanCheckTestKeys = {
 const previewSecretsFile = fileURLToPath(
   new URL("../dist/server/.dev.vars", import.meta.url),
 );
-
-const fundedTestnetSecrets = async () => {
-  const reserveSponsor = await fundedTestnetKeypair();
-  const feePayer = await fundedTestnetKeypair();
-
-  await openChannels(reserveSponsor.secret(), feePayer.secret());
-  await openSandboxPartner(reserveSponsor.secret(), feePayer.secret());
-
-  return {
-    RESERVE_SPONSOR_SECRET: reserveSponsor.secret(),
-    FEE_PAYER_SECRET: feePayer.secret(),
-  };
-};
 
 const runScript = (script: string[]) =>
   new Promise<number>((resolve, reject) => {
@@ -41,15 +29,19 @@ const runScript = (script: string[]) =>
       .on("exit", (code) => resolve(code ?? 1));
   });
 
-const [secrets, buildExitCode] = await Promise.all([
-  fundedTestnetSecrets(),
+const [chain, buildExitCode] = await Promise.all([
+  startLocalChain(),
   runScript(["build"]),
 ]);
 
-if (buildExitCode !== 0) process.exit(buildExitCode);
+if (buildExitCode !== 0) {
+  await stopLocalChain(chain);
+  process.exit(buildExitCode);
+}
 
 const previewSecrets = {
-  ...secrets,
+  SOLANA_RPC_URL: localChainUrl,
+  SPONSOR_SECRET: localSponsorSecret,
   ...humanCheckTestKeys,
   SESSION_SECRET: randomBytes(32).toString("base64url"),
 };
@@ -61,4 +53,13 @@ await writeFile(
     .join(""),
 );
 
-process.exit(await runScript(["preview", "--port", "4173", "--strictPort"]));
+const previewExitCode = await runScript([
+  "preview",
+  "--port",
+  "4173",
+  "--strictPort",
+]);
+
+await stopLocalChain(chain);
+
+process.exit(previewExitCode);

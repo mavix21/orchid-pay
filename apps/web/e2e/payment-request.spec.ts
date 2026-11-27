@@ -5,7 +5,7 @@ import {
   test,
 } from "@playwright/test";
 import { AccountAddress } from "@workspace/wallet";
-import { fundWithUsdc } from "@workspace/wallet/testnet";
+import { fundUsdc } from "@workspace/wallet/local-chain";
 import * as Schema from "effect/Schema";
 
 import {
@@ -195,7 +195,7 @@ test("a payer without a wallet creates one on the request page and pays it", asy
   await expect
     .poll(() => walletActive(address), { timeout: 120_000 })
     .toBe(true);
-  await fundWithUsdc(address, "1");
+  await fundUsdc(address, 1_000_000);
   await payer.getByTestId("result-again").click();
 
   const summary = payer.getByTestId("payment-summary");
