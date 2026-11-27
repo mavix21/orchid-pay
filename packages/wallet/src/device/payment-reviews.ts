@@ -3,7 +3,12 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
-import type { SigningRequest, TransferDraft, TransferOrder } from "../contract";
+import type {
+  DestinationAddress,
+  SigningRequest,
+  TransferDraft,
+  TransferOrder,
+} from "../contract";
 import { approvalMargin, draftLifetime } from "../policy";
 import type { PublicDeviceWallet } from "./key-store";
 import {
@@ -16,6 +21,7 @@ import { PaymentReview } from "./outcomes";
 import {
   approvalOutstanding,
   clockAllowance,
+  destination,
   orderJson,
   orderedFacts,
 } from "./transfer-drafts";
@@ -51,13 +57,14 @@ const reviewFrom = (
   draft: TransferDraft,
   redrafted: boolean,
   facts: PaymentFacts | ClaimableFacts | PaymentLinkFacts,
+  to: DestinationAddress,
 ) =>
   new PaymentReview({
     order,
     draft,
     redrafted,
     network,
-    to: facts.to,
+    to,
     username: Predicate.isTagged(order.to, "Username")
       ? order.to.value
       : undefined,
@@ -77,10 +84,12 @@ export const reviewOf = (
   draft: TransferDraft,
   redrafted: boolean,
 ) =>
-  Option.map(orderedFacts(wallet, order, draft), (facts) => ({
-    facts,
-    review: reviewFrom(order, draft, redrafted, facts),
-  }));
+  Option.flatMap(orderedFacts(wallet, order, draft), (facts) =>
+    Option.map(destination(order, draft), (to) => ({
+      facts,
+      review: reviewFrom(order, draft, redrafted, facts, to),
+    })),
+  );
 
 const standingOf = (
   wallet: PublicDeviceWallet,

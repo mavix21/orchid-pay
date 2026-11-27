@@ -27,5 +27,6 @@ export const stellarDeviceNetwork: DeviceNetwork = {
   readDraft: (request) =>
     Option.flatMap(readEnvelope(request.envelope), reviewedFacts),
   baseAccountOf,
+  creditedAccountOf: (destination) => destination,
   isIssuedBy,
 };

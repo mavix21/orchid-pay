@@ -18,7 +18,6 @@ import {
   PositiveAmount,
   TransferId,
   baseAsset,
-  nativeAsset,
   precisionOf,
 } from "../src/contract";
 import { Directory } from "../src/server/Directory.server";
@@ -30,21 +29,14 @@ import {
 } from "../src/server/tables.server";
 import { epochAt, network } from "../src/record-network";
 import { assertTagged } from "./tagged";
+import { randomAddress } from "./test-keys";
 import { dbLayer, useMigratedDatabase } from "./test-database";
 
-const address = Schema.decodeSync(AccountAddress);
+const maria = randomAddress();
 
-const maria = address(
-  "GCFIRY65OQE7DFP5KLNS2PF2LVZMUZYJX4OZIEQ36N2IQANUB5XVYOJR",
-);
+const jorge = randomAddress();
 
-const jorge = address(
-  "GCATS5YOVB6ROX2WUNKGNQ2MP3GMXDMKSG2O4N5CLX3A6W4PZGZZI55U",
-);
-
-const stranger = address(
-  "GDWUSKGGFDI4FRXK5EBTRECZSVQSSWJHHJOGH6JWG3AUMFFMQ435DIAG",
-);
+const stranger = randomAddress();
 
 const newRequest = (
   overrides: Partial<ConstructorParameters<typeof NewPaymentRequest>[0]> = {},
@@ -344,17 +336,13 @@ layer(testLayer, { excludeTestServices: true, concurrent: false })(
       }),
     );
 
-    it.effect.each([
-      ["the native asset", Option.getOrThrow(nativeAsset)],
-      [
-        "another issuer's USDC",
-        {
-          id: Schema.decodeSync(AssetId)("USDC:another-issuer"),
-          code: Schema.decodeSync(AssetCode)("USDC"),
-        },
-      ],
-    ] as const)("does not accept %s", ([, asset]) =>
+    it.effect("does not accept USDC from another mint", () =>
       Effect.gen(function* () {
+        const asset = {
+          id: Schema.decodeSync(AssetId)(randomAddress()),
+          code: Schema.decodeSync(AssetCode)("USDC"),
+        };
+
         yield* seedWallet(maria, "active", "maria");
 
         const requests = yield* PaymentRequests;

@@ -1,5 +1,6 @@
 import { expect, it } from "@effect/vitest";
-import { Keypair } from "@stellar/stellar-sdk";
+import { ed25519 } from "@noble/curves/ed25519.js";
+import { base58 } from "@scure/base";
 import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -15,18 +16,19 @@ import {
 } from "../src/contract";
 import type { AssertionCeremony } from "../src/device/assertion";
 import { Reserved, approveReviewed } from "../src/device/reviewed-approval";
-import { signingPayload } from "../src/stellar/envelopes";
+import { signingScheme } from "../src/device-network";
+import { draftLifetime } from "../src/policy";
 import { nowSeconds } from "./device-fixtures";
 import { approvingDevice, installSealedWallet } from "./sealed-wallet-fixtures";
-import { sendActors } from "./stellar-device-fixtures";
+import { sendActors } from "./solana-device-fixtures";
 
 const actors = sendActors();
-const amount = Schema.decodeSync(PositiveAmount)("10000000");
+const amount = Schema.decodeSync(PositiveAmount)("1000000");
 
 const requestTo = (to: DestinationAddress) =>
   new SigningRequest({
     envelope: actors.payment({ to, amount }),
-    expiresAt: DateTime.makeUnsafe((nowSeconds() + 120) * 1000),
+    expiresAt: DateTime.makeUnsafe((nowSeconds() + draftLifetime) * 1000),
   });
 
 it.live.each([
@@ -77,9 +79,12 @@ it.live.each([
     expect(outcome?._tag).toBe(withheld);
     expect(
       released.map((approval, index) =>
-        Keypair.fromPublicKey(actors.sender).verify(
-          signingPayload(index === 0 ? first.envelope : later.envelope),
-          Buffer.from(approval.signature),
+        ed25519.verify(
+          approval.signature,
+          signingScheme.signingPayload(
+            index === 0 ? first.envelope : later.envelope,
+          ),
+          base58.decode(actors.sender),
         ),
       ),
     ).toEqual(verifiedSignatures);

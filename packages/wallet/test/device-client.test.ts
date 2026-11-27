@@ -1,10 +1,5 @@
 import { expect, it, layer } from "@effect/vitest";
-import {
-  Account,
-  Keypair,
-  Operation,
-  TransactionBuilder,
-} from "@stellar/stellar-sdk";
+import { ed25519 } from "@noble/curves/ed25519.js";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -31,17 +26,15 @@ import {
   SavedWallet,
   makeWalletEffects,
 } from "../src/device/client";
-import { phraseAddress } from "../src/device/signing";
 import { Wallet } from "../src/server/Wallet.server";
-import { draftOpening, signingPayload } from "../src/stellar/envelopes";
+import { signingScheme } from "../src/device-network";
 import { approvalMargin, draftLifetime } from "../src/policy";
-import { baseFee, networkPassphrase, usdc } from "../src/stellar/network";
 import {
   enrolledDeviceWallet,
   memoryKeyStore,
+  signingKey,
   unusedPort,
 } from "./device-fixtures";
-import { stellarSigningKey } from "./stellar-device-fixtures";
 import {
   approvingDevice,
   installSealedWallet,
@@ -54,26 +47,19 @@ import {
 } from "../src/device/key-store";
 import { SoftwareAuthenticator } from "./software-authenticator";
 import { assertTagged } from "./tagged";
-import { addressOf } from "./test-keys";
-import { seededDeviceWallet } from "./stellar-device-fixtures";
+import { randomAddress } from "./test-keys";
+import { seededDeviceWallet, solanaDrafts } from "./solana-device-fixtures";
 import {
-  channel,
   findWallet,
   passkeyOrigin,
   reserveSponsor,
   settleAttempt,
   useDisposableDatabase,
   walletTestLayer,
-} from "./stellar-harness";
+} from "./solana-harness";
 
 const passkeys = new SoftwareAuthenticator(passkeyOrigin).passkeys;
 const seeded = seededDeviceWallet(reserveSponsor);
-
-it("derives the Stellar account of a SEP-5 secret phrase", () => {
-  expect(phraseAddress(seeded.phrase)).toBe(
-    "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOOHSUJUJ6",
-  );
-});
 
 const requestUntil = (envelope: SigningRequest["envelope"], maxTime: number) =>
   new SigningRequest({
@@ -83,35 +69,26 @@ const requestUntil = (envelope: SigningRequest["envelope"], maxTime: number) =>
 
 interface OpeningChange {
   readonly address?: AccountAddress;
-  readonly channel?: AccountAddress;
+  readonly sponsor?: AccountAddress;
   readonly lifetime?: number;
 }
 
-const openingAt = (millis: number, change: OpeningChange = {}) => {
-  const now = Math.floor(millis / 1000);
-  const maxTime = now + (change.lifetime ?? draftLifetime);
-
-  return new OpeningDraft({
+const openingAt = (millis: number, change: OpeningChange = {}) =>
+  new OpeningDraft({
     request: requestUntil(
-      draftOpening({
-        channel: new Account(change.channel ?? channel, "100"),
-        reserveSponsor,
-        address: change.address ?? seeded.address,
-        createAccount: true,
-        minTime: now,
-        maxTime,
-      }),
-      maxTime,
+      solanaDrafts(change.sponsor ?? reserveSponsor).opening(
+        change.address ?? seeded.address,
+      ),
+      Math.floor(millis / 1000) + (change.lifetime ?? draftLifetime),
     ),
   });
-};
 
 it.effect(
   "polls OpeningPending until the opening draft arrives and submits a valid approval",
   () =>
     Effect.gen(function* () {
       const enrolled = enrolledDeviceWallet();
-      const key = stellarSigningKey(enrolled.phrase);
+      const key = signingKey(enrolled.phrase);
       const { auth } = yield* installSealedWallet(enrolled);
       const started = yield* Latch.make();
       let calls = 0;
@@ -160,9 +137,10 @@ it.effect(
       expect(yield* client.confirmOpening(review)).toEqual(new DraftRejected());
       expect(
         drafted !== undefined &&
-          key.verify(
-            signingPayload(drafted.request.envelope),
-            Buffer.from(submitted?.[0]?.signature ?? []),
+          ed25519.verify(
+            submitted?.[0]?.signature ?? new Uint8Array(),
+            signingScheme.signingPayload(drafted.request.envelope),
+            ed25519.getPublicKey(key.privateKey),
           ),
       ).toBe(true);
     }),
@@ -251,81 +229,18 @@ it.effect(
 );
 
 const rejectedDrafts: ReadonlyArray<readonly [string, OpenStep]> = [
-  [
-    "an expired opening draft",
-    new OpeningDraft({
-      request: new SigningRequest({
-        envelope: draftOpening({
-          channel: new Account(channel, "100"),
-          reserveSponsor,
-          address: seeded.address,
-          createAccount: false,
-          minTime: 0,
-          maxTime: Math.floor(Date.now() / 1000) + draftLifetime,
-        }),
-        expiresAt: DateTime.makeUnsafe(Date.now() - 1000),
-      }),
-    }),
-  ],
-  [
-    "an opening carrying an operation beyond the sponsored account and trustline",
-    new OpeningDraft({
-      request: requestUntil(
-        Schema.decodeSync(SigningRequest.fields.envelope)(
-          new TransactionBuilder(new Account(channel, "100"), {
-            fee: baseFee,
-            networkPassphrase,
-          })
-            .addOperation(
-              Operation.beginSponsoringFutureReserves({
-                source: reserveSponsor,
-                sponsoredId: seeded.address,
-              }),
-            )
-            .addOperation(
-              Operation.createAccount({
-                source: reserveSponsor,
-                destination: seeded.address,
-                startingBalance: "0",
-              }),
-            )
-            .addOperation(
-              Operation.changeTrust({ source: seeded.address, asset: usdc }),
-            )
-            .addOperation(
-              Operation.setOptions({
-                source: seeded.address,
-                signer: {
-                  ed25519PublicKey: Keypair.random().publicKey(),
-                  weight: 1,
-                },
-              }),
-            )
-            .addOperation(
-              Operation.endSponsoringFutureReserves({ source: seeded.address }),
-            )
-            .setTimebounds(
-              Math.floor(Date.now() / 1000),
-              Math.floor(Date.now() / 1000) + draftLifetime,
-            )
-            .build()
-            .toXDR(),
-        ),
-        Math.floor(Date.now() / 1000) + draftLifetime,
-      ),
-    }),
-  ],
+  ["an expired opening draft", openingAt(Date.now(), { lifetime: -1 })],
   [
     "an opening that keeps expiring within the approval margin",
     openingAt(Date.now(), { lifetime: approvalMargin - 5 }),
   ],
   [
     "an opening drafted for another address",
-    openingAt(Date.now(), { address: addressOf(Keypair.random()) }),
+    openingAt(Date.now(), { address: randomAddress() }),
   ],
   [
-    "an opening sourced from the wallet itself",
-    openingAt(Date.now(), { channel: seeded.address }),
+    "an opening whose fee payer is the wallet itself",
+    openingAt(Date.now(), { sponsor: seeded.address }),
   ],
 ];
 

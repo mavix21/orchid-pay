@@ -1,5 +1,4 @@
 import { expect, it } from "@effect/vitest";
-import { Account } from "@stellar/stellar-sdk";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -15,7 +14,6 @@ import {
   PeruvianMobile,
   PositiveAmount,
   SigningRequest,
-  UnclaimedFundsId,
   YapeAccount,
   baseAsset,
 } from "../src/contract";
@@ -24,21 +22,19 @@ import {
   PayoutReview,
   makeWalletEffects,
 } from "../src/device/client";
-import { draftLinkReceive } from "../src/stellar/link-receive";
+import { draftLifetime } from "../src/policy";
 import { memoryKeyStore, nowSeconds, unusedPort } from "./device-fixtures";
 import { SoftwareAuthenticator } from "./software-authenticator";
 import { assertTagged } from "./tagged";
-import { addressOf } from "./test-keys";
-import { linkFixture, sendActors } from "./stellar-device-fixtures";
+import { linkFixture, sendActors } from "./solana-device-fixtures";
+import { randomUnclaimedFundsId } from "./test-keys";
 
 const actors = sendActors();
 const passkeys = new SoftwareAuthenticator("https://orchid.example").passkeys;
-const { code: linkCode, keypair: link } = linkFixture();
-const linkAmount = Schema.decodeSync(PositiveAmount)("10000000");
+const { code: linkCode, link } = linkFixture();
+const linkAmount = Schema.decodeSync(PositiveAmount)("1000000");
 
-const linkBalance = Schema.decodeSync(UnclaimedFundsId)(
-  `00000000${"d".repeat(64)}`,
-);
+const linkBalance = randomUnclaimedFundsId();
 
 const yape = (mobile: string) =>
   YapeAccount.make({ mobile: Schema.decodeSync(PeruvianMobile)(mobile) });
@@ -47,7 +43,7 @@ const soles = (minorUnits: bigint) =>
   LocalAmount.make({ currency: "PEN", minorUnits });
 
 const quote = new PayoutQuote({
-  link: addressOf(link),
+  link: link,
   unclaimedFunds: linkBalance,
   asset: baseAsset,
   amount: linkAmount,
@@ -100,19 +96,12 @@ it.live.each(alteredReviews)(
 
             return new ExternalLinkDraft({
               request: new SigningRequest({
-                envelope: draftLinkReceive({
-                  channel: new Account(actors.exchange, "100"),
-                  link: addressOf(link),
-                  reserveSponsor: actors.sponsor,
-                  createsLinkAccount: true,
-                  destination: order.claim.destination,
+                envelope: actors.drafts.linkReceive({
+                  link,
                   unclaimedFunds: linkBalance,
-                  asset: baseAsset,
-                  amount: linkAmount,
-                  minTime: at,
-                  maxTime: at + 120,
+                  destination: order.claim.destination,
                 }),
-                expiresAt: DateTime.makeUnsafe((at + 120) * 1000),
+                expiresAt: DateTime.makeUnsafe((at + draftLifetime) * 1000),
               }),
               memoRequired: false,
             });

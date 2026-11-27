@@ -1,4 +1,4 @@
 import type { ChainProfile } from "../chain-profile";
-import { stellarProfile } from "../stellar/profile";
+import { solanaProfile } from "../solana/profile";
 
-export const chainProfile: ChainProfile = stellarProfile;
+export const chainProfile: ChainProfile = solanaProfile;

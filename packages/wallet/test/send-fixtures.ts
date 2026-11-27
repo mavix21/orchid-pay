@@ -2,6 +2,7 @@ import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
+import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import {
   AddressRecipient,
@@ -18,25 +19,25 @@ import {
   UsernameRecipient,
   baseAsset,
 } from "../src/contract";
+import { draftLifetime } from "../src/policy";
 import { browserKeyStore } from "../src/device/browser-key-store";
 import type { WalletEffects } from "../src/device/client";
 import type { DeviceRecords, SealedKeyStore } from "../src/device/key-store";
 import {
   type DeviceWallet,
   memoryKeyStore,
-  nowSeconds,
   transferDraftOf,
   unusedPort,
 } from "./device-fixtures";
 import { approvingDevice, installSealedWallet } from "./sealed-wallet-fixtures";
 import { SoftwareAuthenticator } from "./software-authenticator";
 import { assertTagged } from "./tagged";
-import { sendActors } from "./stellar-device-fixtures";
+import { sendActors } from "./solana-device-fixtures";
 
 export const actors = sendActors();
-export const amount = Schema.decodeSync(PositiveAmount)("10000000");
+export const amount = Schema.decodeSync(PositiveAmount)("1000000");
 
-export const otherAmount = Schema.decodeSync(PositiveAmount)("20000000");
+export const otherAmount = Schema.decodeSync(PositiveAmount)("2000000");
 
 export const memo = Schema.decodeSync(PaymentMemo)({
   type: "text",
@@ -44,8 +45,8 @@ export const memo = Schema.decodeSync(PaymentMemo)({
 });
 
 export const otherMemo = Schema.decodeSync(PaymentMemo)({
-  type: "id",
-  value: "7",
+  type: "text",
+  value: "rent",
 });
 
 export const passkeys = new SoftwareAuthenticator("http://localhost:3000")
@@ -58,27 +59,14 @@ export const toExchange = new TransferIntent({
   memo,
 });
 
-export const toMuxed = new TransferIntent({
-  to: AddressRecipient.make({ value: actors.muxed("1") }),
-  asset: baseAsset,
-  amount,
-});
-
 export const toPedro = new TransferIntent({
   to: UsernameRecipient.make({ value: actors.pedroProfile.username }),
   asset: baseAsset,
   amount,
 });
 
-export const payment = (
-  source = actors.sender,
-  lifetime = 120,
-  at = nowSeconds(),
-) =>
-  actors.payment({ source, to: actors.exchange, amount, memo, lifetime, at });
-
-export const claimable = (to = actors.pedro, reserveSponsor = actors.sponsor) =>
-  actors.claimable({ to, amount, reserveSponsor });
+export const payment = (source = actors.sender) =>
+  actors.payment({ source, to: actors.exchange, amount, memo });
 
 const recipientOf = (order: TransferOrder) =>
   Match.valueTags(order.to, {
@@ -90,7 +78,7 @@ const recipientOf = (order: TransferOrder) =>
   });
 
 interface Drafting {
-  readonly lifetime?: number;
+  readonly lifetime?: number | (() => number);
   readonly answer?: (
     approval: Option.Option<Approval>,
   ) => Option.Option<TransferStep>;
@@ -117,7 +105,9 @@ const draftingPort = (
             transferDraftOf(
               envelope(at, order),
               recipientOf(order),
-              options.lifetime ?? 120,
+              Predicate.isFunction(options.lifetime)
+                ? options.lifetime()
+                : (options.lifetime ?? draftLifetime),
               at,
             ),
         );

@@ -5,6 +5,7 @@ import * as Schema from "effect/Schema";
 import * as HttpClient from "effect/http/HttpClient";
 import * as HttpClientRequest from "effect/http/HttpClientRequest";
 import * as HttpClientResponse from "effect/http/HttpClientResponse";
+import * as UrlParams from "effect/http/UrlParams";
 import { ChainUnreachable } from "../server/chain-errors.server";
 
 export type RpcValue =
@@ -32,6 +33,8 @@ export interface SolanaRpc {
     result: Schema.Codec<A, I>,
   ): Effect.Effect<A, ChainUnreachable | RpcRefusal>;
 }
+
+const rpcKeyParameter = /^api[-_]?key$/i;
 
 export const readCommitment = "finalized";
 
@@ -85,6 +88,10 @@ export const solanaRpc = (
         Effect.flatMap((response) => response.text),
         Effect.provideService(HttpClient.TracerPropagationEnabled, false),
         Effect.mapError((cause) => new ChainUnreachable({ cause })),
+        Effect.updateService(UrlParams.CurrentRedactedNames, (names) => [
+          ...names,
+          rpcKeyParameter,
+        ]),
       );
 
       const reply = Schema.decodeSync(rpcReply(result))(text);

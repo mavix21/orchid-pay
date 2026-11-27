@@ -74,11 +74,7 @@ import {
 } from "./outcomes";
 import { backupSalt, sealPhrase } from "./phrase-seal";
 import { generateSecretPhrase } from "./secret-phrase";
-import {
-  approveWithLinkCode,
-  approveWithPhrase,
-  phraseAddress,
-} from "./signing";
+import { approveWithPhrase, phraseAddress } from "./signing";
 
 import { enrollmentChallenge } from "./enrollment-challenge";
 import { candidateVerifier } from "./enrollment-verify";
@@ -333,13 +329,8 @@ export function makeEnrollmentEffects(
     if ((yield* standingOfReview(sealed, review)) !== "current")
       return yield* refreshReview(sealed, true);
 
-    if (receive !== undefined) {
-      if (!opensLink(receive.code, receive.review.link))
-        return new LinkCodeMismatch();
-
-      if ((yield* receiveStanding(sealed, receive.review)) !== "current")
-        return yield* refreshReceive(sealed, receive.review);
-    }
+    if (receive !== undefined && !opensLink(receive.code, receive.review.link))
+      return new LinkCodeMismatch();
 
     const approvals = approveWithPhrase(verified.phrase, [
       review.draft.request,
@@ -348,12 +339,7 @@ export function makeEnrollmentEffects(
     const heldReceive =
       receive === undefined
         ? undefined
-        : new HeldReceive({
-            order: receive.review.order,
-            approval: approveWithLinkCode(receive.code, [
-              receive.review.draft.request,
-            ])[0],
-          });
+        : new HeldReceive({ review: receive.review });
 
     const written = yield* storage
       .write(
@@ -424,7 +410,7 @@ export function makeEnrollmentEffects(
                 ),
                 Effect.flatMap((signed) =>
                   isHeld(signed)
-                    ? release(signed, committing)
+                    ? release(signed, committing, receive?.code)
                     : Effect.succeed(signed),
                 ),
               ),
@@ -540,7 +526,7 @@ export function makeEnrollmentEffects(
       Idle: () => Effect.succeed(new NoWallet()),
       Created: (awaiting) => activate(awaiting, shown, receive, committing),
       Sealed: (awaiting) => activate(awaiting, shown, receive, committing),
-      Held: (held) => release(held, committing),
+      Held: (held) => release(held, committing, receive?.code),
     });
   });
 

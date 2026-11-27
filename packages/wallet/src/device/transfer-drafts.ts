@@ -15,7 +15,12 @@ import {
   type TransferIntent,
 } from "../contract";
 import { type PublicDeviceWallet, receiptJson } from "./key-store";
-import { type PaymentLinkFacts, network, readDraft } from "../device-network";
+import {
+  type PaymentLinkFacts,
+  creditedAccountOf,
+  network,
+  readDraft,
+} from "../device-network";
 
 export const clockAllowance = 60;
 
@@ -42,7 +47,7 @@ export const sameMemo = (
   ordered: PaymentMemo | undefined,
 ) => drafted?.type === ordered?.type && drafted?.value === ordered?.value;
 
-const destination = (order: TransferOrder, draft: TransferDraft) =>
+export const destination = (order: TransferOrder, draft: TransferDraft) =>
   Match.valueTags(order.to, {
     Address: ({ value }) => Option.some(value),
     Username: ({ value }) =>
@@ -127,7 +132,10 @@ export const orderedFacts = (
 
   const moves =
     drafted.from === wallet.address &&
-    drafted.to === to.value &&
+    drafted.to ===
+      (Predicate.isTagged(drafted, "PaymentFacts")
+        ? creditedAccountOf(to.value)
+        : to.value) &&
     sameAsset(drafted.asset, order.asset) &&
     drafted.amount === order.amount;
 

@@ -1,8 +1,8 @@
 import type { DeviceNetwork } from "../device-network";
 import type { RecordNetwork } from "../record-network";
-import { stellarDeviceNetwork } from "../stellar/device-network";
-import { stellarRecordNetwork } from "../stellar/record-network";
+import { solanaDeviceNetwork } from "../solana/device-network";
+import { solanaRecordNetwork } from "../solana/record-network";
 
-export const deviceNetwork: DeviceNetwork = stellarDeviceNetwork;
+export const deviceNetwork: DeviceNetwork = solanaDeviceNetwork;
 
-export const recordNetwork: RecordNetwork = stellarRecordNetwork;
+export const recordNetwork: RecordNetwork = solanaRecordNetwork;

@@ -28,8 +28,7 @@ export const partnerAddress = randomAddress();
 
 const settings = Layer.succeed(WalletSettings, {
   rpcUrl: "https://ledger.memory.test",
-  reserveSponsorSecret: Redacted.make("unused-reserve-sponsor"),
-  feePayerSecret: Redacted.make("unused-fee-payer"),
+  sponsorSecret: Redacted.make("unused-sponsor"),
   passkeyOrigins: [passkeyOrigin],
   humanCheckSecret: Redacted.make("human-check-secret"),
   sessionSecret: Redacted.make("session-secret"),

@@ -21,7 +21,6 @@ import * as Schema from "effect/Schema";
 import {
   AddressRecipient,
   LedgerUnreachable,
-  nativeAsset,
   ExternalRecipient,
   PositiveAmount,
   Profile,
@@ -39,7 +38,6 @@ import {
   approve,
   draftTransfer,
   findTransfer,
-  amount,
   fundHolder,
   holdingsFor,
   orderFor,
@@ -293,7 +291,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           yield* send(order);
           yield* Database.use((db) =>
             db.execute(
-              sql`update transfers set "expiresAt" = now() + interval '10 seconds' where id = ${order.id}`,
+              sql`update transfers set "expiresAt" = now() + interval '5 seconds' where id = ${order.id}`,
             ),
           );
 
@@ -407,19 +405,10 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
 
           fundHolder(destKey);
 
-          for (const holder of [key, destKey])
-            world.holdings.set(
-              addressOf(holder),
-              holdingsFor(addressOf(holder), { native: amount("50000000") }),
-            );
-
-          const order = new TransferOrder({
-            ...orderFor(
-              key,
-              AddressRecipient.make({ value: addressOf(destKey) }),
-            ),
-            asset: Option.getOrThrow(nativeAsset),
-          });
+          const order = orderFor(
+            key,
+            AddressRecipient.make({ value: addressOf(destKey) }),
+          );
 
           world.ledgerDown = true;
           expect(yield* send(order).pipe(Effect.flip)).toEqual(

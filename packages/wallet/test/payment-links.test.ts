@@ -1,5 +1,5 @@
 import { expect, layer } from "@effect/vitest";
-import { Keypair, xdr } from "@stellar/stellar-sdk";
+import { base58 } from "@scure/base";
 import { Database } from "@workspace/db";
 import * as Effect from "effect/Effect";
 import * as Logger from "effect/Logger";
@@ -7,11 +7,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import {
   type Approval,
-  AssetUnsupported,
-  UnclaimedFundsId,
   OpenPaymentLink,
   OpenPaymentLinks,
-  PaymentLinkRecipient,
   PositiveAmount,
   TransferOrder,
   type WalletPort,
@@ -28,9 +25,8 @@ import {
 import type { PublicDeviceWallet } from "../src/device/key-store";
 import { linkAddressOf } from "../src/device/link-code";
 import { SealedLinkCode, linkPrfInput } from "../src/device/link-seal";
-import { holdingsFromEntries } from "../src/stellar/ledger-assets.server";
 import { transfers } from "../src/server/tables.server";
-import { network, usdc } from "../src/stellar/network";
+import { network } from "../src/device-network";
 import { memoryKeyStore } from "./device-fixtures";
 import {
   approvingDevice,
@@ -40,25 +36,16 @@ import {
   storedEntry,
   storedKeys,
 } from "./sealed-wallet-fixtures";
-import { accountEntryXdr } from "./rpc-answering";
 import { assertTagged } from "./tagged";
-import { linkKeypairOf } from "./stellar-device-fixtures";
+import { linkSeedOf } from "./solana-device-fixtures";
+import { randomAddress, randomUnclaimedFundsId } from "./test-keys";
 import {
   settleOnSubmit,
-  addressOf,
   devicePasskeys,
-  euro,
-  euroLine,
-  fundedWallet,
-  holdingsFor,
   openSender,
-  orderFor,
-  reserveSponsor,
-  send,
   useDisposableDatabase,
   walletTestLayer,
-  world,
-} from "./stellar-harness";
+} from "./solana-harness";
 
 const linkAmount = Schema.decodeSync(PositiveAmount)("10000000");
 
@@ -242,10 +229,8 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             }),
             new OpenPaymentLink({
               id: created.id,
-              unclaimedFunds: Schema.decodeSync(UnclaimedFundsId)(
-                `00000000${"7".repeat(64)}`,
-              ),
-              address: addressOf(Keypair.random()),
+              unclaimedFunds: randomUnclaimedFundsId(),
+              address: randomAddress(),
               asset: baseAsset,
               amount: linkAmount,
               createdAt: created.settledAt,
@@ -282,7 +267,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             serializedRows,
           ].join("\n");
 
-          const linkSecret = linkKeypairOf(created.code).secret();
+          const linkSecret = base58.encode(linkSeedOf(created.code));
 
           expect(exposed).not.toContain(created.code);
           expect(exposed).not.toContain(linkSecret);
@@ -376,72 +361,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             ),
           ).toEqual(Option.some(false));
           expect(yield* browserKeyStore.readLinks()).toEqual([]);
-        }),
-    );
-
-    it.effect(
-      "refuses payment link creation when issuer sets AUTH_REQUIRED or source trustline enables clawback",
-      () =>
-        Effect.gen(function* () {
-          const sender = yield* fundedWallet("flagcheck");
-          const senderAddr = addressOf(sender);
-          const linkAddr = addressOf(Keypair.random());
-
-          const trustlineXdr = xdr.LedgerEntryData.trustline(
-            new xdr.TrustLineEntry({
-              accountId: sender.xdrPublicKey(),
-              asset: usdc.toTrustLineXdrObject(),
-              balance: 50_000_000n,
-              limit: 1_000_000_000n,
-              flags:
-                xdr.TrustLineFlags.authorizedFlag.value |
-                xdr.TrustLineFlags.trustlineClawbackEnabledFlag.value,
-              ext: xdr.TrustLineEntryExt.v0(),
-            }),
-          ).toXDR("base64");
-
-          const decoded = Option.getOrThrow(
-            holdingsFromEntries(
-              [
-                { xdr: accountEntryXdr(sender, 1000n, 1) },
-                { xdr: trustlineXdr },
-              ],
-              reserveSponsor,
-              senderAddr,
-              [baseAsset],
-            ),
-          );
-
-          expect(decoded.lines[0]?.clawbackEnabled).toBe(true);
-          world.holdings.set(senderAddr, decoded);
-
-          const clawbackRefusal = yield* send(
-            orderFor(sender, PaymentLinkRecipient.make({ value: linkAddr })),
-          );
-
-          expect(clawbackRefusal).toEqual(
-            new AssetUnsupported({ reason: "clawback_enabled" }),
-          );
-
-          world.holdings.set(
-            senderAddr,
-            holdingsFor(senderAddr, { lines: [euroLine("50000000")] }),
-          );
-          world.issuers.set(euro.id, { authRequired: true });
-
-          const authRefusal = yield* send(
-            new TransferOrder({
-              ...orderFor(
-                sender,
-                PaymentLinkRecipient.make({ value: linkAddr }),
-              ),
-              asset: euro,
-            }),
-          );
-
-          expect(authRefusal).toEqual(
-            new AssetUnsupported({ reason: "authorization_required" }),
-          );
         }),
     );
   },

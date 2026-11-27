@@ -20,8 +20,7 @@ const humanCheckAnswering = (
     Layer.provide(
       Layer.succeed(WalletSettings, {
         rpcUrl: "https://rpc.test",
-        reserveSponsorSecret: Redacted.make("unused"),
-        feePayerSecret: Redacted.make("unused"),
+        sponsorSecret: Redacted.make("unused"),
         passkeyOrigins: [],
         humanCheckSecret: Redacted.make(secret),
         sessionSecret: Redacted.make("unused"),

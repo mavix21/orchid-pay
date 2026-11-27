@@ -210,12 +210,6 @@ export const passkeyChallenges = pgTable("passkey_challenges", {
   expiresAt: timestamp({ withTimezone: true }).notNull(),
 });
 
-export const channelLeases = pgTable("channel_leases", {
-  address: text().primaryKey(),
-  sequence: bigint({ mode: "bigint" }).notNull(),
-  leasedUntil: timestamp({ withTimezone: true }).notNull(),
-});
-
 export const sponsoredFailures = pgTable(
   "sponsored_failures",
   {

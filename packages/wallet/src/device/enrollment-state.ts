@@ -172,6 +172,7 @@ export const notice = (
     ? new EnrollmentPending({
         stage: "release",
         username: usernameOf(state),
+        receive: state.receive?.review,
       })
     : new EnrollmentPending({
         stage: "activate",
