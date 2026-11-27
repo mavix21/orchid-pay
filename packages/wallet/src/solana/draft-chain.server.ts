@@ -76,7 +76,9 @@ const sameLinkReceive = (facts: EnvelopeFacts, receive: PreparedLinkReceive) =>
   facts.unclaimedFunds === address(receive.unclaimedFunds) &&
   facts.destinationTokenAccount ===
     usdcAccountOf(address(receive.destination)) &&
-  facts.memo?.value === textMemoOf(receive.memo)?.value;
+  (receive.memo === undefined
+    ? facts.memo === undefined
+    : receive.memo.type === "text" && facts.memo?.value === receive.memo.value);
 
 const plannedReclaim = (
   facts: EnvelopeFacts,

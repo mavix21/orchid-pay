@@ -151,6 +151,19 @@ const accountCases = [
     }),
   },
   {
+    name: "named itself as the closer of its USDC account",
+    arrange: ({ wallet }: Parties) =>
+      setUsdc(wallet, { amount: 7_000_000, closeAuthority: wallet }),
+    standing: "incomplete",
+    balance: Option.some(7_000_000n),
+    line: Option.some({
+      spendable: 7_000_000n,
+      capacity: maximum - 7_000_000n,
+      authorized: true,
+      sponsored: false,
+    }),
+  },
+  {
     name: "has a USDC account a stranger can close",
     arrange: ({ wallet, stranger }: Parties) =>
       setUsdc(wallet, { amount: 7_000_000, closeAuthority: stranger }),
