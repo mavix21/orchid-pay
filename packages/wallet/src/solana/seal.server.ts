@@ -30,9 +30,13 @@ const base58Decoder = getBase58Decoder();
 
 export const solanaSponsor = (keypair: Uint8Array): SolanaSponsor => {
   const seed = keypair.slice(0, 32);
+
+  if (keypair.length !== 64)
+    throw new RangeError("The sponsor keypair is not a Solana keypair");
+
   const publicKey = ed25519.getPublicKey(seed);
 
-  if (keypair.length !== 64 || !equalBytes(publicKey, keypair.slice(32)))
+  if (!equalBytes(publicKey, keypair.slice(32)))
     throw new RangeError("The sponsor keypair is not a Solana keypair");
 
   return {

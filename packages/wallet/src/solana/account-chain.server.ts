@@ -10,14 +10,18 @@ import type {
 import type { SolanaRpc } from "./rpc.server";
 import { UsdcAccount, readUsdcAccount } from "./usdc-account.server";
 
-const standingOf = (sponsor: Address) =>
+const standingOf = (sponsor: Address, wallet: Address) =>
   UsdcAccount.$match({
     Absent: (): AccountStanding => "absent",
     Foreign: (): AccountStanding => "foreign",
     Held: ({ closeAuthority }): AccountStanding =>
       Option.match(closeAuthority, {
         onNone: () => "incomplete",
-        onSome: (holder) => (holder === sponsor ? "open" : "foreignIncomplete"),
+        onSome: (holder) => {
+          if (holder === sponsor) return "open";
+
+          return holder === wallet ? "incomplete" : "foreignIncomplete";
+        },
       }),
   });
 
@@ -34,7 +38,7 @@ export const solanaAccountChain = (
 ): AccountChain => ({
   standing: (wallet) =>
     readUsdcAccount(rpc, address(wallet)).pipe(
-      Effect.map(standingOf(address(sponsor))),
+      Effect.map(standingOf(address(sponsor), address(wallet))),
     ),
   balance: (wallet) =>
     readUsdcAccount(rpc, address(wallet)).pipe(Effect.map(balanceOf)),

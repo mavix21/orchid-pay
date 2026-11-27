@@ -5,6 +5,7 @@ import { blockhash, getAddressDecoder } from "@solana/kit";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
+import * as TestClock from "effect/testing/TestClock";
 import { Approval, PositiveAmount, SigningRequest } from "../src/contract";
 import { draftPayment } from "../src/solana/envelope-drafts";
 import { usdcAccountOf } from "../src/solana/program-addresses";
@@ -57,22 +58,34 @@ it.effect.each([
     name: "seals a payment its holder approved",
     approval: signedBy(holder),
     claimedHolder: holder.address,
+    elapsedMillis: 0,
     outcome: "Sealed",
+  },
+  {
+    name: "refuses an approval too close to the draft's expiry",
+    approval: signedBy(holder),
+    claimedHolder: holder.address,
+    elapsedMillis: 55_000,
+    outcome: "ApprovalInvalid",
   },
   {
     name: "refuses an approval signed by another key",
     approval: signedBy(stranger),
     claimedHolder: holder.address,
+    elapsedMillis: 0,
     outcome: "ApprovalInvalid",
   },
   {
     name: "refuses a holder who is not the payer",
     approval: signedBy(stranger),
     claimedHolder: stranger.address,
+    elapsedMillis: 0,
     outcome: "ApprovalInvalid",
   },
-])("$name", ({ approval, claimedHolder, outcome }) =>
+])("$name", ({ approval, claimedHolder, elapsedMillis, outcome }) =>
   Effect.gen(function* () {
+    yield* TestClock.adjust(elapsedMillis);
+
     const sealed = yield* solanaSeal(sponsor)(
       request,
       approval,
