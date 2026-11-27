@@ -120,6 +120,7 @@
         "@passwordless-id/webauthn": "2.4.1",
         "@scure/base": "2.4.0",
         "@scure/bip39": "2.4.0",
+        "@solana/kit": "8.6.0",
         "@stellar/stellar-sdk": "17.4.0",
         "@workspace/db": "workspace:*",
         "drizzle-orm": "1.0.0-rc.5",
