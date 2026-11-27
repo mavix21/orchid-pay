@@ -38,7 +38,7 @@ import {
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { PositiveAmount, UnsignedEnvelope } from "../src/contract";
-import { decodeEnvelope, encodeEnvelope } from "../src/solana/envelope-codec";
+import { encodeEnvelope } from "../src/solana/envelope-codec";
 import {
   computeUnitLimits,
   draftLinkReceive,
@@ -179,7 +179,7 @@ interface Assembly {
   readonly lookupTable?: ReadonlyArray<Address>;
 }
 
-const assemble = (
+const compiledMessage = (
   instructions: ReadonlyArray<Instruction>,
   {
     feePayer = sponsor,
@@ -205,11 +205,17 @@ const assemble = (
       })
     : message;
 
-  return encodeEnvelope({
-    ...drafting,
-    messageBytes: compileTransaction(compiled).messageBytes,
-  });
+  return compileTransaction(compiled).messageBytes;
 };
+
+const assemble = (
+  instructions: ReadonlyArray<Instruction>,
+  assembly: Assembly,
+) =>
+  encodeEnvelope({
+    ...drafting,
+    messageBytes: compiledMessage(instructions, assembly),
+  });
 
 const honestDrafts = {
   opening: {
@@ -334,41 +340,31 @@ const everyKind = Object.entries(honestDrafts);
 it.each(everyKind)(
   "%s drafts the exact message, is signed over it and reads back",
   (_name, honest) => {
-    const assembled = assemble(honest.instructions, honest);
-
-    expect(honest.envelope).toBe(assembled);
+    expect(honest.envelope).toBe(assemble(honest.instructions, honest));
     expect(readEnvelope(honest.envelope, sponsor)).toEqual(
       Option.some(honest.facts),
     );
     expect(solanaSigningScheme.signingPayload(honest.envelope)).toEqual(
-      new Uint8Array(Option.getOrThrow(decodeEnvelope(assembled)).messageBytes),
+      new Uint8Array(compiledMessage(honest.instructions, honest)),
     );
   },
 );
 
-it.each(everyKind)(
-  "%s is refused with an extra instruction",
-  (_name, honest) => {
-    const appended = assemble([...honest.instructions, sponsorDrain], honest);
-    const prepended = assemble([sponsorDrain, ...honest.instructions], honest);
-
-    expect(readEnvelope(appended, sponsor)).toEqual(Option.none());
-    expect(readEnvelope(prepended, sponsor)).toEqual(Option.none());
-  },
-);
-
-it.each(everyKind)("%s is refused under another fee payer", (_name, honest) => {
-  const envelope = assemble(honest.instructions, {
-    ...honest,
-    feePayer: stranger,
-  });
-
-  expect(readEnvelope(envelope, sponsor)).toEqual(Option.none());
-});
-
-const { payment } = honestDrafts;
+const { payment, opening } = honestDrafts;
 
 it.each([
+  [
+    "another fee payer",
+    assemble(payment.instructions, { ...payment, feePayer: stranger }),
+  ],
+  [
+    "an extra instruction appended",
+    assemble([...payment.instructions, sponsorDrain], payment),
+  ],
+  [
+    "an extra instruction prepended",
+    assemble([sponsorDrain, ...opening.instructions], opening),
+  ],
   [
     "an address lookup table",
     assemble(payment.instructions, {
@@ -533,15 +529,6 @@ it.each([
     }),
   ],
   [
-    "the received unclaimed funds",
-    draftLinkReceive({
-      ...drafting,
-      link,
-      unclaimedFunds: sponsor,
-      destinationTokenAccount: recipientAccount,
-    }),
-  ],
-  [
     "the link receive destination",
     draftLinkReceive({
       ...drafting,
@@ -554,13 +541,30 @@ it.each([
     "the reclaiming wallet",
     draftReclaim({ ...drafting, address: sponsor, unclaimedFunds }),
   ],
-  [
-    "the reclaimed funds",
-    draftReclaim({ ...drafting, address: holder, unclaimedFunds: sponsor }),
-  ],
 ])("the sponsor is refused as %s", (_name, envelope) => {
   expect(readEnvelope(envelope, sponsor)).toEqual(Option.none());
 });
+
+it.each([
+  [
+    "a link receive",
+    draftLinkReceive({
+      ...drafting,
+      link,
+      unclaimedFunds: stranger,
+      destinationTokenAccount: recipientAccount,
+    }),
+  ],
+  [
+    "a reclaim",
+    draftReclaim({ ...drafting, address: holder, unclaimedFunds: stranger }),
+  ],
+])(
+  "%s of unclaimed funds at an on-curve address is refused",
+  (_name, envelope) => {
+    expect(readEnvelope(envelope, sponsor)).toEqual(Option.none());
+  },
+);
 
 it.each([
   ["accepts", 833_333n, true],

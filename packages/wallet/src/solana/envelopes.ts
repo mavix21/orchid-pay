@@ -32,6 +32,7 @@ import {
 } from "./envelope-drafts";
 import { memoFromData, memoProgramAddress } from "./memo";
 import { unclaimedFundsAddressOf } from "./program-addresses";
+import { solanaAddressRules } from "./address-rules";
 import { solanaProfile } from "./profile";
 
 export const maxPriorityFeeLamports = 50_000n;
@@ -171,12 +172,11 @@ const partiesOf = EnvelopeFacts.$match({
     destinationTokenAccount,
   ],
   PaymentLinkFacts: ({ from, link }) => [from, link],
-  LinkReceiveFacts: ({ link, unclaimedFunds, destinationTokenAccount }) => [
+  LinkReceiveFacts: ({ link, destinationTokenAccount }) => [
     link,
-    unclaimedFunds,
     destinationTokenAccount,
   ],
-  ReclaimFacts: ({ address, unclaimedFunds }) => [address, unclaimedFunds],
+  ReclaimFacts: ({ address }) => [address],
 });
 
 const computeUnitLimitOf = EnvelopeFacts.$match({
@@ -194,18 +194,20 @@ const priorityFeeLamports = (facts: EnvelopeFacts) =>
 const withinAmountMaximum = (amount: PositiveAmount) =>
   amount <= solanaProfile.precisionOf(USDC_MINT_ADDRESS).maximum;
 
-const amountAllowed = EnvelopeFacts.$match({
+const valuesAllowed = EnvelopeFacts.$match({
   OpeningFacts: () => true,
   PaymentFacts: ({ amount }) => withinAmountMaximum(amount),
   PaymentLinkFacts: ({ amount }) => withinAmountMaximum(amount),
-  LinkReceiveFacts: () => true,
-  ReclaimFacts: () => true,
+  LinkReceiveFacts: ({ unclaimedFunds }) =>
+    solanaAddressRules.isUnclaimedFundsId(unclaimedFunds),
+  ReclaimFacts: ({ unclaimedFunds }) =>
+    solanaAddressRules.isUnclaimedFundsId(unclaimedFunds),
 });
 
-const sponsorSafe = (facts: EnvelopeFacts) =>
+const factsAllowed = (facts: EnvelopeFacts) =>
   !partiesOf(facts).includes(facts.sponsor) &&
   priorityFeeLamports(facts) <= maxPriorityFeeLamports &&
-  amountAllowed(facts);
+  valuesAllowed(facts);
 
 export function readEnvelope(
   envelope: UnsignedEnvelope,
@@ -221,7 +223,7 @@ export function readEnvelope(
     (read: (message: ReadMessage) => EnvelopeFacts) => {
       const facts = read(message.value);
 
-      return redraft(facts) === envelope && sponsorSafe(facts)
+      return redraft(facts) === envelope && factsAllowed(facts)
         ? facts
         : undefined;
     },
