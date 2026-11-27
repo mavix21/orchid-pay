@@ -1,12 +1,5 @@
 import { expect, it } from "@effect/vitest";
-import {
-  Account,
-  Claimant,
-  Keypair,
-  Operation,
-  Transaction,
-  TransactionBuilder,
-} from "@stellar/stellar-sdk";
+import { type Address, address } from "@solana/kit";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -14,31 +7,23 @@ import * as Schema from "effect/Schema";
 import {
   type AccountAddress,
   type Approval,
-  AssetCode,
   AssetDraft,
-  UnclaimedFundsId,
+  type DestinationAddress,
   LinkRecipient,
   PaymentLinkOpen,
   PositiveAmount,
   SigningRequest,
   type TransferOrder,
-  UnsignedEnvelope,
+  type UnclaimedFundsId,
+  type UnsignedEnvelope,
   baseAsset,
 } from "../src/contract";
-import { issuedAsset, lumens } from "../src/stellar/assets";
 import {
   DraftRejected,
   PaymentLinkIntent,
   makeWalletEffects,
 } from "../src/device/client";
-import { unclaimedFundsEntry } from "../src/stellar/ledger-assets.server";
-import { recoverablePaymentLinks } from "../src/server/unclaimed-funds.server";
-import { draftClaim } from "../src/stellar/asset-envelopes";
-import {
-  type LinkReceiveInput,
-  draftLinkReceive,
-} from "../src/stellar/link-receive";
-import { baseFee, networkPassphrase, usdc } from "../src/stellar/network";
+import { draftLifetime } from "../src/policy";
 import {
   memoryKeyStore,
   nowSeconds,
@@ -46,52 +31,27 @@ import {
   unusedPort,
 } from "./device-fixtures";
 import { SoftwareAuthenticator } from "./software-authenticator";
+import {
+  linkFixture,
+  sendActors,
+  solanaDrafts,
+} from "./solana-device-fixtures";
 import { assertTagged } from "./tagged";
-import { addressOf } from "./test-keys";
-import { linkFixture, sendActors } from "./stellar-device-fixtures";
+import { randomUnclaimedFundsId } from "./test-keys";
 
 const actors = sendActors();
-const linkAmount = Schema.decodeSync(PositiveAmount)("10000000");
-const otherAmount = Schema.decodeSync(PositiveAmount)("20000000");
+const strangerDrafts = solanaDrafts(actors.stranger);
+const linkAmount = Schema.decodeSync(PositiveAmount)("1000000");
+const otherAmount = Schema.decodeSync(PositiveAmount)("2000000");
 const passkeys = new SoftwareAuthenticator("http://localhost:3000").passkeys;
+const cancelBalance = randomUnclaimedFundsId();
+const otherBalance = randomUnclaimedFundsId();
 
-const buildTamperedExtraOp = (
-  linkAddress: AccountAddress,
-  at: number,
-): UnsignedEnvelope =>
-  Schema.decodeSync(UnsignedEnvelope)(
-    new TransactionBuilder(new Account(actors.sender, "100"), {
-      fee: baseFee,
-      networkPassphrase,
-    })
-      .addOperation(
-        Operation.beginSponsoringFutureReserves({
-          source: actors.sponsor,
-          sponsoredId: actors.sender,
-        }),
-      )
-      .addOperation(
-        Operation.createClaimableBalance({
-          asset: usdc,
-          amount: "1",
-          claimants: [
-            new Claimant(linkAddress, Claimant.predicateUnconditional()),
-            new Claimant(actors.sender, Claimant.predicateUnconditional()),
-          ],
-        }),
-      )
-      .addOperation(Operation.endSponsoringFutureReserves({}))
-      .addOperation(
-        Operation.payment({
-          destination: actors.stranger,
-          asset: usdc,
-          amount: "1",
-        }),
-      )
-      .setTimebounds(at, at + 120)
-      .build()
-      .toXDR(),
-  );
+const expiringRequest = (envelope: UnsignedEnvelope) =>
+  new SigningRequest({
+    envelope,
+    expiresAt: DateTime.makeUnsafe((nowSeconds() + draftLifetime) * 1000),
+  });
 
 const linkTarget = (order: TransferOrder) => {
   assertTagged(order.to, "PaymentLink");
@@ -102,10 +62,7 @@ const linkTarget = (order: TransferOrder) => {
 const tamperedDrafts: ReadonlyArray<
   readonly [
     string,
-    (
-      order: TransferOrder,
-      at: number,
-    ) => {
+    (order: TransferOrder) => {
       readonly envelope: UnsignedEnvelope;
       readonly unclaimedFunds?: UnclaimedFundsId;
     },
@@ -113,50 +70,24 @@ const tamperedDrafts: ReadonlyArray<
 > = [
   [
     "different link public key",
-    (_order, at) => ({
-      envelope: actors.paymentLink({
-        to: actors.stranger,
-        amount: linkAmount,
-        at,
-      }),
-    }),
-  ],
-  [
-    "different asset",
-    (order, at) => ({
-      envelope: actors.paymentLink({
-        to: linkTarget(order),
-        asset: lumens,
-        amount: linkAmount,
-        at,
-      }),
+    () => ({
+      envelope: actors.paymentLink({ to: actors.stranger, amount: linkAmount }),
     }),
   ],
   [
     "different amount",
-    (order, at) => ({
+    (order) => ({
       envelope: actors.paymentLink({
         to: linkTarget(order),
         amount: otherAmount,
-        at,
       }),
     }),
   ],
   [
-    "different sponsor",
-    (order, at) => ({
-      envelope: actors.paymentLink({
-        to: linkTarget(order),
-        amount: linkAmount,
-        reserveSponsor: actors.stranger,
-        at,
-      }),
-    }),
-  ],
-  [
-    "username claimable with delayed sender predicate",
+    "rent returned to another sponsor",
     (order) => ({
-      envelope: actors.claimable({
+      envelope: strangerDrafts.paymentLink({
+        from: actors.sender,
         to: linkTarget(order),
         amount: linkAmount,
       }),
@@ -164,21 +95,12 @@ const tamperedDrafts: ReadonlyArray<
   ],
   [
     "mismatched unclaimed funds id",
-    (order, at) => ({
+    (order) => ({
       envelope: actors.paymentLink({
         to: linkTarget(order),
         amount: linkAmount,
-        at,
       }),
-      unclaimedFunds: Schema.decodeSync(UnclaimedFundsId)(
-        `00000000${"f".repeat(64)}`,
-      ),
-    }),
-  ],
-  [
-    "extra operation in envelope",
-    (order, at) => ({
-      envelope: buildTamperedExtraOp(linkTarget(order), at),
+      unclaimedFunds: otherBalance,
     }),
   ],
 ];
@@ -195,8 +117,7 @@ it.live.each(tamperedDrafts)(
           Effect.sync(() => {
             approvals.push(approval);
 
-            const at = nowSeconds();
-            const built = build(order, at);
+            const built = build(order);
 
             return transferDraftOf(
               built.envelope,
@@ -204,8 +125,8 @@ it.live.each(tamperedDrafts)(
                 kind: "paymentLink",
                 address: linkTarget(order),
               }),
-              120,
-              at,
+              draftLifetime,
+              nowSeconds(),
               built.unclaimedFunds,
             );
           }),
@@ -228,228 +149,75 @@ it.live.each(tamperedDrafts)(
     }),
 );
 
-it("recovery selects only sponsored unclaimed funds with two unconditional claimants", () => {
-  const sender = addressOf(Keypair.random());
-  const linkKey = addressOf(Keypair.random());
-  const recipient = addressOf(Keypair.random());
-  const stranger = addressOf(Keypair.random());
+it.live("reclaim review rejects a draft for other unclaimed funds", () =>
+  Effect.gen(function* () {
+    const approvals: Array<Option.Option<Approval>> = [];
 
-  const linkBalance = Schema.decodeSync(UnclaimedFundsId)(
-    `00000000${"1".repeat(64)}`,
-  );
+    const port = unusedPort({
+      manage: (_order, approval) =>
+        Effect.sync(() => {
+          approvals.push(approval);
 
-  const usernameBalance = Schema.decodeSync(UnclaimedFundsId)(
-    `00000000${"2".repeat(64)}`,
-  );
+          return new AssetDraft({
+            request: expiringRequest(
+              actors.drafts.reclaim(actors.sender, otherBalance),
+            ),
+          });
+        }),
+    });
 
-  const strangerBalance = Schema.decodeSync(UnclaimedFundsId)(
-    `00000000${"3".repeat(64)}`,
-  );
-
-  const selected = recoverablePaymentLinks(
-    [
-      {
-        unclaimedFunds: linkBalance,
-        asset: baseAsset,
-        amount: linkAmount,
-        sponsored: true,
-        claimants: [
-          new Claimant(linkKey, Claimant.predicateUnconditional()),
-          new Claimant(sender, Claimant.predicateUnconditional()),
-        ],
-      },
-      {
-        unclaimedFunds: usernameBalance,
-        asset: baseAsset,
-        amount: linkAmount,
-        sponsored: true,
-        claimants: [
-          new Claimant(recipient, Claimant.predicateUnconditional()),
-          new Claimant(
-            sender,
-            Claimant.predicateNot(Claimant.predicateBeforeAbsoluteTime("9999")),
-          ),
-        ],
-      },
-      {
-        unclaimedFunds: strangerBalance,
-        asset: baseAsset,
-        amount: linkAmount,
-        sponsored: false,
-        claimants: [
-          new Claimant(stranger, Claimant.predicateUnconditional()),
-          new Claimant(sender, Claimant.predicateUnconditional()),
-        ],
-      },
-    ].map(unclaimedFundsEntry),
-    sender,
-  );
-
-  expect(selected).toEqual([
-    {
-      unclaimedFunds: linkBalance,
-      address: linkKey,
+    const outcome = yield* makeWalletEffects(
+      port,
+      memoryKeyStore(Option.some(actors.wallet)),
+      passkeys,
+    ).reviewReclaim({
+      unclaimedFunds: cancelBalance,
       asset: baseAsset,
       amount: linkAmount,
-    },
-  ]);
-});
+    });
 
-const substitutedIssuer = issuedAsset("USDC", actors.stranger);
-
-const substitutedCode = {
-  ...baseAsset,
-  code: Schema.decodeSync(AssetCode)("EURC"),
-};
-
-const cancelBalance = Schema.decodeSync(UnclaimedFundsId)(
-  `00000000${"e".repeat(64)}`,
+    expect(outcome).toEqual(new DraftRejected());
+    expect(approvals.filter(Option.isSome)).toHaveLength(0);
+  }),
 );
 
-const otherBalance = Schema.decodeSync(UnclaimedFundsId)(
-  `00000000${"f".repeat(64)}`,
-);
+const { code: receivedCode, link: receivedLink } = linkFixture();
 
-it.live.each([
-  [
-    "substituted issuer on issued link",
-    baseAsset,
-    substitutedIssuer,
-    cancelBalance,
-  ],
-  [
-    "substituted code on issued link",
-    substitutedCode,
-    baseAsset,
-    cancelBalance,
-  ],
-  ["trustline repair on native link", lumens, baseAsset, cancelBalance],
-  ["draft for other unclaimed funds", baseAsset, undefined, otherBalance],
-] as const)(
-  "reclaim review rejects %s",
-  ([, targetAsset, openedAsset, drafted]) =>
-    Effect.gen(function* () {
-      const approvals: Array<Option.Option<Approval>> = [];
-      const store = memoryKeyStore(Option.some(actors.wallet));
+interface ReceiveDraft {
+  readonly link?: AccountAddress;
+  readonly destination?: DestinationAddress;
+  readonly unclaimedFunds?: UnclaimedFundsId;
+  readonly creditedAccount?: Address;
+}
 
-      const port = unusedPort({
-        manage: (_order, approval) =>
-          Effect.sync(() => {
-            approvals.push(approval);
-
-            const at = nowSeconds();
-
-            const envelope = draftClaim({
-              source: new Account(actors.sender, "100"),
-              unclaimedFunds: drafted,
-              opens:
-                openedAsset === undefined
-                  ? undefined
-                  : { asset: openedAsset, reserveSponsor: actors.sponsor },
-              minTime: at,
-              maxTime: at + 120,
-            });
-
-            return new AssetDraft({
-              request: new SigningRequest({
-                envelope,
-                expiresAt: DateTime.makeUnsafe((at + 120) * 1000),
-              }),
-            });
-          }),
-      });
-
-      const outcome = yield* makeWalletEffects(
-        port,
-        store,
-        passkeys,
-      ).reviewReclaim({
-        unclaimedFunds: cancelBalance,
-        asset: targetAsset,
-        amount: linkAmount,
-      });
-
-      expect(outcome).toEqual(new DraftRejected());
-      expect(approvals.filter(Option.isSome)).toHaveLength(0);
-    }),
-);
-
-const { code: receivedCode, keypair: receivedLink } = linkFixture();
-
-const receiveDraft = (overrides: Partial<LinkReceiveInput>, at: number) =>
-  draftLinkReceive({
-    channel: new Account(actors.exchange, "100"),
-    link: addressOf(receivedLink),
-    reserveSponsor: actors.sponsor,
-    createsLinkAccount: true,
+const receiveDraft = (
+  overrides: ReceiveDraft,
+  drafts = actors.drafts,
+): UnsignedEnvelope =>
+  drafts.linkReceive({
+    link: receivedLink,
     destination: actors.wallet.address,
     unclaimedFunds: cancelBalance,
-    asset: baseAsset,
-    amount: linkAmount,
-    minTime: at,
-    maxTime: at + 120,
     ...overrides,
   });
 
-const withExtraPayment = (at: number) => {
-  const drafted = TransactionBuilder.fromXDR(
-    receiveDraft({}, at),
-    networkPassphrase,
-  );
-
-  if (!(drafted instanceof Transaction))
-    throw new Error("Receive draft must be a transaction");
-
-  return Schema.decodeSync(UnsignedEnvelope)(
-    TransactionBuilder.cloneFrom(drafted, { fee: baseFee })
-      .addOperation(
-        Operation.payment({
-          source: addressOf(receivedLink),
-          destination: actors.stranger,
-          asset: usdc,
-          amount: "1",
-        }),
-      )
-      .build()
-      .toXDR(),
-  );
-};
-
 const tamperedReceives: ReadonlyArray<
-  readonly [string, (at: number) => UnsignedEnvelope]
+  readonly [string, () => UnsignedEnvelope]
 > = [
   [
     "paying another destination",
-    (at) => receiveDraft({ destination: actors.stranger }, at),
+    () => receiveDraft({ destination: actors.stranger }),
   ],
   [
-    "creating another link account",
-    (at) => receiveDraft({ link: actors.stranger }, at),
+    "crediting a token account at the wallet address instead of its USDC account",
+    () => receiveDraft({ creditedAccount: address(actors.wallet.address) }),
   ],
+  ["signed by another link key", () => receiveDraft({ link: actors.stranger })],
   [
     "claiming other unclaimed funds",
-    (at) => receiveDraft({ unclaimedFunds: otherBalance }, at),
+    () => receiveDraft({ unclaimedFunds: otherBalance }),
   ],
-  ["paying another amount", (at) => receiveDraft({ amount: otherAmount }, at)],
-  ["paying another asset", (at) => receiveDraft({ asset: lumens }, at)],
-  [
-    "handing cleanup to another sponsor",
-    (at) => receiveDraft({ reserveSponsor: actors.stranger }, at),
-  ],
-  [
-    "using the link account as channel",
-    (at) =>
-      receiveDraft(
-        { channel: new Account(addressOf(receivedLink), "100") },
-        at,
-      ),
-  ],
-  [
-    "using the receiving wallet as channel",
-    (at) =>
-      receiveDraft({ channel: new Account(actors.wallet.address, "100") }, at),
-  ],
-  ["with an extra operation", withExtraPayment],
+  ["returning rent to another sponsor", () => receiveDraft({}, strangerDrafts)],
 ];
 
 it.live.each(tamperedReceives)(
@@ -472,14 +240,7 @@ it.live.each(tamperedReceives)(
           Effect.sync(() => {
             approvals.push(approval);
 
-            const at = nowSeconds();
-
-            return new AssetDraft({
-              request: new SigningRequest({
-                envelope: build(at),
-                expiresAt: DateTime.makeUnsafe((at + 120) * 1000),
-              }),
-            });
+            return new AssetDraft({ request: expiringRequest(build()) });
           }),
       });
 

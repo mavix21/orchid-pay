@@ -1,5 +1,4 @@
 import { expect, layer } from "@effect/vitest";
-import { Claimant, Keypair } from "@stellar/stellar-sdk";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Latch from "effect/Latch";
@@ -7,8 +6,8 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import {
+  AccountAddress,
   UnclaimedFundsGone,
-  UnclaimedFundsId,
   Offline,
   PaymentLinkNotFound,
   PaymentLinkReceipt,
@@ -39,14 +38,14 @@ import {
   installSealedWallet,
   sealedKeyStore,
 } from "./sealed-wallet-fixtures";
+import { network } from "../src/device-network";
 import { assertTagged } from "./tagged";
+import { randomAddress, randomKey, randomUnclaimedFundsId } from "./test-keys";
 import {
   settleOnSubmit,
-  addressOf,
   amount,
   approve,
   devicePasskeys,
-  euro,
   euroLine,
   holdingsFor,
   openSender,
@@ -56,10 +55,10 @@ import {
   useDisposableDatabase,
   walletTestLayer,
   world,
-  recordClaimableBalance,
-} from "./stellar-harness";
+  recordUnclaimedFunds,
+} from "./solana-harness";
 
-const linkAmount = Schema.decodeSync(PositiveAmount)("10000000");
+const linkAmount = Schema.decodeSync(PositiveAmount)("1000000");
 
 useDisposableDatabase();
 
@@ -188,8 +187,8 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           const competingMiss = yield* wallet.resolvePaymentLink(
             sender.address,
             new PaymentLinkReceipt({
-              network: "testnet",
-              address: addressOf(Keypair.random()),
+              network,
+              address: randomAddress(),
               asset: baseAsset,
               amount: linkAmount,
               unclaimedFunds: funded.unclaimedFunds,
@@ -240,7 +239,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             new Offline(),
           );
 
-          const linkAddr = review.to;
+          const linkAddr = Schema.decodeSync(AccountAddress)(review.to);
           const saved = yield* savedWallet(sealedKeyStore);
 
           const receipt = Option.getOrThrow(
@@ -265,15 +264,11 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             (yield* savedWallet(sealedKeyStore)).linkReceipt?.unclaimedFunds,
           ).toBe(receipt.unclaimedFunds);
 
-          recordClaimableBalance({
+          recordUnclaimedFunds({
             unclaimedFunds: receipt.unclaimedFunds,
-            asset: baseAsset,
+            link: linkAddr,
+            sender: sender.address,
             amount: linkAmount,
-            sponsored: true,
-            claimants: [
-              new Claimant(linkAddr, Claimant.predicateUnconditional()),
-              new Claimant(sender.address, Claimant.predicateUnconditional()),
-            ],
           });
 
           const resolved = yield* restarted.resolvePaymentLink();
@@ -336,9 +331,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           expect(
             yield* reclaiming.reviewReclaim({
               ...resolved,
-              unclaimedFunds: Schema.decodeSync(UnclaimedFundsId)(
-                `00000000${"1".repeat(64)}`,
-              ),
+              unclaimedFunds: randomUnclaimedFundsId(),
             }),
           ).toEqual(new UnclaimedFundsGone({ status: "unresolved" }));
           expect(yield* savedFunding).toEqual([receipt.unclaimedFunds]);
@@ -375,27 +368,26 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
         Effect.gen(function* () {
           const store = memoryKeyStore();
           const { wallet, sender } = yield* openSender(store, "cancelowner");
-          const linkAddr = addressOf(Keypair.random());
+          const linkAddr = randomAddress();
 
-          const unclaimedFunds = Schema.decodeSync(UnclaimedFundsId)(
-            `00000000${"9".repeat(64)}`,
-          );
+          const unclaimedFunds = randomUnclaimedFundsId();
 
-          recordClaimableBalance({
+          recordUnclaimedFunds({
             unclaimedFunds,
-            asset: euro,
+            link: linkAddr,
+            sender: sender.address,
             amount: linkAmount,
-            sponsored: true,
-            claimants: [
-              new Claimant(linkAddr, Claimant.predicateUnconditional()),
-              new Claimant(sender.address, Claimant.predicateUnconditional()),
-            ],
           });
 
           world.holdings.set(
             sender.address,
             holdingsFor(sender.address, {
-              lines: [euroLine("0", { capacity: amount("9999999") })],
+              lines: [
+                {
+                  ...euroLine("0", { capacity: amount("999999") }),
+                  asset: baseAsset,
+                },
+              ],
             }),
           );
 
@@ -404,7 +396,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           expect(
             yield* client.reviewReclaim({
               unclaimedFunds,
-              asset: euro,
+              asset: baseAsset,
               amount: linkAmount,
             }),
           ).toEqual(
@@ -419,18 +411,18 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           expect(
             yield* client.reviewReclaim({
               unclaimedFunds,
-              asset: euro,
+              asset: baseAsset,
               amount: linkAmount,
             }),
           ).toEqual(new UnclaimedFundsGone({ status: "unresolved" }));
 
           world.holdings.delete(sender.address);
 
-          const inflightLink = addressOf(Keypair.random());
+          const inflightLink = randomAddress();
 
           const inflightOrder = new TransferOrder({
             ...orderFor(
-              Keypair.random(),
+              randomKey(),
               PaymentLinkRecipient.make({ value: inflightLink }),
             ),
             from: sender.address,
@@ -468,15 +460,11 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             Option.fromNullishOr(world.submitted.at(-1)),
           );
 
-          recordClaimableBalance({
+          recordUnclaimedFunds({
             unclaimedFunds: inflightBalance,
-            asset: baseAsset,
+            link: inflightLink,
+            sender: sender.address,
             amount: linkAmount,
-            sponsored: true,
-            claimants: [
-              new Claimant(inflightLink, Claimant.predicateUnconditional()),
-              new Claimant(sender.address, Claimant.predicateUnconditional()),
-            ],
           });
           settleHash(submitted.hash);
           yield* sweep;
@@ -496,20 +484,16 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
         Effect.gen(function* () {
           const store = memoryKeyStore();
           const { wallet, sender } = yield* openSender(store, "raceowner");
-          const linkA = addressOf(Keypair.random());
-          const linkB = addressOf(Keypair.random());
+          const linkA = randomAddress();
+          const linkB = randomAddress();
 
-          const balanceA = Schema.decodeSync(UnclaimedFundsId)(
-            `00000000${"a".repeat(64)}`,
-          );
+          const balanceA = randomUnclaimedFundsId();
 
-          const balanceB = Schema.decodeSync(UnclaimedFundsId)(
-            `00000000${"b".repeat(64)}`,
-          );
+          const balanceB = randomUnclaimedFundsId();
 
           const orderA = new TransferOrder({
             ...orderFor(
-              Keypair.random(),
+              randomKey(),
               PaymentLinkRecipient.make({ value: linkA }),
             ),
             from: sender.address,
@@ -517,14 +501,14 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
 
           const orderB = new TransferOrder({
             ...orderFor(
-              Keypair.random(),
+              randomKey(),
               PaymentLinkRecipient.make({ value: linkB }),
             ),
             from: sender.address,
           });
 
           const receiptA = new PaymentLinkReceipt({
-            network: "testnet",
+            network,
             address: linkA,
             asset: baseAsset,
             amount: linkAmount,
@@ -533,7 +517,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           });
 
           const receiptB = new PaymentLinkReceipt({
-            network: "testnet",
+            network,
             address: linkB,
             asset: baseAsset,
             amount: linkAmount,
@@ -541,25 +525,17 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             attempts: [balanceB],
           });
 
-          recordClaimableBalance({
+          recordUnclaimedFunds({
             unclaimedFunds: balanceA,
-            asset: baseAsset,
+            link: linkA,
+            sender: sender.address,
             amount: linkAmount,
-            sponsored: true,
-            claimants: [
-              new Claimant(linkA, Claimant.predicateUnconditional()),
-              new Claimant(sender.address, Claimant.predicateUnconditional()),
-            ],
           });
-          recordClaimableBalance({
+          recordUnclaimedFunds({
             unclaimedFunds: balanceB,
-            asset: baseAsset,
+            link: linkB,
+            sender: sender.address,
             amount: linkAmount,
-            sponsored: true,
-            claimants: [
-              new Claimant(linkB, Claimant.predicateUnconditional()),
-              new Claimant(sender.address, Claimant.predicateUnconditional()),
-            ],
           });
 
           yield* store.seed(

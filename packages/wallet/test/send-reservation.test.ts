@@ -7,6 +7,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import * as TestClock from "effect/testing/TestClock";
+import { approvalMargin } from "../src/policy";
 import {
   ExternalMemoRequired,
   ExternalRecipient,
@@ -146,15 +147,12 @@ it.effect(
     Effect.gen(function* () {
       const writing = yield* Latch.make();
 
-      const { approvals, client } = yield* sealedWith(
-        (at) => payment(actors.sender, 21, at),
-        {
-          lifetime: 21,
-          beforeReservation: writing.open.pipe(
-            Effect.andThen(Effect.sleep("1500 millis")),
-          ),
-        },
-      );
+      const { approvals, client } = yield* sealedWith(() => payment(), {
+        lifetime: approvalMargin + 1,
+        beforeReservation: writing.open.pipe(
+          Effect.andThen(Effect.sleep("1500 millis")),
+        ),
+      });
 
       const review = yield* reviewed(client, toExchange);
       const confirming = yield* Effect.forkChild(client.confirm(review));
@@ -274,9 +272,9 @@ it.live.each([
       const proceed = yield* Latch.make();
 
       const { approvals, client } = yield* sealedWith(
-        (at, order) =>
+        (_, order) =>
           Predicate.isTagged(order.to, "PaymentLink")
-            ? actors.paymentLink({ to: order.to.value, amount, at })
+            ? actors.paymentLink({ to: order.to.value, amount })
             : payment(),
         {
           beforeReservation: committing.open.pipe(

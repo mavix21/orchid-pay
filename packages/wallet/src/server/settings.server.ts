@@ -11,8 +11,7 @@ export class WalletSettings extends Context.Service<
   {
     readonly rpcUrl: string;
     readonly rpcTimeout?: Duration.Input;
-    readonly reserveSponsorSecret: Redacted.Redacted<string>;
-    readonly feePayerSecret: Redacted.Redacted<string>;
+    readonly sponsorSecret: Redacted.Redacted<string>;
     readonly passkeyOrigins: ReadonlyArray<string>;
     readonly humanCheckSecret: Redacted.Redacted<string>;
     readonly sessionSecret: Redacted.Redacted<string>;

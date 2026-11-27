@@ -22,7 +22,7 @@ export function useMigratedDatabase() {
     await Effect.runPromise(
       Database.use((db) =>
         db.execute(
-          sql`truncate asset_orders, trustlines, transfers, usernames, wallets, backups, passkey_challenges, deposits, deposit_cursors, channel_leases, payment_requests, sponsored_failures`,
+          sql`truncate asset_orders, trustlines, transfers, usernames, wallets, backups, passkey_challenges, deposits, deposit_cursors, payment_requests, sponsored_failures`,
         ),
       ).pipe(Effect.provide(dbLayer)),
     );

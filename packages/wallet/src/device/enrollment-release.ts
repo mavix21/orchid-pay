@@ -1,16 +1,20 @@
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
 import {
+  type AssetStep,
   type EnrollStep,
   InvalidResponse,
   type OpenStep,
   OpeningPending,
   type Opened,
   type WalletClaim,
+  type WalletUnavailable,
 } from "../contract";
+import { claimStanding } from "./claim-reviews";
 import {
   type EnrollWalletOutcome,
   type EnrollmentDependencies,
@@ -18,11 +22,22 @@ import {
 } from "./enrollment-records";
 import { type Held, claimOf, sameCandidate } from "./enrollment-state";
 import { PublicDeviceWallet, SealedDeviceWallet } from "./key-store";
-import { releaseReceive } from "./link-receive";
+import { type LinkCode, opensLink } from "./link-code";
+import {
+  linkReceiveKind,
+  receiveReviewOf,
+  releaseReceive,
+} from "./link-receive";
 import { localEnvelopeVersion } from "./local-envelope";
 import { reserveSponsorOf } from "./opening-drafts";
-import { DraftRejected, UnsupportedDevice, WalletOnDevice } from "./outcomes";
+import {
+  DraftRejected,
+  type LinkReceiveReview,
+  UnsupportedDevice,
+  WalletOnDevice,
+} from "./outcomes";
 import { pollSchedule } from "./polling";
+import { approveWithLinkCode } from "./signing";
 
 type Committed = Opened | OpeningPending;
 
@@ -140,9 +155,64 @@ export const enrollmentRelease = (
         );
   });
 
+  const receiveIntoOpened = Effect.fn("Device.receiveIntoEnrolledWallet")(
+    function* (
+      held: Held,
+      shown: LinkReceiveReview,
+      code: LinkCode | undefined,
+    ): Effect.fn.Return<Option.Option<AssetStep>, WalletUnavailable> {
+      const reserveSponsor = Option.flatMap(held.review, (review) =>
+        reserveSponsorOf(review.draft),
+      );
+
+      if (
+        code === undefined ||
+        !opensLink(code, shown.link) ||
+        Option.isNone(reserveSponsor)
+      )
+        return Option.none();
+
+      const wallet = new PublicDeviceWallet({
+        address: held.candidate.address,
+        username: held.candidate.username,
+        reserveSponsor: reserveSponsor.value,
+      });
+
+      const drafted = yield* deps.port.manage(shown.order, Option.none());
+
+      if (!Predicate.isTagged(drafted, "AssetDraft")) return Option.none();
+
+      const derived = receiveReviewOf(
+        wallet,
+        shown.order,
+        drafted,
+        true,
+        shown,
+      );
+
+      const now = DateTime.toEpochMillis(yield* DateTime.now);
+
+      if (
+        Option.isNone(derived) ||
+        claimStanding(linkReceiveKind, wallet, derived.value.review, now) !==
+          "current"
+      )
+        return Option.none();
+
+      return Option.some(
+        yield* releaseReceive(
+          deps.port,
+          shown.order,
+          approveWithLinkCode(code, [drafted.request])[0],
+        ),
+      );
+    },
+  );
+
   const release = Effect.fn("Device.releaseEnrollment")(function* (
     held: Held,
     committing: Effect.Effect<void> = Effect.void,
+    code?: LinkCode,
   ): Effect.fn.Return<EnrollWalletOutcome> {
     yield* committing;
 
@@ -168,24 +238,22 @@ export const enrollmentRelease = (
     if (!(opened instanceof WalletEnrolled))
       return yield* clearPending.pipe(Effect.as(opened));
 
-    const received = yield* releaseReceive(
-      deps.port,
-      receive.order,
-      receive.approval,
-    ).pipe(Effect.result);
+    const received = yield* receiveIntoOpened(held, receive.review, code).pipe(
+      Effect.result,
+    );
 
     if (Result.isFailure(received)) return received.failure;
 
     yield* clearPending;
 
-    const { action } = receive.order;
-
-    return new WalletEnrolled({
-      profile: opened.profile,
-      received: received.success,
-      receivedLink: Predicate.isTagged(action, "ReceiveLink")
-        ? action.link
-        : undefined,
+    return Option.match(received.success, {
+      onNone: () => new WalletEnrolled({ profile: opened.profile }),
+      onSome: (step) =>
+        new WalletEnrolled({
+          profile: opened.profile,
+          received: step,
+          receivedLink: receive.review.link,
+        }),
     });
   });
 

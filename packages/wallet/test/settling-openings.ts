@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import type { WalletPort } from "../src/contract";
-import { settleHash, world } from "./stellar-harness";
+import { settleHash, world } from "./solana-harness";
 
 const settleLatest = () =>
   Effect.sync(() => {

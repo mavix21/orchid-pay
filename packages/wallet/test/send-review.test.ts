@@ -62,12 +62,6 @@ const pedroDraft = () =>
     actors.pedroProfile,
   );
 
-const pedroClaimable = () =>
-  transferDraftOf(
-    actors.claimable({ to: actors.pedro, amount }),
-    actors.pedroProfile,
-  );
-
 const receiptFields = (order: TransferOrder) => ({
   id: order.id,
   to: order.to,
@@ -200,26 +194,21 @@ it.live(
     }),
 );
 
-it.live.each([
-  ["a claimable", () => pedroClaimable()],
-  [
-    "a payment with the same facts and another sequence",
-    () =>
-      transferDraftOf(
-        actors.payment({ to: actors.pedro, amount, sequence: "200" }),
-        actors.pedroProfile,
-      ),
-  ],
-] as const)(
-  "refuses a review whose draft was swapped for %s, by copy or in place",
-  ([, swappedDraft]) =>
+it.live(
+  "refuses a review whose draft was swapped for a payment with the same facts and another blockhash window, by copy or in place",
+  () =>
     Effect.gen(function* () {
       const { approvals, client } = yield* confirmingDevice(() =>
         Effect.succeed(pedroDraft()),
       );
 
       const review = yield* reviewed(client, toPedro);
-      const swapped = swappedDraft();
+
+      const swapped = transferDraftOf(
+        actors.payment({ to: actors.pedro, amount, slot: 200n }),
+        actors.pedroProfile,
+      );
+
       const copied = new PaymentReview({ ...review, draft: swapped });
 
       expect((yield* client.confirm(copied))._tag).toBe("DraftRejected");

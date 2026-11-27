@@ -90,7 +90,7 @@ export const bindingAllowed = checkedBinding(
 
 export const payoutCompletesAfter = Duration.minutes(1);
 
-export const linkAmount = Schema.decodeSync(PositiveAmount)("10000000");
+export const linkAmount = Schema.decodeSync(PositiveAmount)("1000000");
 
 export const claimFor = (key: TestKey, name: string) =>
   new WalletClaim({

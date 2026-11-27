@@ -1,6 +1,8 @@
 import { ed25519 } from "@noble/curves/ed25519.js";
+import { base58 } from "@scure/base";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { AccountAddress } from "../src/contract";
+import { AccountAddress, UnclaimedFundsId } from "../src/contract";
 import { signingScheme } from "../src/device-network";
 
 export interface TestKey {
@@ -46,3 +48,11 @@ export const signedBy = (
 
 export const addressOf = (key: Pick<TestKey, "publicKey">) =>
   Schema.decodeSync(AccountAddress)(key.publicKey());
+
+export const randomUnclaimedFundsId = (): UnclaimedFundsId =>
+  Option.getOrElse(
+    Schema.decodeUnknownOption(UnclaimedFundsId)(
+      base58.encode(crypto.getRandomValues(new Uint8Array(32))),
+    ),
+    randomUnclaimedFundsId,
+  );

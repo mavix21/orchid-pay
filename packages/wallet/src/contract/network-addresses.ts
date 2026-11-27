@@ -1,13 +1,12 @@
-import { ed25519 } from "@noble/curves/ed25519.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
-import { base58, bech32, bech32m, createBase58check } from "@scure/base";
+import { bech32, bech32m, createBase58check } from "@scure/base";
 import * as Data from "effect/Data";
 import * as Option from "effect/Option";
 import { addressRules } from "../address-rules";
 
-export type OtherAddressNetwork = "evm" | "solana" | "tron" | "bitcoin";
+export type OtherAddressNetwork = "evm" | "tron" | "bitcoin";
 
 export type RecognisedAddress = Data.TaggedEnum<{
   WalletNetworkAddress: {};
@@ -15,8 +14,6 @@ export type RecognisedAddress = Data.TaggedEnum<{
 }>;
 
 export const RecognisedAddress = Data.taggedEnum<RecognisedAddress>();
-
-const decodeBase58 = Option.liftThrowable(base58.decode);
 
 const decodeBase58Check = Option.liftThrowable(
   createBase58check(sha256).decode,
@@ -27,8 +24,6 @@ const decodeBech32 = Option.liftThrowable(bech32.decode);
 const decodeBech32m = Option.liftThrowable(bech32m.decode);
 
 const wordsToBytes = Option.liftThrowable(bech32.fromWords);
-
-const decodeCurvePoint = Option.liftThrowable(ed25519.Point.fromBytes);
 
 const isEvm = (address: string) => {
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return false;
@@ -49,13 +44,6 @@ const isEvm = (address: string) => {
         : digit.toLowerCase()) === digit,
   );
 };
-
-const isSolana = (address: string) =>
-  decodeBase58(address).pipe(
-    Option.filter((bytes) => bytes.length === 32),
-    Option.flatMap(decodeCurvePoint),
-    Option.isSome,
-  );
 
 const isTron = (address: string) =>
   decodeBase58Check(address).pipe(
@@ -103,7 +91,6 @@ const otherNetworkRecognisers: ReadonlyArray<
   readonly [OtherAddressNetwork, (address: string) => boolean]
 > = [
   ["evm", isEvm],
-  ["solana", isSolana],
   ["tron", isTron],
   [
     "bitcoin",

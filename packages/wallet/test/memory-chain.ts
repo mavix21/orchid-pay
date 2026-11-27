@@ -39,7 +39,7 @@ import { EventsStart } from "../src/server/chain-deposits.server";
 import type { UnclaimedFundsEntry } from "../src/server/unclaimed-funds.server";
 import { approvalMargin, draftLifetime } from "../src/policy";
 import { accountState, amount, holdingsReader, world } from "./ledger-world";
-import { randomAddress, signedBy } from "./test-keys";
+import { randomAddress, randomUnclaimedFundsId, signedBy } from "./test-keys";
 
 type PreparedReceive = LinkReceive & { readonly createsLinkAccount: boolean };
 
@@ -194,12 +194,7 @@ const heldDraft = (
     from,
     DraftedChange.Held({
       sequence: nextSequence(from),
-      unclaimedFunds: Schema.decodeSync(UnclaimedFundsId)(
-        `00000000${crypto.randomUUID()}${crypto.randomUUID()}`.replaceAll(
-          "-",
-          "",
-        ),
-      ),
+      unclaimedFunds: randomUnclaimedFundsId(),
       asset,
       amount: value,
       from,

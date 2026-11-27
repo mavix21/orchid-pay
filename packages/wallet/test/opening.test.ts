@@ -1,10 +1,9 @@
 import { expect, layer } from "@effect/vitest";
-import { Keypair } from "@stellar/stellar-sdk";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { AddressBound, Opened, Profile } from "../src/contract";
-import { readEnvelope } from "../src/stellar/envelopes";
 import { assertTagged } from "./tagged";
+import { randomKey } from "./test-keys";
 import {
   accountState,
   amount,
@@ -18,35 +17,41 @@ import {
   useDisposableDatabase,
   walletTestLayer,
   world,
-} from "./stellar-harness";
+} from "./solana-harness";
 
 useDisposableDatabase();
 
 layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
   (it) => {
-    it.effect("missing trustline reopens with the same username and key", () =>
-      Effect.gen(function* () {
-        const key = Keypair.random();
-        const claim = yield* create(key, "maria");
+    it.effect(
+      "a missing USDC account reopens with the same username and key",
+      () =>
+        Effect.gen(function* () {
+          const key = randomKey();
+          const claim = yield* create(key, "maria");
 
-        world.accounts.set(
-          claim.address,
-          accountState({ sequence: "2000", balance: Option.none() }),
-        );
-        expect((yield* overviewOf(claim.address))._tag).toBe("NeedsReopening");
-        expect(
-          (yield* findWallet(claim.address)).pipe(Option.map((r) => r.status)),
-        ).toEqual(Option.some("recovered"));
-        yield* create(key, "maria");
-        expect((yield* overviewOf(claim.address))._tag).toBe("Holding");
-      }),
+          world.accounts.set(
+            claim.address,
+            accountState({ sequence: "2000", balance: Option.none() }),
+          );
+          expect((yield* overviewOf(claim.address))._tag).toBe(
+            "NeedsReopening",
+          );
+          expect(
+            (yield* findWallet(claim.address)).pipe(
+              Option.map((r) => r.status),
+            ),
+          ).toEqual(Option.some("recovered"));
+          yield* create(key, "maria");
+          expect((yield* overviewOf(claim.address))._tag).toBe("Holding");
+        }),
     );
 
     it.effect(
-      "a partially sponsored account is refused before a username binds",
+      "a USDC account another party can close is refused before a username binds",
       () =>
         Effect.gen(function* () {
-          const claim = claimFor(Keypair.random(), "maria");
+          const claim = claimFor(randomKey(), "maria");
 
           world.accounts.set(
             claim.address,
@@ -66,7 +71,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "an existing unnamed account binds a username only with its key's signature",
       () =>
         Effect.gen(function* () {
-          const key = Keypair.random();
+          const key = randomKey();
           const claimA = claimFor(key, "alice");
           const claimB = claimFor(key, "bob");
 
@@ -79,14 +84,11 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
 
           assertTagged(draft, "OpeningDraft");
           expect(
-            Option.getOrThrow(readEnvelope(draft.request.envelope)),
-          ).toMatchObject({ createAccount: false });
-          expect(
-            yield* opening(claimA, approveOpening(Keypair.random(), draft)),
+            yield* opening(claimA, approveOpening(randomKey(), draft)),
           ).toEqual(draft);
-          expect(
-            (yield* opening(claimFor(Keypair.random(), "alice")))._tag,
-          ).toBe("OpeningDraft");
+          expect((yield* opening(claimFor(randomKey(), "alice")))._tag).toBe(
+            "OpeningDraft",
+          );
           expect(
             (yield* opening(claimA, approveOpening(key, draft)))._tag,
           ).toBe("OpeningPending");
@@ -94,9 +96,9 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           expect(yield* opening(claimA)).toEqual(
             new Opened({ profile: new Profile(claimA) }),
           );
-          expect(
-            (yield* opening(claimFor(Keypair.random(), "alice")))._tag,
-          ).toBe("UsernameTaken");
+          expect((yield* opening(claimFor(randomKey(), "alice")))._tag).toBe(
+            "UsernameTaken",
+          );
           expect(yield* opening(claimB)).toEqual(
             new AddressBound({ profile: new Profile(claimA) }),
           );

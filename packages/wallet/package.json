@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./server": "./src/server/index.server.ts",
-    "./testnet": "./scripts/testnet-funding.ts",
+    "./devnet": "./scripts/devnet.ts",
+    "./local-chain": "./scripts/local-chain.ts",
     "./migrate": "./scripts/migrate.server.ts"
   },
   "scripts": {
@@ -15,9 +16,7 @@
     "test:surfpool": "cd ../.. && anchor build --no-idl --ignore-keys && cd packages/wallet && vitest run --config vitest.surfpool.config.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun scripts/migrate.server.ts",
-    "testnet:verify": "bun scripts/testnet.server.ts",
-    "testnet:link-claim": "bun scripts/testnet-link-claim-prefunded.server.ts",
-    "channels:open": "bun scripts/open-channels.ts"
+    "devnet:open-partner": "bun scripts/open-sandbox-partner.ts"
   },
   "dependencies": {
     "@effect/sql-pg": "4.1.5",

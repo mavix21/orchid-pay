@@ -3,9 +3,7 @@ import type * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import {
   AccountAddress,
-  Approval,
   Approvals,
-  AssetOrder,
   AssetStep,
   BackupEnrollment,
   type ChallengeRefused,
@@ -75,8 +73,7 @@ export class WalletEnrolled extends Schema.TaggedClass<WalletEnrolled>()(
 export class HeldReceive extends Schema.Class<HeldReceive>(
   "@workspace/wallet/HeldReceive",
 )({
-  order: AssetOrder,
-  approval: Approval,
+  review: LinkReceiveReview,
 }) {}
 
 export interface EnrollmentReceive {

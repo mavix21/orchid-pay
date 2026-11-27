@@ -9,7 +9,6 @@ import {
   Approval,
   AssetOrder,
   AssetOrderId,
-  UnclaimedFundsId,
   ClaimUnclaimedFunds,
   CredentialId,
   ReceiveLink,
@@ -32,13 +31,11 @@ import {
   walletForDb,
   walletTestLayer,
 } from "./wallet-harness";
-import { randomKey, randomAddress } from "./test-keys";
+import { randomAddress, randomKey, randomUnclaimedFundsId } from "./test-keys";
 
 const credentialId = Schema.decodeSync(CredentialId)("Y3JlZGVudGlhbA");
 
-const unclaimedFunds = Schema.decodeSync(UnclaimedFundsId)(
-  `00000000${"a".repeat(64)}`,
-);
+const unclaimedFunds = randomUnclaimedFundsId();
 
 const tokenFor = (address: AccountAddress, secret = "session-secret") =>
   sealToken(

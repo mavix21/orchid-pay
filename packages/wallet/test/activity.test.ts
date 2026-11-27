@@ -2,14 +2,7 @@ import { expect, layer } from "@effect/vitest";
 import { Database } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import * as Effect from "effect/Effect";
-import * as Schema from "effect/Schema";
-import {
-  AccountAddress,
-  ExternalRecipient,
-  InvalidAddress,
-  NotOpened,
-  Profile,
-} from "../src/contract";
+import { ExternalRecipient, NotOpened, Profile } from "../src/contract";
 import { wallets } from "../src/server/tables.server";
 import { Wallet } from "../src/server/Wallet.server";
 import { assertTagged } from "./tagged";
@@ -287,23 +280,13 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
         }),
     );
 
-    it.effect.each([
-      {
-        name: "an unknown address",
-        address: () => randomAddress(),
-        expected: () => new NotOpened(),
-      },
-      {
-        name: "an address that is not valid",
-        address: () => Schema.decodeSync(AccountAddress)(`G${"A".repeat(55)}`),
-        expected: (address: AccountAddress) => new InvalidAddress({ address }),
-      },
-    ])("answers $name without a page", ({ address, expected }) =>
+    it.effect("answers an unknown address without a page", () =>
       Effect.gen(function* () {
         const wallet = yield* Wallet;
-        const subject = address();
 
-        expect(yield* wallet.activity(subject)).toEqual(expected(subject));
+        expect(yield* wallet.activity(randomAddress())).toEqual(
+          new NotOpened(),
+        );
       }),
     );
   },

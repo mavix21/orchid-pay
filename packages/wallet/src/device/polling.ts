@@ -2,7 +2,7 @@ import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Schedule from "effect/Schedule";
 
-export const pendingSteps = 12;
+export const pendingSteps = 20;
 export const pendingPause = "2 seconds";
 
 export const pollSchedule = <A>(

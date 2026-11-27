@@ -74,20 +74,22 @@ const surfpool = (port: number, subscriptionPort: number) =>
       }),
   );
 
-export class Surfnet extends Context.Service<Surfnet, SolanaRpc>()(
-  "@workspace/wallet/surfpool/Surfnet",
-) {}
+export class Surfnet extends Context.Service<
+  Surfnet,
+  SolanaRpc & { readonly url: string }
+>()("@workspace/wallet/surfpool/Surfnet") {}
 
 export const surfnetLayer = Layer.effect(
   Surfnet,
   Effect.gen(function* () {
     const port = yield* freePort;
+    const url = `http://127.0.0.1:${port}`;
 
     yield* surfpool(port, yield* freePort);
 
     const rpc = solanaRpc(
       yield* HttpClient.HttpClient,
-      `http://127.0.0.1:${port}`,
+      url,
       Duration.seconds(5),
     );
 
@@ -125,6 +127,6 @@ export const surfnetLayer = Layer.effect(
       Schema.Json,
     );
 
-    return rpc;
+    return { ...rpc, url };
   }),
 ).pipe(Layer.provide(FetchHttpClient.layer));

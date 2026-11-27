@@ -9,7 +9,7 @@ const decodeCode = Schema.decodeUnknownOption(LinkCode);
 
 it("derives the same link account from an issued code", () => {
   expect(Option.flatMap(decodeCode(issued), linkAddressOf)).toEqual(
-    Option.some("GBSGJFXVVJ4HPVNWP2EJAC6YKXJCJUAO7OYANKGEYNJKKYNXSGJCXLED"),
+    Option.some("F3ddUx1sYe4UAqyL8uRf1SEwphQXrY64sNPnSo65MZpr"),
   );
 });
 

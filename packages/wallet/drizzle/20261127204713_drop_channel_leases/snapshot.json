@@ -1,0 +1,43 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "949c203d-d300-43e2-8f95-2e3144f7fbdd",
+  "prevIds": ["b23e9769-d219-4e01-b382-bee73c64f8d2"],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "channel_leases"],
+      "writes": [
+        "s|tbl|public.channel_leases",
+        "n|tbl|public.channel_leases",
+        "e|tbl|public.channel_leases",
+        "n|rel|public.channel_leases",
+        "n|type|public.channel_leases"
+      ],
+      "reads": ["n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"channel_leases\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"channel_leases\",\"address\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"channel_leases\",\"sequence\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"channel_leases\",\"leasedUntil\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"channel_leases\",\"channel_leases_pkey\"]"
+    }
+  ]
+}

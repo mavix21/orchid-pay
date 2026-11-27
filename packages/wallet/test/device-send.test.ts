@@ -1,5 +1,4 @@
 import { expect, layer } from "@effect/vitest";
-import { Keypair } from "@stellar/stellar-sdk";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -17,7 +16,7 @@ import {
   type WalletPort,
   baseAsset,
 } from "../src/contract";
-import { makeWalletEffects } from "../src/device/client";
+import { PaymentLinkIntent, makeWalletEffects } from "../src/device/client";
 import { makeRequestPaymentEffects } from "../src/device/payment-requests";
 import { DeviceWallet, memoryKeyStore } from "./device-fixtures";
 import {
@@ -26,11 +25,11 @@ import {
   sealedKeyStore,
 } from "./sealed-wallet-fixtures";
 import { assertTagged } from "./tagged";
+import { randomKey } from "./test-keys";
 import {
   settleOnSubmit,
   create,
   devicePasskeys,
-  euro,
   euroLine,
   holdingsFor,
   openSender,
@@ -39,12 +38,12 @@ import {
   useDisposableDatabase,
   walletTestLayer,
   world,
-} from "./stellar-harness";
+} from "./solana-harness";
 
 const toPedro = new TransferIntent({
   to: UsernameRecipient.make({ value: Schema.decodeSync(Username)("pedro") }),
   asset: baseAsset,
-  amount: Schema.decodeSync(PositiveAmount)("10000000"),
+  amount: Schema.decodeSync(PositiveAmount)("1000000"),
 });
 
 const reviewedAndConfirmed = Effect.fn(function* (
@@ -76,7 +75,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "replays the stored order after a reload and settles it once",
       () =>
         Effect.gen(function* () {
-          yield* create(Keypair.random(), "pedro");
+          yield* create(randomKey(), "pedro");
           const { wallet, sender } = yield* openSender(memoryKeyStore());
           const { auth } = yield* installSealedWallet(sender);
 
@@ -126,17 +125,17 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
     );
 
     it.effect(
-      "a restored wallet learns its reserve sponsor from overview and approves a claimable",
+      "a restored wallet learns its reserve sponsor from overview and approves a payment link",
       () =>
         Effect.gen(function* () {
-          yield* create(Keypair.random(), "pedro");
+          yield* create(randomKey(), "pedro");
           const { wallet, sender } = yield* openSender(memoryKeyStore());
 
           world.holdings.set(
             sender.address,
             holdingsFor(sender.address, {
               reserveSponsor: Option.some(reserveSponsor),
-              lines: [euroLine("50000000")],
+              lines: [{ ...euroLine("50000000"), asset: baseAsset }],
             }),
           );
 
@@ -158,14 +157,19 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
 
           yield* client.overview();
 
-          const sent = yield* reviewedAndConfirmed(
-            client,
-            new TransferIntent({ ...toPedro, asset: euro }),
+          const review = yield* client.reviewPaymentLink(
+            new PaymentLinkIntent({
+              asset: baseAsset,
+              amount: toPedro.amount,
+              saveOnDevice: false,
+            }),
           );
 
-          expect(
-            sent instanceof Settled && sent.unclaimedFunds !== undefined,
-          ).toBe(true);
+          assertTagged(review, "PaymentReview");
+
+          const sent = yield* client.confirmPaymentLink(review);
+
+          expect(sent._tag).toBe("PaymentLinkCreated");
         }),
     );
 
@@ -173,7 +177,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "keeps a request payment on its own order and withdraws the approval a request refuses",
       () =>
         Effect.gen(function* () {
-          yield* create(Keypair.random(), "pedro");
+          yield* create(randomKey(), "pedro");
           const { wallet, sender } = yield* openSender(memoryKeyStore());
           const { auth } = yield* installSealedWallet(sender);
           const device = approvingDevice(auth);

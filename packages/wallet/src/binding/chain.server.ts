@@ -1,6 +1,6 @@
-import { stellarChainLayer } from "../stellar/chain.server";
-import { stellarSandboxDepositAddress } from "../stellar/sandbox-partner";
+import { solanaChainLayer } from "../solana/chain.server";
+import { solanaSandboxDepositAddress } from "../solana/sponsor-keys.server";
 
-export const chainLayer = stellarChainLayer;
+export const chainLayer = solanaChainLayer;
 
-export const sandboxDepositAddress = stellarSandboxDepositAddress;
+export const sandboxDepositAddress = solanaSandboxDepositAddress;

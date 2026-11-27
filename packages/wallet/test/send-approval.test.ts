@@ -6,8 +6,11 @@ import * as Latch from "effect/Latch";
 import * as Option from "effect/Option";
 import * as TestClock from "effect/testing/TestClock";
 import * as Predicate from "effect/Predicate";
+import * as Schema from "effect/Schema";
+import { address } from "@solana/kit";
 import {
   AddressRecipient,
+  AssetId,
   ExternalRecipient,
   Holding,
   Offline,
@@ -15,6 +18,7 @@ import {
   Settled,
   TransferIntent,
   type UnsignedEnvelope,
+  baseAsset,
 } from "../src/contract";
 import { DraftRejected, makeWalletEffects } from "../src/device/client";
 import type { KeyStore } from "../src/device/key-store";
@@ -32,19 +36,19 @@ import {
 import {
   actors,
   amount,
-  claimable,
   memoryDrafting,
   otherAmount,
+  memo,
   otherMemo,
   passkeys,
   payment,
   reviewed,
   sealedDrafting,
   toExchange,
-  toMuxed,
   toPedro,
 } from "./send-fixtures";
-import { lumens } from "../src/stellar/assets";
+import { approvalMargin, draftLifetime } from "../src/policy";
+import { randomAddress } from "./test-keys";
 
 const deviceWith = (...args: Parameters<typeof memoryDrafting>) => {
   const drafting = memoryDrafting(...args);
@@ -71,27 +75,14 @@ const sealedWith = Effect.fn(function* (
   };
 });
 
+const otherMint = {
+  ...baseAsset,
+  id: Schema.decodeSync(AssetId)(randomAddress()),
+};
+
 const mismatches: ReadonlyArray<
   readonly [string, TransferIntent, () => UnsignedEnvelope]
 > = [
-  [
-    "a claimable for an external address",
-    new TransferIntent({
-      ...toPedro,
-      to: AddressRecipient.make({ value: actors.pedro }),
-    }),
-    () => claimable(actors.pedro),
-  ],
-  [
-    "a payment to the base account of a muxed destination",
-    toMuxed,
-    () => actors.payment({ to: actors.exchange, amount }),
-  ],
-  [
-    "a payment to another muxed ID",
-    toMuxed,
-    () => actors.payment({ to: actors.muxed("2"), amount }),
-  ],
   [
     "a payment to another address",
     new TransferIntent({
@@ -101,8 +92,20 @@ const mismatches: ReadonlyArray<
     () => payment(),
   ],
   [
+    "a payment into a token account at the ordered address instead of its USDC account",
+    toExchange,
+    () =>
+      actors.drafts.payment({
+        from: actors.sender,
+        to: actors.exchange,
+        amount,
+        memo,
+        creditedAccount: address(actors.exchange),
+      }),
+  ],
+  [
     "a payment of another asset",
-    new TransferIntent({ ...toExchange, asset: lumens }),
+    new TransferIntent({ ...toExchange, asset: otherMint }),
     () => payment(),
   ],
   [
@@ -115,12 +118,6 @@ const mismatches: ReadonlyArray<
     new TransferIntent({ ...toExchange, memo: otherMemo }),
     () => payment(),
   ],
-  ["a claimable to another address", toPedro, () => claimable(actors.stranger)],
-  [
-    "a claimable sponsored by another reserve sponsor",
-    toPedro,
-    () => claimable(actors.pedro, actors.stranger),
-  ],
 ];
 
 it.live.each(mismatches)("refuses %s", ([, intent, envelope]) =>
@@ -132,13 +129,11 @@ it.live.each(mismatches)("refuses %s", ([, intent, envelope]) =>
   }),
 );
 
-it.live("reviews a draft paying the ordered muxed destination", () =>
+it.live("reviews a payment to the ordered owner, not its USDC account", () =>
   Effect.gen(function* () {
-    const { client } = deviceWith(() =>
-      actors.payment({ to: actors.muxed("1"), amount }),
-    );
+    const { client } = deviceWith(() => payment());
 
-    expect((yield* reviewed(client, toMuxed)).to).toBe(actors.muxed("1"));
+    expect((yield* reviewed(client, toExchange)).to).toBe(actors.exchange);
   }),
 );
 
@@ -147,7 +142,7 @@ it.live(
   () =>
     Effect.gen(function* () {
       const { approvals, client } = deviceWith(() => payment(), {
-        lifetime: 10,
+        lifetime: approvalMargin - 1,
       });
 
       expect(yield* client.review(toExchange)).toEqual(new DraftRejected());
@@ -159,12 +154,12 @@ it.effect(
   "spends the order's single redraft once when overlapping confirmations find its draft expiring",
   () =>
     Effect.gen(function* () {
-      const lifetimes = [21, 10, 120];
+      const lifetimes = [approvalMargin + 1, approvalMargin - 1];
       let drafted = 0;
 
-      const { client } = yield* sealedWith((at) =>
-        payment(actors.sender, lifetimes[drafted++] ?? 120, at),
-      );
+      const { client } = yield* sealedWith(() => payment(), {
+        lifetime: () => lifetimes[drafted++] ?? draftLifetime,
+      });
 
       const review = yield* reviewed(client, toExchange);
 
@@ -224,9 +219,9 @@ it.live(
               const at = nowSeconds();
 
               return transferDraftOf(
-                payment(actors.sender, 120, at),
+                payment(),
                 new ExternalRecipient({ address: actors.exchange }),
-                120,
+                draftLifetime,
                 at,
               );
             }
@@ -247,9 +242,9 @@ it.live(
             const at = nowSeconds();
 
             return transferDraftOf(
-              actors.payment({ to: actors.pedro, amount, at }),
+              actors.payment({ to: actors.pedro, amount }),
               actors.pedroProfile,
-              120,
+              draftLifetime,
               at,
             );
           }),
@@ -311,9 +306,9 @@ it.live(
             const at = nowSeconds();
 
             return transferDraftOf(
-              actors.payment({ to: actors.pedro, amount, at }),
+              actors.payment({ to: actors.pedro, amount }),
               actors.pedroProfile,
-              120,
+              draftLifetime,
               at,
             );
           }),
@@ -374,9 +369,9 @@ it.live(
                 const at = nowSeconds();
 
                 return transferDraftOf(
-                  actors.payment({ to: actors.pedro, amount, at }),
+                  actors.payment({ to: actors.pedro, amount }),
                   actors.pedroProfile,
-                  120,
+                  draftLifetime,
                   at,
                 );
               }),

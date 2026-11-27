@@ -17,6 +17,7 @@ import {
   type WalletPort,
 } from "../src/contract";
 import { signingScheme } from "../src/device-network";
+import { draftLifetime } from "../src/policy";
 import {
   type KeyStore,
   KeyStoreUnavailable,
@@ -144,7 +145,7 @@ export const enrolledDeviceWallet = (name = "maria") => {
 export const transferDraftOf = (
   envelope: UnsignedEnvelope,
   recipient: Profile | LinkRecipient | ExternalRecipient,
-  lifetime = 120,
+  lifetime = draftLifetime,
   at = nowSeconds(),
   unclaimedFunds?: UnclaimedFundsId,
 ) =>

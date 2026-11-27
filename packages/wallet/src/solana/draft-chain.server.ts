@@ -134,7 +134,8 @@ export const solanaDraftChain = (rpc: SolanaRpc, sponsor: Address) => {
         new SigningRequest({
           envelope,
           expiresAt: DateTime.makeUnsafe(
-            now + solanaProfile.draftTiming.lifetime * 1000,
+            (Math.floor(now / 1000) + solanaProfile.draftTiming.lifetime) *
+              1000,
           ),
         }),
     );

@@ -30,7 +30,7 @@ import {
   useDisposableDatabase,
   walletTestLayer,
   world,
-} from "./stellar-harness";
+} from "./solana-harness";
 
 const enrollmentFor = (
   port: WalletPort,

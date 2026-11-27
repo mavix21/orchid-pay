@@ -10,6 +10,10 @@ import * as Semaphore from "effect/Semaphore";
 import {
   BackupEnrollment,
   ChallengeRefused,
+  PaymentLinkRecipient,
+  TransferId,
+  TransferOrder,
+  baseAsset,
   HumanCheckRefused,
   Offline,
   RecipientCheck,
@@ -40,17 +44,24 @@ import {
   restoreBackupPhrase,
   tableRows,
 } from "./enrollment-fixtures";
-import { signingKey } from "./device-fixtures";
+import { memoryKeyStore, signingKey } from "./device-fixtures";
+import { linkFixture } from "./solana-device-fixtures";
 import {
+  approve,
   checkRecipient,
   dbLayer,
+  linkAmount,
+  openSender,
+  passBlockhashWindows,
   passkeyOrigin,
   reserveSponsor,
+  settleHash,
+  settleOnSubmit,
   useDisposableDatabase,
   walletForDb,
   walletTestLayer,
   world,
-} from "./stellar-harness";
+} from "./solana-harness";
 
 const enrollmentFor = (
   port: WalletPort,
@@ -414,6 +425,105 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           );
 
           expect(persisted.credential.id).toBe(auth.registered[0]?.id);
+        }),
+    );
+
+    it.effect(
+      "enrolling from a link receives it into the new wallet when the opening settles after the receive's blockhash could have landed",
+      () =>
+        Effect.gen(function* () {
+          yield* Effect.promise(clearDatabase);
+
+          const { wallet, sender } = yield* openSender(memoryKeyStore());
+          const { code, link } = linkFixture();
+
+          const funding = new TransferOrder({
+            id: Schema.decodeSync(TransferId)(crypto.randomUUID()),
+            from: sender.address,
+            to: PaymentLinkRecipient.make({ value: link }),
+            asset: baseAsset,
+            amount: linkAmount,
+          });
+
+          const fundingDraft = yield* wallet.transfer(funding, Option.none());
+
+          assertTagged(fundingDraft, "TransferDraft");
+          yield* settleOnSubmit(wallet, sender.address)(
+            funding,
+            approve(fundingDraft.request, signingKey(sender.phrase)),
+          );
+          assertTagged(
+            yield* wallet.transfer(funding, Option.none()),
+            "Settled",
+          );
+
+          let unsettledOpening: string | undefined;
+
+          const settleLatest = Effect.sync(() => {
+            const sealed = world.submitted.at(-1);
+
+            if (sealed) settleHash(sealed.hash);
+          });
+
+          const slowOpening: WalletPort = {
+            ...wallet,
+            enroll: (enrollment, approvals) =>
+              wallet.enroll(enrollment, approvals).pipe(
+                Effect.tap(() =>
+                  Effect.sync(() => {
+                    unsettledOpening = world.submitted.at(-1)?.hash;
+                  }),
+                ),
+              ),
+            open: (claim, approvals) =>
+              Effect.sync(() => {
+                if (unsettledOpening === undefined) return;
+
+                settleHash(unsettledOpening);
+                passBlockhashWindows();
+                unsettledOpening = undefined;
+              }).pipe(Effect.andThen(wallet.open(claim, approvals))),
+            manage: (order, approval) =>
+              wallet
+                .manage(order, approval)
+                .pipe(
+                  Effect.tap(() =>
+                    Option.isSome(approval) ? settleLatest : Effect.void,
+                  ),
+                ),
+          };
+
+          const tab = enrollmentFor(
+            slowOpening,
+            new SoftwareAuthenticator(passkeyOrigin),
+            memoryPendingStorage(),
+          );
+
+          assertTagged(yield* tab.start("newbie"), "EnrollmentPending");
+
+          const reviewed = yield* tab.reviewReceive(code);
+
+          assertTagged(reviewed, "EnrollmentPending");
+
+          const shownReceive = Option.getOrThrow(
+            Option.fromNullishOr(reviewed.receive),
+          );
+
+          const completed = yield* tab.advance(reviewed.review, {
+            review: shownReceive,
+            code,
+          });
+
+          assertTagged(completed, "WalletEnrolled");
+          expect({
+            receivedLink: completed.receivedLink,
+            received: completed.received?._tag,
+            unclaimed: world.claimables.has(shownReceive.unclaimedFunds),
+          }).toEqual({
+            receivedLink: link,
+            received: "AssetSettled",
+            unclaimed: false,
+          });
         }),
     );
   },

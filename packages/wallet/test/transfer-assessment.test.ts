@@ -3,10 +3,8 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import {
-  AccountAddress,
   AddressRecipient,
   ExternalRecipient,
-  InvalidAddress,
   PhoneNotSupported,
   PhoneRecipient,
   Profile,
@@ -135,10 +133,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       }),
     );
 
-    const invalidAddress = Schema.decodeSync(AccountAddress)(
-      `G${"A".repeat(55)}`,
-    );
-
     it.effect.each([
       {
         name: "an unregistered username",
@@ -149,11 +143,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
         name: "a phone number",
         to: PhoneRecipient.make({ value: "+15550100" }),
         expected: new PhoneNotSupported(),
-      },
-      {
-        name: "an address with a bad checksum",
-        to: AddressRecipient.make({ value: invalidAddress }),
-        expected: new InvalidAddress({ address: invalidAddress }),
       },
     ])("a recipient check refuses $name", ({ to, expected }) =>
       Effect.gen(function* () {

@@ -10,15 +10,20 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
+import * as Redacted from "effect/Redacted";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
+import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import {
   Approval,
   Asset,
   PositiveAmount,
   type SigningRequest,
 } from "../src/contract";
+import { chainLayer } from "../src/binding/chain.server";
+import { Chain } from "../src/server/Chain.server";
 import type { Sealed } from "../src/server/chain-settlement.server";
+import { WalletSettings } from "../src/server/settings.server";
 import { solanaAccountChain } from "../src/solana/account-chain.server";
 import { solanaDraftChain } from "../src/solana/draft-chain.server";
 import { decodeSealedEnvelope } from "../src/solana/envelope-codec";
@@ -358,6 +363,78 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
         expect(yield* refusal(yield* paying(500_000n))).toBe(
           "sponsored_failure_limit",
         );
+      }),
+  );
+  it.effect(
+    "the bound chain layer opens a wallet with the sponsor from its settings and refuses a destination without a USDC account",
+    () =>
+      Effect.gen(function* () {
+        const { url } = yield* Surfnet;
+        const sponsorKey = yield* newKey;
+        const owner = yield* newKey;
+        const stranger = yield* newKey;
+
+        yield* cheat("surfnet_setAccount", [
+          sponsorKey.account,
+          { lamports: 100_000_000_000 },
+        ]);
+
+        const chain = yield* Chain.pipe(
+          Effect.provide(
+            chainLayer.pipe(
+              Layer.provide(
+                Layer.succeed(WalletSettings, {
+                  rpcUrl: url,
+                  sponsorSecret: Redacted.make(
+                    base58Decoder.decode(
+                      concatBytes(sponsorKey.seed, sponsorKey.publicKey),
+                    ),
+                  ),
+                  passkeyOrigins: [],
+                  humanCheckSecret: Redacted.make("unused"),
+                  sessionSecret: Redacted.make("unused"),
+                }),
+              ),
+              Layer.provide(FetchHttpClient.layer),
+            ),
+          ),
+        );
+
+        const draft = yield* chain.draftOpening(owner.account);
+
+        const sealed = yield* chain.seal(
+          draft.request,
+          new Approval({
+            signature: ed25519.sign(
+              solanaSigningScheme.signingPayload(draft.request.envelope),
+              owner.seed,
+            ),
+          }),
+          owner.account,
+        );
+
+        yield* chain.submit(sealed);
+
+        const settled = yield* chain.settlement(sealed).pipe(
+          Effect.repeat({
+            until: (settlement) => !Predicate.isTagged(settlement, "Undecided"),
+            schedule: Schedule.spaced("100 millis"),
+          }),
+        );
+
+        expect({
+          settled: settled._tag,
+          standing: yield* chain.standing(owner.account),
+          blocker: yield* chain.receiveBlocker(
+            stranger.account,
+            usdc,
+            amountOf(1n),
+          ),
+        }).toEqual({
+          settled: "Applied",
+          standing: "open",
+          blocker: Option.some("no_account"),
+        });
       }),
   );
 });

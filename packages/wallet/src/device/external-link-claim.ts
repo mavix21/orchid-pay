@@ -22,6 +22,7 @@ import { type LinkCode, linkAddressOf, opensLink } from "./link-code";
 import { OpenedLink, openLink } from "./link-receive";
 import {
   baseAccountOf,
+  creditedAccountOf,
   isIssuedBy,
   network,
   readDraft,
@@ -62,20 +63,19 @@ export const externalReviewOf = (
     return Option.none();
 
   const receive = facts.value;
-  const baseDestination = baseAccountOf(receive.destination);
+  const baseDestination = baseAccountOf(order.destination);
 
   if (
     receive.link !== order.link ||
     order.link !== target.link ||
     receive.unclaimedFunds !== order.unclaimedFunds ||
     order.unclaimedFunds !== target.unclaimedFunds ||
-    receive.destination !== order.destination ||
+    receive.destination !== creditedAccountOf(order.destination) ||
     baseDestination === receive.link ||
     receive.reserveSponsor === receive.link ||
     !sameAsset(receive.asset, target.asset) ||
-    receive.amount !== target.amount ||
     isIssuedBy(receive.asset, baseDestination) ||
-    (forbidsMemo(receive.destination) && receive.memo !== undefined) ||
+    (forbidsMemo(order.destination) && receive.memo !== undefined) ||
     !sameMemo(receive.memo, order.memo) ||
     (draft.memoRequired && receive.memo === undefined)
   )
@@ -90,7 +90,7 @@ export const externalReviewOf = (
       network,
       link: target.link,
       unclaimedFunds: target.unclaimedFunds,
-      destination: receive.destination,
+      destination: order.destination,
       asset: target.asset,
       amount: target.amount,
       memo: receive.memo,
