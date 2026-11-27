@@ -1,8 +1,6 @@
-import * as Schema from "effect/Schema";
 import { addressRules } from "../address-rules";
+import { unclaimedFundsIdOn } from "./address-schemas";
 
-export const UnclaimedFundsId = Schema.String.check(
-  Schema.makeFilter(addressRules.isUnclaimedFundsId),
-).pipe(Schema.brand("UnclaimedFundsId"));
+export const UnclaimedFundsId = unclaimedFundsIdOn(addressRules);
 
 export type UnclaimedFundsId = typeof UnclaimedFundsId.Type;
