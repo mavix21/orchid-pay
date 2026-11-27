@@ -2,7 +2,7 @@ import { type Address, address } from "@solana/kit";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { Amount } from "../contract";
+import { type AccountAddress, Amount } from "../contract";
 import type {
   AccountChain,
   AccountStanding,
@@ -27,10 +27,12 @@ const balanceOf = UsdcAccount.$match({
 
 export const solanaAccountChain = (
   rpc: SolanaRpc,
-  sponsor: Address,
+  sponsor: AccountAddress,
 ): AccountChain => ({
   standing: (wallet) =>
-    readUsdcAccount(rpc, address(wallet)).pipe(Effect.map(standingOf(sponsor))),
+    readUsdcAccount(rpc, address(wallet)).pipe(
+      Effect.map(standingOf(address(sponsor))),
+    ),
   balance: (wallet) =>
     readUsdcAccount(rpc, address(wallet)).pipe(Effect.map(balanceOf)),
 });

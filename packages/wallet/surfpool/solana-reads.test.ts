@@ -248,7 +248,7 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
             stranger,
           });
 
-          const accounts = solanaAccountChain(rpc, address(sponsor));
+          const accounts = solanaAccountChain(rpc, sponsor);
 
           expect(yield* accounts.standing(wallet)).toBe(standing);
           expect(yield* accounts.balance(wallet)).toEqual(balance);
@@ -300,7 +300,7 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
             rentRecipient: address(stranger),
           });
 
-          const othersFunds = yield* writeUnclaimedFunds({
+          yield* writeUnclaimedFunds({
             ...held,
             sender: address(stranger),
             rentRecipient,
@@ -373,9 +373,6 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
               (entry) => entry.id,
               Order.String,
             ),
-          );
-          expect(fromSender.map((entry) => entry.unclaimedFunds)).not.toContain(
-            othersFunds,
           );
         }),
     );

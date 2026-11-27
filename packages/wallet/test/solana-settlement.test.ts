@@ -27,7 +27,10 @@ const RpcRequest = Schema.fromJsonString(
       method: Schema.Literal("getSignatureStatuses"),
       params: Schema.Tuple([
         Schema.Tuple([Schema.Literal(sent.signature)]),
-        Schema.Struct({ searchTransactionHistory: Schema.Literal(true) }),
+        Schema.Struct({
+          searchTransactionHistory: Schema.Literal(true),
+          commitment: Schema.Literal("finalized"),
+        }),
       ]),
     }),
     Schema.Struct({
