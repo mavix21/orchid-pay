@@ -14,15 +14,28 @@ export type RpcValue =
   | ReadonlyArray<RpcValue>
   | { readonly [key: string]: RpcValue };
 
+export class RpcRefusal extends Schema.TaggedError<RpcRefusal>()("RpcRefusal", {
+  code: Schema.Number,
+  message: Schema.String,
+  data: Schema.optional(Schema.Json),
+}) {}
+
 export interface SolanaRpc {
   call<A, I>(
     method: string,
     params: ReadonlyArray<RpcValue>,
     result: Schema.Codec<A, I>,
   ): Effect.Effect<A, ChainUnreachable>;
+  attempt<A, I>(
+    method: string,
+    params: ReadonlyArray<RpcValue>,
+    result: Schema.Codec<A, I>,
+  ): Effect.Effect<A, ChainUnreachable | RpcRefusal>;
 }
 
 export const readCommitment = "finalized";
+
+export const preflightCommitment = "confirmed";
 
 export const inContext = <A, I>(value: Schema.Codec<A, I>) =>
   Schema.Struct({
@@ -42,7 +55,11 @@ const rpcReply = <A, I>(result: Schema.Codec<A, I>) =>
     Schema.Union([
       Schema.Struct({ result }),
       Schema.Struct({
-        error: Schema.Struct({ code: Schema.Number, message: Schema.String }),
+        error: Schema.Struct({
+          code: Schema.Number,
+          message: Schema.String,
+          data: Schema.optional(Schema.Json),
+        }),
       }),
     ]),
   );
@@ -51,8 +68,8 @@ export const solanaRpc = (
   client: HttpClient.HttpClient,
   rpcUrl: string,
   deadline: Duration.Duration,
-): SolanaRpc => ({
-  call: <A, I>(
+): SolanaRpc => {
+  const attempt = <A, I>(
     method: string,
     params: ReadonlyArray<RpcValue>,
     result: Schema.Codec<A, I>,
@@ -74,9 +91,7 @@ export const solanaRpc = (
 
       return "result" in reply
         ? reply.result
-        : yield* new ChainUnreachable({
-            cause: new Error(reply.error.message),
-          });
+        : yield* new RpcRefusal(reply.error);
     }).pipe(
       Effect.timeoutOrElse({
         duration: deadline,
@@ -89,5 +104,15 @@ export const solanaRpc = (
             }),
           ),
       }),
-    ),
-});
+    );
+
+  return {
+    attempt,
+    call: (method, params, result) =>
+      attempt(method, params, result).pipe(
+        Effect.catchTag("RpcRefusal", (refusal) =>
+          Effect.fail(new ChainUnreachable({ cause: refusal })),
+        ),
+      ),
+  };
+};

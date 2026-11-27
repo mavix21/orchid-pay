@@ -1,4 +1,11 @@
-import { address, getBase58Decoder, getBase64Encoder } from "@solana/kit";
+import {
+  address,
+  getBase58Decoder,
+  getBase64Encoder,
+  getI64Decoder,
+  getStructDecoder,
+  getU64Decoder,
+} from "@solana/kit";
 import {
   ORCHID_LINKS_PROGRAM_ADDRESS,
   UNCLAIMED_FUNDS_DISCRIMINATOR,
@@ -36,6 +43,18 @@ import { SolanaAccountAddress, SolanaUnclaimedFundsId } from "./schemas";
 
 const accountsPerRequest = 100;
 
+const clockSysvarAddress = address(
+  "SysvarC1ock11111111111111111111111111111111",
+);
+
+const clockDecoder = getStructDecoder([
+  ["slot", getU64Decoder()],
+  ["epochStartTimestamp", getI64Decoder()],
+  ["epoch", getU64Decoder()],
+  ["leaderScheduleEpoch", getU64Decoder()],
+  ["unixTimestamp", getI64Decoder()],
+]);
+
 const base64Encoder = getBase64Encoder();
 const discriminator = getBase58Decoder().decode(UNCLAIMED_FUNDS_DISCRIMINATOR);
 
@@ -48,16 +67,22 @@ const claimAnytime: Claim = {
   claimableAt: () => true,
 };
 
-const claimFrom = (opensAt: DateTime.Utc): Claim => ({
-  opensAt: Option.some(opensAt),
-  claimableAt: (at) =>
-    DateTime.toEpochMillis(at) >= DateTime.toEpochMillis(opensAt),
-});
+const reclaimOf = (held: UnclaimedFunds, chainTime: bigint): Claim => {
+  const opensAt = DateTime.makeUnsafe(Number(held.reclaimableAt) * 1000);
+
+  return {
+    opensAt: Option.some(opensAt),
+    claimableAt: (at) =>
+      chainTime >= held.reclaimableAt &&
+      DateTime.toEpochMillis(at) >= DateTime.toEpochMillis(opensAt),
+  };
+};
 
 const entryOf = (
   unclaimedFunds: UnclaimedFundsId,
   held: UnclaimedFunds,
   sponsor: AccountAddress,
+  chainTime: bigint,
 ): UnclaimedFundsEntry => ({
   unclaimedFunds,
   asset: Schema.decodeSync(Asset)(solanaProfile.baseAsset),
@@ -68,9 +93,7 @@ const entryOf = (
     if (claimer === held.link) return Option.some(claimAnytime);
 
     return claimer === held.sender
-      ? Option.some(
-          claimFrom(DateTime.makeUnsafe(Number(held.reclaimableAt) * 1000)),
-        )
+      ? Option.some(reclaimOf(held, chainTime))
       : Option.none();
   },
   paymentLinkFrom: (sender) =>
@@ -79,10 +102,14 @@ const entryOf = (
       : Option.none(),
 });
 
+const chainTimeOf = (clock: RawAccount) =>
+  clockDecoder.decode(base64Encoder.encode(clock.data[0])).unixTimestamp;
+
 const entryFrom = (
   unclaimedFunds: UnclaimedFundsId,
   account: RawAccount,
   sponsor: AccountAddress,
+  chainTime: bigint,
 ): Option.Option<UnclaimedFundsEntry> => {
   if (account.owner !== ORCHID_LINKS_PROGRAM_ADDRESS) return Option.none();
 
@@ -90,7 +117,7 @@ const entryFrom = (
 
   return held === null || held.mint !== USDC_MINT_ADDRESS
     ? Option.none()
-    : Option.some(entryOf(unclaimedFunds, held, sponsor));
+    : Option.some(entryOf(unclaimedFunds, held, sponsor, chainTime));
 };
 
 export interface SolanaUnclaimedFunds {
@@ -110,68 +137,90 @@ export const solanaUnclaimedFunds = (
     rpc
       .call(
         "getMultipleAccounts",
-        [ids, { encoding: "base64", commitment: readCommitment }],
-        inContext(Schema.Array(Schema.NullOr(RawAccount))),
+        [
+          [clockSysvarAddress, ...ids],
+          { encoding: "base64", commitment: readCommitment },
+        ],
+        inContext(
+          Schema.TupleWithRest(Schema.Tuple([RawAccount]), [
+            Schema.NullOr(RawAccount),
+          ]),
+        ),
       )
       .pipe(
-        Effect.map(({ value }) =>
-          Arr.zip(ids, value).flatMap(([id, account]) =>
+        Effect.map(({ value: [clock, ...accounts] }) =>
+          Arr.zip(ids, accounts).flatMap(([id, account]) =>
             account === null
               ? []
-              : Option.toArray(entryFrom(id, account, sponsor)),
+              : Option.toArray(
+                  entryFrom(id, account, sponsor, chainTimeOf(clock)),
+                ),
           ),
         ),
       );
 
+  const chainTime = rpc
+    .call(
+      "getAccountInfo",
+      [clockSysvarAddress, { encoding: "base64", commitment: readCommitment }],
+      inContext(RawAccount),
+    )
+    .pipe(Effect.map(({ value }) => chainTimeOf(value)));
+
   return {
     unclaimedFunds: (ids) =>
       Effect.forEach(
-        Arr.chunksOf(Arr.dedupe(ids), accountsPerRequest),
+        Arr.chunksOf(Arr.dedupe(ids), accountsPerRequest - 1),
         readAccounts,
         { concurrency: rpcReadConcurrency },
       ).pipe(Effect.map(Arr.flatten)),
     unclaimedFundsFrom: (sender) =>
-      rpc
-        .call(
-          "getProgramAccounts",
-          [
-            ORCHID_LINKS_PROGRAM_ADDRESS,
-            {
-              encoding: "base64",
-              commitment: readCommitment,
-              filters: [
-                { dataSize: UNCLAIMED_FUNDS_SIZE },
-                {
-                  memcmp: {
-                    offset: 0,
-                    bytes: discriminator,
-                    encoding: "base58",
+      Effect.all(
+        [
+          chainTime,
+          rpc.call(
+            "getProgramAccounts",
+            [
+              ORCHID_LINKS_PROGRAM_ADDRESS,
+              {
+                encoding: "base64",
+                commitment: readCommitment,
+                filters: [
+                  { dataSize: UNCLAIMED_FUNDS_SIZE },
+                  {
+                    memcmp: {
+                      offset: 0,
+                      bytes: discriminator,
+                      encoding: "base58",
+                    },
                   },
-                },
-                {
-                  memcmp: {
-                    offset: UNCLAIMED_FUNDS_SENDER_OFFSET,
-                    bytes: sender,
-                    encoding: "base58",
+                  {
+                    memcmp: {
+                      offset: UNCLAIMED_FUNDS_SENDER_OFFSET,
+                      bytes: sender,
+                      encoding: "base58",
+                    },
                   },
-                },
-              ],
-            },
-          ],
-          ProgramAccounts,
-        )
-        .pipe(
-          Effect.map((found) =>
-            found.flatMap(({ pubkey, account }) =>
-              Option.toArray(
-                entryFrom(
-                  Schema.decodeSync(SolanaUnclaimedFundsId)(pubkey),
-                  account,
-                  sponsor,
-                ),
+                ],
+              },
+            ],
+            ProgramAccounts,
+          ),
+        ],
+        { concurrency: rpcReadConcurrency },
+      ).pipe(
+        Effect.map(([time, found]) =>
+          found.flatMap(({ pubkey, account }) =>
+            Option.toArray(
+              entryFrom(
+                Schema.decodeSync(SolanaUnclaimedFundsId)(pubkey),
+                account,
+                sponsor,
+                time,
               ),
             ),
           ),
         ),
+      ),
   };
 };

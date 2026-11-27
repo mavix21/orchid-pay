@@ -1,0 +1,144 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "b23e9769-d219-4e01-b382-bee73c64f8d2",
+  "prevIds": ["5b4e06b7-8458-41a8-b58f-3cd0f53307c4"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "sponsored_failures"],
+      "writes": [
+        "s|tbl|public.sponsored_failures",
+        "n|tbl|public.sponsored_failures",
+        "e|tbl|public.sponsored_failures",
+        "n|rel|public.sponsored_failures",
+        "n|type|public.sponsored_failures",
+        "n|rel|public.sponsored_failures_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sponsored_failures",
+        "sponsored_failures_signer"
+      ],
+      "writes": [
+        "s|idx|public.sponsored_failures_signer",
+        "n|idx|public.sponsored_failures_signer",
+        "e|idx|public.sponsored_failures_signer",
+        "n|rel|public.sponsored_failures_signer"
+      ],
+      "reads": [
+        "n|tbl|public.sponsored_failures",
+        "n|sch|public",
+        "n|col|public.sponsored_failures.signer",
+        "n|col|public.sponsored_failures.landedAt"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "sponsored_failures",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sponsored_failures",
+        "name": "signature",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sponsored_failures",
+        "name": "signer",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sponsored_failures",
+        "name": "landedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sponsored_failures",
+        "name": "sponsored_failures_signer",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "signer",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "landedAt",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sponsored_failures",
+        "name": "sponsored_failures_pkey",
+        "columns": ["signature"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

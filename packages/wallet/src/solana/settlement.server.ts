@@ -16,11 +16,14 @@ export interface SentTransaction {
   readonly draftedSlot: bigint;
 }
 
+export const SignatureError = Schema.Union([
+  Schema.String,
+  Schema.Record(Schema.String, Schema.Json),
+]);
+
 const SignatureStatus = Schema.Struct({
   slot: Schema.Int,
-  err: Schema.NullOr(
-    Schema.Union([Schema.String, Schema.Record(Schema.String, Schema.Json)]),
-  ),
+  err: Schema.NullOr(SignatureError),
   confirmationStatus: Schema.NullOr(
     Schema.Literals(["processed", "confirmed", "finalized"]),
   ),
@@ -37,7 +40,7 @@ const FinalizedTip = Schema.Struct({
   blockHeight: Schema.Int,
 });
 
-const rejectionCode = (error: NonNullable<SignatureStatus["err"]>) =>
+export const rejectionCode = (error: typeof SignatureError.Type) =>
   Predicate.isString(error) ? error : Object.keys(error).join();
 
 export const resolveSettlement = Effect.fn("Chain.resolveSettlement")(

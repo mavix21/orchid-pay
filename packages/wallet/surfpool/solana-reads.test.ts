@@ -139,10 +139,22 @@ const accountCases = [
     }),
   },
   {
+    name: "has a USDC account only its owner can close",
+    arrange: ({ wallet }: Parties) => setUsdc(wallet, { amount: 7_000_000 }),
+    standing: "incomplete",
+    balance: Option.some(7_000_000n),
+    line: Option.some({
+      spendable: 7_000_000n,
+      capacity: maximum - 7_000_000n,
+      authorized: true,
+      sponsored: false,
+    }),
+  },
+  {
     name: "has a USDC account a stranger can close",
     arrange: ({ wallet, stranger }: Parties) =>
       setUsdc(wallet, { amount: 7_000_000, closeAuthority: stranger }),
-    standing: "incomplete",
+    standing: "foreignIncomplete",
     balance: Option.some(7_000_000n),
     line: Option.some({
       spendable: 7_000_000n,
@@ -222,7 +234,7 @@ const writeUnclaimedFunds = Effect.fn("writeUnclaimedFunds")(function* (held: {
         ...held,
         mint: USDC_MINT_ADDRESS,
         amount: 5_500_001n,
-        reclaimableAt: 1_800_000_000n,
+        reclaimableAt: 1_700_000_000n,
         bump,
       }),
     ),
@@ -316,8 +328,8 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
 
           const found = yield* reads.unclaimedFunds([sponsored, impostor]);
 
-          const beforeReclaim = DateTime.makeUnsafe(1_799_999_999_000);
-          const reclaim = DateTime.makeUnsafe(1_800_000_000_000);
+          const beforeReclaim = DateTime.makeUnsafe(1_699_999_999_000);
+          const reclaim = DateTime.makeUnsafe(1_700_000_000_000);
 
           expect(
             found.map((entry) => ({

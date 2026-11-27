@@ -216,6 +216,18 @@ export const channelLeases = pgTable("channel_leases", {
   leasedUntil: timestamp({ withTimezone: true }).notNull(),
 });
 
+export const sponsoredFailures = pgTable(
+  "sponsored_failures",
+  {
+    signature: text().primaryKey(),
+    signer: text().notNull(),
+    landedAt: timestamp({ withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("sponsored_failures_signer").on(table.signer, table.landedAt),
+  ],
+);
+
 export const paymentRequests = pgTable(
   "payment_requests",
   {
