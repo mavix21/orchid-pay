@@ -1,7 +1,12 @@
 import {
   AccountRole,
+  fixDecoderSize,
+  getAddressDecoder,
   getAddressEncoder,
+  getBytesDecoder,
+  getStructDecoder,
   getStructEncoder,
+  getU64Decoder,
   getU64Encoder,
   type Address,
   type Instruction,
@@ -18,6 +23,7 @@ import {
   findUnclaimedFundsAddress,
   findVaultAddress,
   getOrderIdEncoder,
+  ORDER_ID_SIZE,
 } from "./unclaimed-funds";
 
 const CREATE_DISCRIMINATOR = new Uint8Array([24, 30, 200, 40, 5, 28, 7, 119]);
@@ -37,6 +43,14 @@ const getCreateArgumentsEncoder = () =>
     ["amount", getU64Encoder()],
   ]);
 
+export const getCreateInstructionDataDecoder = () =>
+  getStructDecoder([
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["orderId", fixDecoderSize(getBytesDecoder(), ORDER_ID_SIZE)],
+    ["link", getAddressDecoder()],
+    ["amount", getU64Decoder()],
+  ]);
+
 export type CreateUnclaimedFundsInput = {
   readonly sender: Address;
   readonly rentRecipient: Address;
@@ -53,6 +67,31 @@ export type ReleaseUnclaimedFundsInput = {
   readonly rentRecipient: Address;
 };
 
+export type CreateUnclaimedFundsAccounts = {
+  readonly unclaimedFunds: Address;
+  readonly vault: Address;
+};
+
+export const buildCreateInstruction = (
+  input: CreateUnclaimedFundsInput & CreateUnclaimedFundsAccounts,
+): Instruction => ({
+  programAddress: ORCHID_LINKS_PROGRAM_ADDRESS,
+  accounts: [
+    { address: input.sender, role: AccountRole.READONLY_SIGNER },
+    { address: input.rentRecipient, role: AccountRole.WRITABLE_SIGNER },
+    { address: input.unclaimedFunds, role: AccountRole.WRITABLE },
+    { address: input.vault, role: AccountRole.WRITABLE },
+    { address: USDC_MINT_ADDRESS, role: AccountRole.READONLY },
+    { address: input.source, role: AccountRole.WRITABLE },
+    { address: TOKEN_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+    { address: SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+  ],
+  data: new Uint8Array([
+    ...CREATE_DISCRIMINATOR,
+    ...getCreateArgumentsEncoder().encode(input),
+  ]),
+});
+
 export const getCreateInstruction = async (
   input: CreateUnclaimedFundsInput,
 ): Promise<Instruction> => {
@@ -64,47 +103,47 @@ export const getCreateInstruction = async (
 
   const [vault] = await findVaultAddress(unclaimedFunds);
 
-  return {
-    programAddress: ORCHID_LINKS_PROGRAM_ADDRESS,
-    accounts: [
-      { address: input.sender, role: AccountRole.READONLY_SIGNER },
-      { address: input.rentRecipient, role: AccountRole.WRITABLE_SIGNER },
-      { address: unclaimedFunds, role: AccountRole.WRITABLE },
-      { address: vault, role: AccountRole.WRITABLE },
-      { address: USDC_MINT_ADDRESS, role: AccountRole.READONLY },
-      { address: input.source, role: AccountRole.WRITABLE },
-      { address: TOKEN_PROGRAM_ADDRESS, role: AccountRole.READONLY },
-      { address: SYSTEM_PROGRAM_ADDRESS, role: AccountRole.READONLY },
-    ],
-    data: new Uint8Array([
-      ...CREATE_DISCRIMINATOR,
-      ...getCreateArgumentsEncoder().encode(input),
-    ]),
-  };
+  return buildCreateInstruction({ ...input, unclaimedFunds, vault });
 };
 
-const getReleaseInstruction = async (
+type ReleaseUnclaimedFundsAccounts = ReleaseUnclaimedFundsInput & {
+  readonly vault: Address;
+};
+
+const buildReleaseInstruction = (
   discriminator: Uint8Array,
+  input: ReleaseUnclaimedFundsAccounts,
+): Instruction => ({
+  programAddress: ORCHID_LINKS_PROGRAM_ADDRESS,
+  accounts: [
+    { address: input.signer, role: AccountRole.READONLY_SIGNER },
+    { address: input.unclaimedFunds, role: AccountRole.WRITABLE },
+    { address: input.vault, role: AccountRole.WRITABLE },
+    { address: input.destination, role: AccountRole.WRITABLE },
+    { address: input.rentRecipient, role: AccountRole.WRITABLE },
+    { address: TOKEN_PROGRAM_ADDRESS, role: AccountRole.READONLY },
+  ],
+  data: discriminator,
+});
+
+export const buildClaimInstruction = (input: ReleaseUnclaimedFundsAccounts) =>
+  buildReleaseInstruction(CLAIM_DISCRIMINATOR, input);
+
+export const buildReclaimInstruction = (input: ReleaseUnclaimedFundsAccounts) =>
+  buildReleaseInstruction(RECLAIM_DISCRIMINATOR, input);
+
+export const getClaimInstruction = async (
   input: ReleaseUnclaimedFundsInput,
-): Promise<Instruction> => {
+) => {
   const [vault] = await findVaultAddress(input.unclaimedFunds);
 
-  return {
-    programAddress: ORCHID_LINKS_PROGRAM_ADDRESS,
-    accounts: [
-      { address: input.signer, role: AccountRole.READONLY_SIGNER },
-      { address: input.unclaimedFunds, role: AccountRole.WRITABLE },
-      { address: vault, role: AccountRole.WRITABLE },
-      { address: input.destination, role: AccountRole.WRITABLE },
-      { address: input.rentRecipient, role: AccountRole.WRITABLE },
-      { address: TOKEN_PROGRAM_ADDRESS, role: AccountRole.READONLY },
-    ],
-    data: discriminator,
-  };
+  return buildClaimInstruction({ ...input, vault });
 };
 
-export const getClaimInstruction = (input: ReleaseUnclaimedFundsInput) =>
-  getReleaseInstruction(CLAIM_DISCRIMINATOR, input);
+export const getReclaimInstruction = async (
+  input: ReleaseUnclaimedFundsInput,
+) => {
+  const [vault] = await findVaultAddress(input.unclaimedFunds);
 
-export const getReclaimInstruction = (input: ReleaseUnclaimedFundsInput) =>
-  getReleaseInstruction(RECLAIM_DISCRIMINATOR, input);
+  return buildReclaimInstruction({ ...input, vault });
+};
