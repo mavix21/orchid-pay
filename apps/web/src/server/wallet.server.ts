@@ -34,9 +34,8 @@ import { workQueueLayer } from "./work-queue.server";
 
 const walletSettingsLayer = Layer.suspend(() =>
   Layer.succeed(WalletSettings, {
-    rpcUrl: env.STELLAR_RPC_URL,
-    reserveSponsorSecret: Redacted.make(env.RESERVE_SPONSOR_SECRET),
-    feePayerSecret: Redacted.make(env.FEE_PAYER_SECRET),
+    rpcUrl: env.SOLANA_RPC_URL,
+    sponsorSecret: Redacted.make(env.SPONSOR_SECRET),
     passkeyOrigins: env.PASSKEY_ORIGINS.split(","),
     humanCheckSecret: Redacted.make(env.TURNSTILE_SECRET_KEY),
     sessionSecret: Redacted.make(env.SESSION_SECRET),

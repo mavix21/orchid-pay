@@ -1,5 +1,4 @@
 import { type Page, expect, test } from "@playwright/test";
-import { Keypair } from "@stellar/stellar-sdk";
 import {
   AccountAddress,
   ExternalMemoRequired,
@@ -13,7 +12,8 @@ import {
   openWallet,
   serverFunction,
 } from "./device";
-import { fundWithUsdc, usdc } from "@workspace/wallet/testnet";
+import { baseAsset } from "@workspace/wallet";
+import { fundUsdc, newWalletAddress } from "@workspace/wallet/local-chain";
 
 const choose = (page: Page, destination: "address" | "username") =>
   page.getByTestId(`choose-${destination}`).click();
@@ -40,10 +40,10 @@ test("pays a username in USDC, resumes after a reload and refuses an unpayable a
 
   const { address: sender } = await enrollWallet(page, freshUsername());
 
-  await fundWithUsdc(sender, "1");
+  await fundUsdc(sender, 1_000_000);
 
   await page.goto("/send");
-  await page.getByTestId(`send-asset-USDC:${usdc.getIssuer()}`).click();
+  await page.getByTestId(`send-asset-${baseAsset.id}`).click();
 
   await choose(page, "username");
   await fill(page, recipient, "0.5");
@@ -58,7 +58,7 @@ test("pays a username in USDC, resumes after a reload and refuses an unpayable a
 
   await expect(summary).toBeVisible();
   await expect(summary).toHaveAttribute("data-username", recipient);
-  await expect(summary).toHaveAttribute("data-asset", usdc.getCode());
+  await expect(summary).toHaveAttribute("data-asset", baseAsset.code);
   await expect(summary).toHaveAttribute("data-amount", "0.5");
 
   const approved = page.waitForResponse(
@@ -84,7 +84,7 @@ test("pays a username in USDC, resumes after a reload and refuses an unpayable a
   await expect(page).toHaveURL("/home");
 
   await page.goto("/send");
-  await page.getByTestId(`send-asset-USDC:${usdc.getIssuer()}`).click();
+  await page.getByTestId(`send-asset-${baseAsset.id}`).click();
   await choose(page, "username");
   await fill(page, recipient, "5");
   await review(page);
@@ -96,7 +96,7 @@ test("pays a username in USDC, resumes after a reload and refuses an unpayable a
   );
   await expect(page.getByRole("textbox")).toBeFocused();
 
-  const exchange = Keypair.random().publicKey();
+  const exchange = newWalletAddress();
 
   await page.route(`**${serverFunction}**`, (route) =>
     route.request().postData()?.includes(exchange)
@@ -135,7 +135,7 @@ test("pays a username in USDC, resumes after a reload and refuses an unpayable a
   await page.getByTestId("change-recipient").click();
   await page.getByTestId("change-destination").click();
   await choose(page, "address");
-  await fill(page, Keypair.random().publicKey(), "0.1");
+  await fill(page, newWalletAddress(), "0.1");
   await review(page);
 
   await page.getByTestId("offer-link").click({ timeout: 30_000 });

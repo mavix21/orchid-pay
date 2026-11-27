@@ -15,6 +15,15 @@
     "PASSKEY_ORIGINS": "http://localhost:3000,http://localhost:4173,https://orchid-pay-devnet.getorchid.workers.dev",
     "PAYOUT_PARTNER": "sandbox",
   },
+  "secrets": {
+    "required": [
+      "SOLANA_RPC_URL",
+      "SPONSOR_SECRET",
+      "TURNSTILE_SITE_KEY",
+      "TURNSTILE_SECRET_KEY",
+      "SESSION_SECRET",
+    ],
+  },
   "ratelimits": [
     {
       "name": "WALLET_RATE_LIMITER",
@@ -29,7 +38,9 @@
   ],
   "triggers": { "crons": ["0 * * * *"] },
   "queues": {
-    "producers": [{ "binding": "WALLET_WORK", "queue": "orchid-pay-devnet-work" }],
+    "producers": [
+      { "binding": "WALLET_WORK", "queue": "orchid-pay-devnet-work" },
+    ],
     "consumers": [
       {
         "queue": "orchid-pay-devnet-work",

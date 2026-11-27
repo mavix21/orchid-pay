@@ -46,7 +46,6 @@ export const memoBytes = (memo: string) =>
 export const otherNetworkName = (network: OtherAddressNetwork) =>
   Match.value(network).pipe(
     Match.when("evm", () => m.common_network_evm()),
-    Match.when("solana", () => "Solana"),
     Match.when("tron", () => "Tron"),
     Match.when("bitcoin", () => "Bitcoin"),
     Match.exhaustive,

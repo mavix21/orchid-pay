@@ -2,12 +2,6 @@ import { spawnSync } from "node:child_process";
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { type Page, expect } from "@playwright/test";
 import {
-  Keypair,
-  Networks,
-  Operation,
-  TransactionBuilder,
-} from "@stellar/stellar-sdk";
-import {
   AccountAddress,
   CredentialId,
   LocalPhraseEnvelope,
@@ -17,7 +11,12 @@ import {
   Username,
   localEnvelopeVersion,
 } from "@workspace/wallet";
-import { fundWithFriendbot, horizon, usdc } from "@workspace/wallet/testnet";
+import {
+  newWalletAddress,
+  openUsdcAccount,
+  recordEpochAt,
+  recordNetwork,
+} from "@workspace/wallet/local-chain";
 import * as Schema from "effect/Schema";
 
 export const addAuthenticator = async (page: Page, hasPrf: boolean) => {
@@ -120,7 +119,6 @@ export const submitButton = (page: Page) => page.getByTestId("create-submit");
 export const serverFunction = "/_serverFn/";
 
 const e2eContainer = "orchid-e2e-database";
-const testnetReset = Date.UTC(2026, 11, 16);
 
 const runSql = (sql: string, failure: string) => {
   const result = spawnSync(
@@ -200,11 +198,9 @@ const seedActiveWalletRow = (
   username: Username,
   seeded: SeededCredential,
 ) => {
-  const epoch = Date.now() < testnetReset ? "before-2026-12-16" : "2026-12-16";
-
   const sql = `
     INSERT INTO wallets (address, status, network, "testnetEpoch")
-    VALUES ('${address}', 'active', 'testnet', '${epoch}');
+    VALUES ('${address}', 'active', '${recordNetwork}', '${recordEpochAt(Date.now())}');
     INSERT INTO usernames (username, address) VALUES ('${username}', '${address}');
     INSERT INTO backups (
       "credentialId", address, username, "publicKey", algorithm, counter, iv, ciphertext
@@ -238,7 +234,7 @@ const seededRecord = (
       }),
       envelope: new LocalPhraseEnvelope({
         version: localEnvelopeVersion,
-        network: "testnet",
+        network: recordNetwork,
         address,
         credentialId,
         salt: new Uint8Array(32).fill(1),
@@ -273,27 +269,12 @@ export const storedWalletRecord = (page: Page) =>
       }),
   );
 
-const fundAccountWithUsdcTrustline = async (keypair: Keypair) => {
-  const account = await fundWithFriendbot(keypair.publicKey());
-
-  const trustline = new TransactionBuilder(account, {
-    fee: "10000",
-    networkPassphrase: Networks.TESTNET,
-  })
-    .addOperation(Operation.changeTrust({ asset: usdc }))
-    .setTimeout(60)
-    .build();
-
-  trustline.sign(keypair);
-  await horizon.submitTransaction(trustline);
-};
-
 export const seedWallet = async (page: Page, usernameText: string) => {
-  const keypair = Keypair.random();
-  const address = Schema.decodeSync(AccountAddress)(keypair.publicKey());
+  const address = Schema.decodeSync(AccountAddress)(newWalletAddress());
+
   const username = Schema.decodeSync(Username)(usernameText);
 
-  await fundAccountWithUsdcTrustline(keypair);
+  await openUsdcAccount(address);
 
   const credential = await addSeededCredential(page);
 
