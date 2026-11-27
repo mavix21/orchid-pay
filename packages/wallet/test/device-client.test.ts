@@ -34,7 +34,7 @@ import {
 import { phraseAddress } from "../src/device/signing";
 import { Wallet } from "../src/server/Wallet.server";
 import { draftOpening, signingPayload } from "../src/stellar/envelopes";
-import { approvalMargin, paymentLifetime } from "../src/policy";
+import { approvalMargin, draftLifetime } from "../src/policy";
 import { baseFee, networkPassphrase, usdc } from "../src/stellar/network";
 import {
   enrolledDeviceWallet,
@@ -89,7 +89,7 @@ interface OpeningChange {
 
 const openingAt = (millis: number, change: OpeningChange = {}) => {
   const now = Math.floor(millis / 1000);
-  const maxTime = now + (change.lifetime ?? paymentLifetime);
+  const maxTime = now + (change.lifetime ?? draftLifetime);
 
   return new OpeningDraft({
     request: requestUntil(
@@ -261,7 +261,7 @@ const rejectedDrafts: ReadonlyArray<readonly [string, OpenStep]> = [
           address: seeded.address,
           createAccount: false,
           minTime: 0,
-          maxTime: Math.floor(Date.now() / 1000) + paymentLifetime,
+          maxTime: Math.floor(Date.now() / 1000) + draftLifetime,
         }),
         expiresAt: DateTime.makeUnsafe(Date.now() - 1000),
       }),
@@ -306,12 +306,12 @@ const rejectedDrafts: ReadonlyArray<readonly [string, OpenStep]> = [
             )
             .setTimebounds(
               Math.floor(Date.now() / 1000),
-              Math.floor(Date.now() / 1000) + paymentLifetime,
+              Math.floor(Date.now() / 1000) + draftLifetime,
             )
             .build()
             .toXDR(),
         ),
-        Math.floor(Date.now() / 1000) + paymentLifetime,
+        Math.floor(Date.now() / 1000) + draftLifetime,
       ),
     }),
   ],

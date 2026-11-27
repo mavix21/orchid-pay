@@ -1,5 +1,5 @@
 import { CoinsIcon } from "lucide-react";
-import { type Asset, nativeAsset, sameAsset } from "@workspace/wallet";
+import { type Asset, isNativeAsset } from "@workspace/wallet";
 
 function UsdcIcon() {
   return (
@@ -30,7 +30,7 @@ function LumenIcon() {
 }
 
 export function TokenIcon({ asset }: { asset: Asset }) {
-  if (sameAsset(asset, nativeAsset)) return <LumenIcon />;
+  if (isNativeAsset(asset)) return <LumenIcon />;
 
   return asset.code === "USDC" ? <UsdcIcon /> : <CoinsIcon />;
 }

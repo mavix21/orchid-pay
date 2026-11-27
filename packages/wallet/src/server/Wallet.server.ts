@@ -50,6 +50,7 @@ import {
   type MemoRule,
   type Sealed,
 } from "./Chain.server";
+import { chainLayer } from "../binding/chain.server";
 import { memoRefusal } from "./memo-refusal.server";
 import { Directory, StoreFailure, type WalletRow } from "./Directory.server";
 import { sealedOpening } from "./opening-attempt.server";
@@ -484,7 +485,7 @@ export class Wallet extends Context.Service<
       AssetOrders.layer,
       Backups.layer,
       Deposits.layer,
-      Chain.layer,
+      chainLayer,
       HumanCheck.layer,
     ]),
   );

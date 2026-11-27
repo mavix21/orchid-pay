@@ -33,7 +33,7 @@ import {
   type SigningRequest,
   sameAsset,
   baseAsset,
-  needsTrustline,
+  isNativeAsset,
 } from "../contract";
 import {
   type AssetAuthorized,
@@ -310,8 +310,7 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
       const blocker = yield* chain.receiveBlocker(order.wallet, asset, amount);
 
       const openedByOpening =
-        walletOpening &&
-        (!needsTrustline(asset) || sameAsset(asset, baseAsset));
+        walletOpening && (isNativeAsset(asset) || sameAsset(asset, baseAsset));
 
       if (Option.isSome(blocker)) {
         if (blocker.value !== "no_account")

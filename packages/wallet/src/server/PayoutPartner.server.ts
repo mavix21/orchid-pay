@@ -1,14 +1,11 @@
-import { Keypair } from "@stellar/stellar-sdk";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
-import * as Redacted from "effect/Redacted";
-import * as Schema from "effect/Schema";
 import {
-  AccountAddress,
+  type AccountAddress,
   type Asset,
   type AssetOrderId,
   LocalAmount,
@@ -18,7 +15,7 @@ import {
   precisionOf,
   sameAsset,
 } from "../contract";
-import { sandboxPartnerKeypair } from "../stellar/sandbox-partner";
+import { sandboxDepositAddress } from "../binding/chain.server";
 import { WalletSettings } from "./settings.server";
 
 export interface SettledPayout {
@@ -52,14 +49,10 @@ export class PayoutPartner extends Context.Service<
   static readonly sandbox = (completesAfter: Duration.Input) =>
     Layer.unwrap(
       Effect.gen(function* () {
-        const { feePayerSecret } = yield* WalletSettings;
+        const settings = yield* WalletSettings;
 
         return PayoutPartner.depositingTo(
-          Schema.decodeSync(AccountAddress)(
-            sandboxPartnerKeypair(
-              Keypair.fromSecret(Redacted.value(feePayerSecret)),
-            ).publicKey(),
-          ),
+          sandboxDepositAddress(settings),
           completesAfter,
         );
       }),

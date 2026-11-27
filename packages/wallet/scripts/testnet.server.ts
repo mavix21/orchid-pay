@@ -22,7 +22,6 @@ import {
   DestinationAddress,
   ExternalMemoRequired,
   MemoNotAllowed,
-  nativeAsset,
   PaymentMemo,
   PositiveAmount,
   Settled,
@@ -57,6 +56,7 @@ import {
   openChannels,
 } from "./testnet-funding";
 import { memoRequiredDataName } from "../src/stellar/exchange-memos.server";
+import { lumens } from "../src/stellar/assets";
 
 const sponsor = Keypair.random();
 const feePayer = Keypair.random();
@@ -495,7 +495,7 @@ const toExchange = (
     id: Schema.decodeSync(TransferId)(crypto.randomUUID()),
     from: second.address,
     to: AddressRecipient.make({ value: destination }),
-    asset: nativeAsset,
+    asset: lumens,
     amount: Schema.decodeSync(PositiveAmount)("10000000"),
     memo,
   });

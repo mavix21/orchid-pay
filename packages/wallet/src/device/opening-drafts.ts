@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import type { AccountAddress, OpeningDraft, SigningRequest } from "../contract";
-import { approvalMargin, paymentLifetime } from "../policy";
+import { approvalMargin, draftLifetime } from "../policy";
 import type { PublicDeviceWallet } from "./key-store";
 import { readDraft } from "../device-network";
 import { OpeningReview } from "./outcomes";
@@ -27,7 +27,7 @@ const timing = (
 ): OpeningStanding => {
   if (
     DateTime.toEpochMillis(request.expiresAt) !== maxTime * 1000 ||
-    maxTime > Math.floor(nowMillis / 1000) + paymentLifetime + clockAllowance
+    maxTime > Math.floor(nowMillis / 1000) + draftLifetime + clockAllowance
   )
     return "stale";
 
@@ -48,8 +48,7 @@ export const standingOf = (
 
   return Option.isSome(opening) &&
     Predicate.isTagged(opening.value, "OpeningFacts") &&
-    opening.value.address === wallet.address &&
-    opening.value.channel !== wallet.address
+    opening.value.address === wallet.address
     ? timing(opening.value.maxTime, shown.draft.request, nowMillis)
     : "stale";
 };

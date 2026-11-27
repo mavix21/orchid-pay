@@ -13,7 +13,7 @@ import {
   type ResolvedRecipient,
   type TransferOrder,
   sameAsset,
-  needsTrustline,
+  isNativeAsset,
 } from "../contract";
 import { claimableQuota } from "../policy";
 import { Chain } from "./Chain.server";
@@ -55,7 +55,7 @@ export const paymentLinkAssetRefusal = Effect.gen(function* () {
   ) {
     const { asset } = order;
 
-    if (!needsTrustline(asset)) return Option.none<AssetUnsupported>();
+    if (isNativeAsset(asset)) return Option.none<AssetUnsupported>();
 
     const [holdings, issuer] = yield* Effect.all(
       [

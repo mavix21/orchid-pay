@@ -3,15 +3,18 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { keccak_256 } from "@noble/hashes/sha3.js";
 import { bytesToHex } from "@noble/hashes/utils.js";
 import { base58, bech32, bech32m, createBase58check } from "@scure/base";
+import * as Data from "effect/Data";
 import * as Option from "effect/Option";
-import { addressNetwork, addressRules } from "../address-rules";
+import { addressRules } from "../address-rules";
 
-export type AddressNetwork =
-  | typeof addressNetwork
-  | "evm"
-  | "solana"
-  | "tron"
-  | "bitcoin";
+export type OtherAddressNetwork = "evm" | "solana" | "tron" | "bitcoin";
+
+export type RecognisedAddress = Data.TaggedEnum<{
+  WalletNetworkAddress: {};
+  OtherNetworkAddress: { readonly network: OtherAddressNetwork };
+}>;
+
+export const RecognisedAddress = Data.taggedEnum<RecognisedAddress>();
 
 const decodeBase58 = Option.liftThrowable(base58.decode);
 
@@ -96,10 +99,9 @@ const isSegwitBitcoin = (address: string) =>
     (length) => length >= 2 && length <= 40,
   );
 
-const recognisers: ReadonlyArray<
-  readonly [AddressNetwork, (address: string) => boolean]
+const otherNetworkRecognisers: ReadonlyArray<
+  readonly [OtherAddressNetwork, (address: string) => boolean]
 > = [
-  [addressNetwork, addressRules.hasValidChecksum],
   ["evm", isEvm],
   ["solana", isSolana],
   ["tron", isTron],
@@ -111,14 +113,20 @@ const recognisers: ReadonlyArray<
 
 const longestAddressLength = 90;
 
+const otherNetworkAddress = (address: string) =>
+  Option.map(
+    Option.fromUndefinedOr(
+      otherNetworkRecognisers.find(([, matches]) => matches(address)),
+    ),
+    ([network]) => RecognisedAddress.OtherNetworkAddress({ network }),
+  );
+
 export const recogniseAddress = (
   address: string,
-): Option.Option<AddressNetwork> =>
-  address.length > longestAddressLength
-    ? Option.none()
-    : Option.map(
-        Option.fromUndefinedOr(
-          recognisers.find(([, matches]) => matches(address)),
-        ),
-        ([network]) => network,
-      );
+): Option.Option<RecognisedAddress> => {
+  if (address.length > longestAddressLength) return Option.none();
+
+  return addressRules.hasValidChecksum(address)
+    ? Option.some(RecognisedAddress.WalletNetworkAddress())
+    : otherNetworkAddress(address);
+};

@@ -6,7 +6,6 @@ import * as Layer from "effect/Layer";
 import type * as HttpClientError from "effect/http/HttpClientError";
 import type * as HttpClientRequest from "effect/http/HttpClientRequest";
 import * as TestClock from "effect/testing/TestClock";
-import { Chain } from "../src/server/Chain.server";
 import { PayoutPartner } from "../src/server/PayoutPartner.server";
 import { RateLimits } from "../src/server/RateLimits.server";
 import { Wallet } from "../src/server/Wallet.server";
@@ -19,6 +18,7 @@ import {
 import { fakeHumanCheck, recordingQueue } from "./ledger-world";
 import { settingsFor } from "./stellar-settings";
 import { payoutCompletesAfter } from "./wallet-scenarios";
+import { stellarChainLayer } from "../src/stellar/chain.server";
 
 export const stellarWallet = (
   reply: (
@@ -30,7 +30,7 @@ export const stellarWallet = (
     Layer.provide(recordingQueue),
     Layer.provide(RateLimits.unlimited),
     Layer.provide(fakeHumanCheck),
-    Layer.provide(Layer.fresh(Chain.layer)),
+    Layer.provide(Layer.fresh(stellarChainLayer)),
     Layer.provide(PayoutPartner.sandbox(payoutCompletesAfter)),
     Layer.provide(settingsFor(testRpcUrl)),
     Layer.provide(httpClientAnswering((req) => reply(rpcMethod(req), req))),

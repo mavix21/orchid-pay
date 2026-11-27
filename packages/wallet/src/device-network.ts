@@ -10,7 +10,7 @@ import type {
   SigningRequest,
 } from "./contract";
 import type { SigningScheme } from "./device/signing-scheme";
-import { stellarDeviceNetwork } from "./stellar/device-network";
+import { deviceNetwork } from "./binding/networks";
 
 interface Expiring {
   readonly maxTime: number;
@@ -30,7 +30,6 @@ interface UnclaimedMovement extends Movement {
 
 export type DraftFacts = Data.TaggedEnum<{
   OpeningFacts: Expiring & {
-    readonly channel: AccountAddress;
     readonly address: AccountAddress;
     readonly reserveSponsor: AccountAddress;
   };
@@ -47,7 +46,6 @@ export type DraftFacts = Data.TaggedEnum<{
     readonly reserveSponsor?: AccountAddress | undefined;
   };
   LinkReceiveFacts: Expiring & {
-    readonly channel: AccountAddress;
     readonly link: AccountAddress;
     readonly reserveSponsor: AccountAddress;
     readonly destination: DestinationAddress;
@@ -77,8 +75,6 @@ export interface DeviceNetwork {
   readonly baseAccountOf: (destination: DestinationAddress) => AccountAddress;
   readonly isIssuedBy: (asset: Asset, account: AccountAddress) => boolean;
 }
-
-const deviceNetwork: DeviceNetwork = stellarDeviceNetwork;
 
 export const { network, signingScheme, readDraft, baseAccountOf, isIssuedBy } =
   deviceNetwork;

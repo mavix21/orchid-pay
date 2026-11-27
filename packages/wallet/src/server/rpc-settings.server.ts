@@ -14,9 +14,7 @@ export const validateRpcUrl = (rpcUrl: string): Effect.Effect<string> =>
       !(parsed.protocol === "http:" && loopbackHosts.has(parsed.hostname))
     )
       return yield* Effect.die(
-        new Error(
-          "Stellar RPC URL must use HTTPS unless targeting a loopback host",
-        ),
+        new Error("RPC URL must use HTTPS unless targeting a loopback host"),
       );
 
     return rpcUrl;
@@ -37,6 +35,6 @@ export const validateRpcTimeout = (
     return Effect.succeed(parsed.value);
 
   return Effect.die(
-    new Error("Stellar RPC timeout must be a positive finite duration"),
+    new Error("RPC timeout must be a positive finite duration"),
   );
 };

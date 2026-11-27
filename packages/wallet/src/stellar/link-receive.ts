@@ -15,7 +15,7 @@ import {
   PositiveAmount,
   UnsignedEnvelope,
   formatAmount,
-  needsTrustline,
+  isNativeAsset,
   parseAmount,
   precisionOf,
 } from "../contract";
@@ -58,7 +58,7 @@ export interface LinkReceiveInput {
 export function draftLinkReceive(input: LinkReceiveInput): UnsignedEnvelope {
   const asset = toStellarAsset(input.asset);
   const amount = formatAmount(input.amount, precisionOf(input.asset));
-  const trusts = needsTrustline(input.asset);
+  const trusts = !isNativeAsset(input.asset);
 
   const builder = new TransactionBuilder(input.channel, {
     fee: baseFee,

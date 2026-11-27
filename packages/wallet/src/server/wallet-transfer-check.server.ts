@@ -29,7 +29,7 @@ import {
   UnknownRecipient,
   type UsernameRecipient,
   sameAsset,
-  needsTrustline,
+  isNativeAsset,
 } from "../contract";
 import { Chain, type ChainUnreachable, MemoRule } from "./Chain.server";
 import { type QuotaCheck, claimableQuotaFlow } from "./claimable-quota.server";
@@ -217,11 +217,11 @@ export const transferCheckFlow = Effect.gen(function* () {
       if (Option.isSome(linkRefusal)) return linkRefusal.value;
     }
 
-    const balance = needsTrustline(terms.asset)
-      ? (state.value.lines.find(
+    const balance = isNativeAsset(terms.asset)
+      ? state.value.native
+      : (state.value.lines.find(
           (line) => sameAsset(line.asset, terms.asset) && line.authorized,
-        )?.spendable ?? Schema.decodeSync(Amount)("0"))
-      : state.value.native;
+        )?.spendable ?? Schema.decodeSync(Amount)("0"));
 
     if (balance < terms.amount)
       return new InsufficientBalance({ available: balance });
