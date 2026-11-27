@@ -217,7 +217,7 @@ export const createLinkHarness = async () => {
     const orderId = crypto.getRandomValues(new Uint8Array(16));
     const source = await tokenAccount(sender.address, amount);
 
-    const [unclaimedFundsAddress] = await findUnclaimedFundsAddress(
+    const [unclaimedFundsAddress, bump] = await findUnclaimedFundsAddress(
       sender.address,
       link.address,
       orderId,
@@ -238,7 +238,14 @@ export const createLinkHarness = async () => {
       [sender],
     );
 
-    return { link, orderId, source, address: unclaimedFundsAddress, outcome };
+    return {
+      link,
+      orderId,
+      source,
+      address: unclaimedFundsAddress,
+      bump,
+      outcome,
+    };
   };
 
   const donate = async (destination: Address, amount: bigint) => {
