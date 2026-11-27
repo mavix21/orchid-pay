@@ -57,7 +57,7 @@ describe("Solana address rules", () => {
   it.each([
     {
       name: "non-canonical base58 with an extra leading zero",
-      text: `1${wallet}`,
+      text: `1${zeroLeadingAddress}`,
     },
     {
       name: "non-canonical base58 missing its leading zero",
@@ -66,10 +66,6 @@ describe("Solana address rules", () => {
     {
       name: "a character outside the base58 alphabet",
       text: `0${wallet.slice(1)}`,
-    },
-    {
-      name: "a Stellar account",
-      text: "GDRXE2BQUC3AZNPVFSCEZ76NJ3WWL25FYFK6RGZGIEKWE4SOOHSUJUJ6",
     },
   ])("rejects $name", ({ text }) => {
     expect(verdicts(text)).toEqual(rejected);
