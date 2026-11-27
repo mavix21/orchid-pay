@@ -5,13 +5,14 @@ import {
   getClaimInstruction,
   getReclaimInstruction,
   orchidLinksErrorCode,
-  RECLAIM_DELAY_SECONDS,
 } from "../src";
 import {
   anchorErrorCode,
   createLinkHarness,
   withAccount,
 } from "./link-harness";
+
+const sevenDays = 7n * 24n * 60n * 60n;
 
 const releases = {
   claim: getClaimInstruction,
@@ -121,7 +122,7 @@ describe("reclaim", () => {
       rentRecipient: harness.sponsor.address,
     });
 
-    harness.setNow(createdAt + RECLAIM_DELAY_SECONDS - 1n);
+    harness.setNow(createdAt + sevenDays - 1n);
 
     const early = await harness.send(
       harness.sponsor,
@@ -129,7 +130,7 @@ describe("reclaim", () => {
       [harness.sender],
     );
 
-    harness.setNow(createdAt + RECLAIM_DELAY_SECONDS);
+    harness.setNow(createdAt + sevenDays);
 
     const due = await harness.send(
       harness.sponsor,
@@ -154,7 +155,7 @@ describe.each([
   it("rejects a signer that does not control the link", async () => {
     const harness = await createLinkHarness();
     const created = await harness.createLink();
-    harness.setNow(harness.now() + RECLAIM_DELAY_SECONDS);
+    harness.setNow(harness.now() + sevenDays);
     const stranger = await harness.unfundedSigner();
     const destination = await harness.tokenAccount(stranger.address, 0n);
 
@@ -180,7 +181,7 @@ describe.each([
   it("rejects closing to anyone but the stored rent recipient", async () => {
     const harness = await createLinkHarness();
     const created = await harness.createLink();
-    harness.setNow(harness.now() + RECLAIM_DELAY_SECONDS);
+    harness.setNow(harness.now() + sevenDays);
     const signers = { claim: created.link, reclaim: harness.sender };
     const thief = await harness.fundedSigner();
     const destination = await harness.tokenAccount(thief.address, 0n);

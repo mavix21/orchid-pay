@@ -5,7 +5,6 @@ import {
   findVaultAddress,
   getCreateInstruction,
   orchidLinksErrorCode,
-  RECLAIM_DELAY_SECONDS,
   USDC_MINT_ADDRESS,
 } from "../src";
 import {
@@ -14,6 +13,8 @@ import {
   TOKEN_2022_PROGRAM_ADDRESS,
   withAccount,
 } from "./link-harness";
+
+const sevenDays = 7n * 24n * 60n * 60n;
 
 describe("create", () => {
   it("moves the amount into the vault and records the link with a seven-day reclaim time", async () => {
@@ -32,9 +33,25 @@ describe("create", () => {
       mint: USDC_MINT_ADDRESS,
       rentRecipient: harness.sponsor.address,
       amount: 2_500_000n,
-      reclaimableAt: createdAt + RECLAIM_DELAY_SECONDS,
-      bump: expect.any(Number),
+      reclaimableAt: createdAt + sevenDays,
+      bump: created.bump,
     });
+  });
+
+  it.each([
+    { name: "shorter", size: 15 },
+    { name: "longer", size: 17 },
+  ])("refuses an order id $name than 16 bytes", async ({ size }) => {
+    const harness = await createLinkHarness();
+    const link = await harness.unfundedSigner();
+
+    await expect(
+      findUnclaimedFundsAddress(
+        harness.sender.address,
+        link.address,
+        new Uint8Array(size),
+      ),
+    ).rejects.toThrow(RangeError);
   });
 
   it("rejects a zero amount", async () => {

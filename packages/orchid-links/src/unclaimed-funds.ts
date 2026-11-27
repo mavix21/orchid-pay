@@ -11,6 +11,7 @@ import {
   getU64Decoder,
   getU8Decoder,
   getUtf8Encoder,
+  transformEncoder,
   type Address,
   type ProgramDerivedAddress,
   type ReadonlyUint8Array,
@@ -66,9 +67,20 @@ export const decodeUnclaimedFunds = (
 };
 
 export const getOrderIdEncoder = () =>
-  fixEncoderSize(getBytesEncoder(), ORDER_ID_SIZE);
+  transformEncoder(
+    fixEncoderSize(getBytesEncoder(), ORDER_ID_SIZE),
+    (orderId: ReadonlyUint8Array) => {
+      if (orderId.length !== ORDER_ID_SIZE) {
+        throw new RangeError(
+          `An order id has ${ORDER_ID_SIZE} bytes, not ${orderId.length}`,
+        );
+      }
 
-export const findUnclaimedFundsAddress = (
+      return orderId;
+    },
+  );
+
+export const findUnclaimedFundsAddress = async (
   sender: Address,
   link: Address,
   orderId: ReadonlyUint8Array,
