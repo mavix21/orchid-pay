@@ -1,29 +1,19 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "orchid-testnet",
+  "name": "orchid-pay-devnet",
   "compatibility_flags": ["nodejs_compat"],
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "1381cfaf001c43ff8df6860ed15e1071",
+      "id": "072d5fa2baca4b1d81011fc7697da8f2",
       "localConnectionString": "postgres://orchid:orchid-local@127.0.0.1:55432/orchid",
     },
   ],
   "compatibility_date": "2026-11-15",
   "main": "src/server.ts",
   "vars": {
-    "STELLAR_RPC_URL": "https://soroban-testnet.stellar.org",
-    "PASSKEY_ORIGINS": "http://localhost:3000,http://localhost:4173,https://orchid-testnet.getorchid.workers.dev",
-    "TURNSTILE_SITE_KEY": "0x4AAAAAAGRtRm_DCTacI7v8",
+    "PASSKEY_ORIGINS": "http://localhost:3000,http://localhost:4173,https://orchid-pay-devnet.getorchid.workers.dev",
     "PAYOUT_PARTNER": "sandbox",
-  },
-  "secrets": {
-    "required": [
-      "RESERVE_SPONSOR_SECRET",
-      "FEE_PAYER_SECRET",
-      "TURNSTILE_SECRET_KEY",
-      "SESSION_SECRET",
-    ],
   },
   "ratelimits": [
     {
@@ -39,10 +29,10 @@
   ],
   "triggers": { "crons": ["0 * * * *"] },
   "queues": {
-    "producers": [{ "binding": "WALLET_WORK", "queue": "orchid-testnet-work" }],
+    "producers": [{ "binding": "WALLET_WORK", "queue": "orchid-pay-devnet-work" }],
     "consumers": [
       {
-        "queue": "orchid-testnet-work",
+        "queue": "orchid-pay-devnet-work",
         "max_batch_size": 10,
         "max_batch_timeout": 5,
         "max_retries": 10,
