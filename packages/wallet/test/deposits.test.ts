@@ -3,12 +3,13 @@ import { Database } from "@workspace/db";
 import { asc, eq, sql } from "drizzle-orm";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
-import * as Exit from "effect/Exit";
 import {
   type AccountAddress,
   type ActivityEntry,
   DepositActivity,
   ExternalRecipient,
+  LedgerUnreachable,
+  ServiceFailed,
   UsernameRecipient,
   baseAsset,
 } from "../src/contract";
@@ -130,7 +131,9 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           depositInto(bruno, { amount: 3_000_000n });
           world.unreadableDeposits.add(failing.eventId);
 
-          expect(Exit.isFailure(yield* Effect.exit(ingest))).toBe(true);
+          expect(yield* ingest.pipe(Effect.flip)).toEqual(
+            new LedgerUnreachable(),
+          );
           expect(yield* storedAmounts(alice)).toEqual([1_000_000n]);
           expect(yield* storedAmounts(bruno)).toEqual([3_000_000n]);
 
@@ -179,16 +182,15 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           world.closures.set(unclaimedFunds, closedAt);
           world.unreadableDeposits.add(depositInto(addressOf(sender)).eventId);
 
-          const scheduled = yield* Effect.exit(
-            Wallet.use((service) => service.scheduled),
-          );
+          expect(
+            yield* Wallet.use((service) => service.scheduled).pipe(Effect.flip),
+          ).toEqual(new ServiceFailed());
 
           const entry = entryFor(
             yield* activityOf(wallet, addressOf(sender)),
             transferId,
           );
 
-          expect(Exit.isFailure(scheduled)).toBe(true);
           assertTagged(entry, "SentActivity");
           assertTagged(entry.receipt, "Claimed");
           expect(entry.receipt.closedAt).toEqual(closedAt);

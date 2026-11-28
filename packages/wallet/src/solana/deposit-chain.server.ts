@@ -29,7 +29,7 @@ const transactionsPerPage = 100;
 const TokenBalance = Schema.Struct({
   accountIndex: Schema.Int,
   mint: Schema.String,
-  owner: Schema.optional(Schema.String),
+  owner: Schema.optional(Schema.NullOr(Schema.String)),
   uiTokenAmount: Schema.Struct({ amount: Schema.BigIntFromString }),
 });
 
@@ -44,8 +44,12 @@ const RawTransaction = Schema.Struct({
     }),
   }),
   meta: Schema.Struct({
-    preTokenBalances: Schema.optional(Schema.Array(TokenBalance)),
-    postTokenBalances: Schema.optional(Schema.Array(TokenBalance)),
+    preTokenBalances: Schema.optional(
+      Schema.NullOr(Schema.Array(TokenBalance)),
+    ),
+    postTokenBalances: Schema.optional(
+      Schema.NullOr(Schema.Array(TokenBalance)),
+    ),
   }),
 });
 
@@ -57,10 +61,10 @@ const usdcUnits = (balances: ReadonlyArray<TokenBalance>, index: number) =>
       balance.accountIndex === index && balance.mint === USDC_MINT_ADDRESS,
   )?.uiTokenAmount.amount ?? 0n;
 
-const walletKey = (owner: string | undefined) =>
-  owner !== undefined && isAddress(owner) && !isOffCurveAddress(owner)
-    ? Option.some(owner)
-    : Option.none();
+const walletKey = (owner: string | null | undefined) =>
+  Option.fromNullishOr(owner).pipe(
+    Option.filter((key) => isAddress(key) && !isOffCurveAddress(key)),
+  );
 
 const depositOf = (
   usdcAccount: string,

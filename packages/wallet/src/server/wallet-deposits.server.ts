@@ -8,7 +8,6 @@ import type { AccountAddress } from "../contract";
 import { depositFreshness, depositTimeBudget } from "../policy";
 import { Chain } from "./Chain.server";
 import { type DepositCursor, Deposits } from "./Deposits.server";
-import { rpcReadConcurrency } from "./settings.server";
 
 export const depositFlow = Effect.gen(function* () {
   const chain = yield* Chain;
@@ -51,7 +50,6 @@ export const depositFlow = Effect.gen(function* () {
 
           return true;
         }).pipe(Effect.exit),
-      { concurrency: rpcReadConcurrency },
     );
 
     if (scans.some((scanned) => Exit.isSuccess(scanned) && !scanned.value))
