@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/core-flow.gif" alt="Orchid Pay core flow, one step at a time: Rosa sends 50 USDC as a payment link and shares it; Lucia opens it, creates a passkey wallet and receives the 50 USDC; another recipient opens a 20 USDC link, picks Yape from the local wallet picker, sees a quote in soles and follows a simulated payout to completion; Rosa sees both links settled" width="700" />
+  <img src="docs/assets/core-flow.gif" alt="Orchid Pay core flow in ten steps: Rosa sends 50 USDC as a payment link and shares it; Lucia opens it, creates a passkey wallet and receives 50 USDC; a second link is paid out to Yape through the local wallet picker with a quote in soles, simulated on devnet; Rosa sees both links settled" width="700" />
 </p>
 
 ## The Problem
@@ -141,14 +141,14 @@ Playwright runs against Chromium with a virtual passkey authenticator, a local S
 - [x] Payment links backed by the `orchid-links` program, with reclaim at any time
 - [x] Payment requests payable through Solana Pay and Blinks
 - [x] Local wallet payouts through a simulated payout partner
-- [ ] A licensed payout partner, so local wallet payouts pay real money
-- [ ] Security review of the `orchid-links` program
-- [ ] Mainnet launch in Peru
+- [ ] Licensed payout partners, starting with Yape in Peru
+- [ ] Security audit of the `orchid-links` program
+- [ ] Mainnet launch
 
 ## The Team
 
-| Name             | Role                 | GitHub                                 | LinkedIn                 |
-| ---------------- | -------------------- | -------------------------------------- | ------------------------ |
-| Marcelo Vizcarra | `<ROLE_PLACEHOLDER>` | [@mavix21](https://github.com/mavix21) | `<LINKEDIN_PLACEHOLDER>` |
+| Name             | Role                            | GitHub                                 |
+| ---------------- | ------------------------------- | -------------------------------------- |
+| Marcelo Vizcarra | Founder and Full-Stack Engineer | [@mavix21](https://github.com/mavix21) |
 
 More at [mavix.dev](https://mavix.dev). Licensed under the [Apache License 2.0](LICENSE).
