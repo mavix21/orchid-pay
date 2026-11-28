@@ -1,29 +1,61 @@
-# Orchid Pay
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/orchid-logo-dark.png" />
+    <img src="docs/assets/orchid-logo-light.png" alt="Orchid Pay" height="44" />
+  </picture>
+</p>
 
-**Dollars that move by link.**
+<h3 align="center">Dollars that move by link.</h3>
 
-Orchid Pay is a self-custodial USDC wallet for Latin America, starting in Peru. It runs on Solana devnet for the dev3pack Solana hackathon.
+<p align="center">
+  Self-custodial USDC wallet on Solana devnet for Latin America, starting in Peru.<br />
+  Built for the dev3pack Solana hackathon · English &amp; Spanish
+</p>
 
-## Send dollars in a message
+<p align="center">
+  <img src="docs/assets/core-flow.gif" alt="Orchid Pay core flow: share a payment link, claim into a new passkey wallet or cash out via simulated Yape, and settle a payment request from an external Solana wallet" width="700" />
+</p>
 
-Rosa in Madrid creates a payment link and shares it with her mother in Arequipa over WhatsApp. Her mother can open the link in her browser and receive the USDC in an Orchid wallet. She can also try a simulated payout to Yape using a Peruvian mobile number. The simulation quotes an amount in soles and shows the payout status. No soles are transferred.
+## Why Orchid
 
-## What you can do on devnet
+- **Every payment link is a new-user channel.** Send USDC in a chat message. The `orchid-links` Anchor program holds the unclaimed funds on Solana while the claim key stays in the URL `#fragment` (never sent to the server). A recipient with no wallet opens the link and claims straight into a new passkey-backed wallet in two taps, with fees and token-account rent sponsored. Unclaimed links can be reclaimed by the sender at any time.
+- **Local cash-out from the same link.** Recipients who want local currency instead of a wallet tap **Yape** on the exact same payment link, enter a Peruvian mobile number, review the soles quote, and track settlement. _(On devnet this uses a simulated payout partner — no real soles are transferred; live payouts require a licensed partner.)_
+- **Request links payable from any Solana wallet.** Share a public `/pay/<id>` link for an exact USDC amount and optional note. Payers settle in Orchid or from an external Solana wallet such as Phantom or Solflare via Solana Pay and Blinks (the external payer covers the network fee).
 
-- **Create and restore a wallet.** Pick a permanent username and use a passkey to protect the encrypted backup of your secret phrase. The device signs wallet transactions. Orchid sponsors transaction fees and funds the rent needed to open the wallet's USDC token account.
-- **Send and receive USDC.** Send to an Orchid username or a Solana address, receive deposits from other wallets, and follow payments in Activity. The app supports Spanish and English.
-- **Send a payment link.** The Orchid Links program holds the unclaimed funds on Solana. The link code stays in the URL fragment and lets the recipient's device derive the key to claim the funds. The sender can reclaim funds while the link is unclaimed.
-- **Request a payment.** Share a public link for a specific amount, with an optional note. The request can be paid in Orchid or from a compatible Solana wallet through Solana Pay and Blinks. The external payer covers the network fee.
+## Mobile screens
 
-The Yape simulation demonstrates the payout flow for Peru. Real payouts would require a licensed payment partner.
+<table>
+  <tr>
+    <td align="center" width="25%">
+      <img src="docs/assets/payment-link-offer.png" alt="Payment link offer screen showing 50 USDC from @rosa with Orchid, Yape, and external wallet options" width="195" />
+      <br />
+      <sub><strong>Payment link</strong><br />Claim in Orchid, Yape, or another wallet</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="docs/assets/yape-payout-simulation.png" alt="Simulated Yape payout tracker showing devnet simulation notice and completed PEN payout" width="195" />
+      <br />
+      <sub><strong>Yape cash-out (sim)</strong><br />Soles quote &amp; live status tracker</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="docs/assets/payment-request-solana-pay.png" alt="Public payment request page for 20 USDC with Solana Pay QR code and Orchid pay button" width="195" />
+      <br />
+      <sub><strong>Payment request</strong><br />Solana Pay QR, Blinks, or Orchid</sub>
+    </td>
+    <td align="center" width="25%">
+      <img src="docs/assets/wallet-home.png" alt="Orchid passkey wallet home screen showing balance, quick actions, and activity" width="195" />
+      <br />
+      <sub><strong>Passkey wallet</strong><br />Self-custodial USDC &amp; activity</sub>
+    </td>
+  </tr>
+</table>
 
 ## Built with
 
-Solana, SPL Token, Anchor, WebAuthn passkeys, TanStack Start, React, Effect, Drizzle, Postgres, Cloudflare Workers and Hyperdrive, Bun, and Tailwind CSS.
+Solana, SPL Token, Anchor (`orchid-links`), Solana Pay & Blinks, WebAuthn PRF passkeys, TanStack Start, React, Effect, Drizzle, Postgres, Cloudflare Workers & Hyperdrive, Bun, and Tailwind CSS.
 
 ## Run it locally
 
-Install Bun and Node.js 22.12 or newer, and start Docker. Have a Solana devnet RPC URL from a provider ready for the setup prompt. You can also supply it through `SOLANA_RPC_URL` before running setup.
+Install Bun and Node.js 22.12+, and start Docker. Have a Solana devnet RPC URL ready for the setup prompt (or set `SOLANA_RPC_URL` beforehand).
 
 ```sh
 bun run setup
@@ -32,13 +64,13 @@ bun run dev
 
 Open [localhost:3000](http://localhost:3000).
 
-Setup installs dependencies, starts the local Postgres container `orchid-postgres` on port 55432, applies migrations, and configures the gitignored `apps/web/.dev.vars`. You can rerun setup. It preserves existing values and can reuse the main checkout's configuration in a worktree. If you leave the RPC URL blank, set `SOLANA_RPC_URL` in the local configuration before starting the app.
+Setup installs dependencies, starts the local Postgres container `orchid-postgres` on port `55432`, applies migrations, and configures the gitignored `apps/web/.dev.vars`. Rerun setup safely at any time to preserve existing values or reuse the main checkout's config in a worktree.
 
-Setup creates a sponsor if needed and tries to fund it with devnet SOL. If the airdrop fails, fund the public sponsor address printed by setup at the [Solana faucet](https://faucet.solana.com), then rerun setup to open the sandbox payout partner's USDC token account.
+Setup creates a devnet sponsor if needed and attempts a SOL airdrop. If the airdrop fails, fund the printed public sponsor address at the [Solana faucet](https://faucet.solana.com) and rerun setup to open the simulated payout partner's USDC token account.
 
 ### Browser tests
 
-With Docker, Surfpool, and the Anchor toolchain installed, run:
+With Docker, Surfpool, and the Anchor toolchain installed:
 
 ```sh
 bun run setup --e2e
@@ -46,12 +78,8 @@ anchor build --no-idl --ignore-keys
 bun run --cwd apps/web test:e2e
 ```
 
-The Playwright suite uses Chromium, a local Surfnet, and a separate disposable Postgres container.
+Playwright runs against Chromium, a local Surfnet, and a disposable Postgres container.
 
-## Team
+## Team & License
 
-Marcelo Vizcarra · https://mavix.dev
-
-## License
-
-[Apache License 2.0](LICENSE)
+Marcelo Vizcarra · [mavix.dev](https://mavix.dev) · [Apache License 2.0](LICENSE)
