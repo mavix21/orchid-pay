@@ -5,6 +5,7 @@ import {
   AuthorityType,
 } from "@solana-program/token";
 import {
+  AccountRole,
   type Address,
   type Blockhash,
   type Instruction,
@@ -66,6 +67,14 @@ export interface LinkReceiveInput extends Drafting {
   readonly unclaimedFunds: Address;
   readonly destinationTokenAccount: Address;
   readonly memo?: TextMemo | undefined;
+}
+
+export interface ExternalPaymentInput extends Drafting {
+  readonly payer: Address;
+  readonly reference: Address;
+  readonly destinationTokenAccount: Address;
+  readonly amount: PositiveAmount;
+  readonly memo: TextMemo;
 }
 
 export interface ReclaimInput extends Drafting {
@@ -142,6 +151,28 @@ export const draftPayment = (input: PaymentInput) =>
       decimals: solanaProfile.precisionOf(USDC_MINT_ADDRESS).decimals,
     }),
   ]);
+
+export const draftExternalPayment = (input: ExternalPaymentInput) => {
+  const transfer = getTransferCheckedInstruction({
+    source: usdcAccountOf(input.payer),
+    mint: USDC_MINT_ADDRESS,
+    destination: input.destinationTokenAccount,
+    authority: createNoopSigner(input.payer),
+    amount: input.amount,
+    decimals: solanaProfile.precisionOf(USDC_MINT_ADDRESS).decimals,
+  });
+
+  return draft({ ...input, sponsor: input.payer }, computeUnitLimits.payment, [
+    ...memoInstructions(input.memo),
+    {
+      ...transfer,
+      accounts: [
+        ...transfer.accounts,
+        { address: input.reference, role: AccountRole.READONLY_SIGNER },
+      ],
+    },
+  ]);
+};
 
 export const draftPaymentLink = (input: PaymentLinkInput) => {
   const unclaimedFunds = unclaimedFundsAddressOf(

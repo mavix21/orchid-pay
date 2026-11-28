@@ -17,6 +17,7 @@ import { solanaDepositChain } from "./deposit-chain.server";
 import { solanaDestinationChain } from "./destination-chain.server";
 import { solanaDraftChain } from "./draft-chain.server";
 import { solanaHoldings } from "./holdings.server";
+import { solanaRequestPayments } from "./request-payments.server";
 import { solanaRpc } from "./rpc.server";
 import { solanaSeal, solanaSponsor } from "./seal.server";
 import { sponsorKeypairOf } from "./sponsor-keys.server";
@@ -50,6 +51,7 @@ export const solanaChainLayer = Layer.effect(
       ...solanaDepositChain(rpc),
       ...drafts,
       ...solanaSubmission(rpc, sponsoredFailuresIn(yield* Database)),
+      ...solanaRequestPayments(rpc),
       validAsset: isUsdc,
       issuedBy: () => false,
       issuer: (asset) =>

@@ -10,6 +10,8 @@ export { PaymentRequests } from "./PaymentRequests.server";
 
 export { RequestPayments } from "./RequestPayments.server";
 
+export { blockchainId } from "../binding/networks";
+
 export { RateLimits } from "./RateLimits.server";
 
 export {

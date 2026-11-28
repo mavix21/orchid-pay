@@ -15,15 +15,18 @@ import {
   type ActivityCursor,
   type Approval,
   type CancelPaymentRequestStep,
+  type ExternalPaymentStep,
   type OpenPaymentRequestsStep,
   type PayPaymentRequestStep,
   PaymentRequestBeingPaid,
   type PaymentRequestId,
   PaymentRequestNotFound,
   PaymentRequestOpen,
+  PaymentRequestPayerUnfunded,
   PaymentRequestPaymentTaken,
   PaymentRequestRequesterUnavailable,
   PaymentRequestSelfPay,
+  PaymentRequestTransaction,
   type PaymentRequestStep,
   Profile,
   RequestActivityPage,
@@ -35,8 +38,13 @@ import {
   type TransferStep,
   sameAsset,
 } from "../contract";
+import { chainLayer } from "../binding/chain.server";
+import { Chain, type ChainUnreachable } from "./Chain.server";
 import { Directory } from "./Directory.server";
-import { PaymentRequests } from "./PaymentRequests.server";
+import {
+  type ExternalBinding,
+  PaymentRequests,
+} from "./PaymentRequests.server";
 import { Principal } from "./Principal.server";
 import { StoreFailure } from "./store-failure.server";
 import {
@@ -49,7 +57,7 @@ import {
 import { Wallet } from "./Wallet.server";
 import { live } from "./wallet-reads.server";
 
-type Failure = StoreFailure | ServerFailure;
+type Failure = StoreFailure | ServerFailure | ChainUnreachable;
 
 const orderJson = Schema.encodeSync(OrderJson);
 
@@ -89,9 +97,21 @@ const needsUnclaimedFunds = (step: TransferStep) =>
   (Predicate.isTagged(step, "TransferDraft") &&
     step.unclaimedFunds !== undefined);
 
+const termsOf = (request: PaymentRequestOpen, binding: ExternalBinding) => ({
+  payer: binding.payer,
+  requester: binding.requester,
+  amount: request.amount,
+  request: request.id,
+});
+
 export class RequestPayments extends Context.Service<
   RequestPayments,
-  RequestPaymentsPort<Failure>
+  RequestPaymentsPort<Failure> & {
+    payExternally(
+      id: PaymentRequestId,
+      payer: AccountAddress,
+    ): Effect.Effect<ExternalPaymentStep, Failure>;
+  }
 >()("@workspace/wallet/server/RequestPayments") {
   static readonly serviceLayer = Layer.effect(
     RequestPayments,
@@ -100,6 +120,7 @@ export class RequestPayments extends Context.Service<
       const transfers = yield* Transfers;
       const wallet = yield* Wallet;
       const directory = yield* Directory;
+      const chain = yield* Chain;
 
       const discard = Effect.fn("RequestPayments.discard")(function* (
         id: PaymentRequestId,
@@ -128,6 +149,25 @@ export class RequestPayments extends Context.Service<
             Option.isNone(binding)
           )
             return;
+
+          const { external } = binding.value;
+
+          if (Option.isSome(external)) {
+            const { reference } = external.value.payment;
+
+            const settlement = yield* chain.externalPaymentSettlement(
+              external.value.payment,
+              termsOf(request, external.value),
+            );
+
+            if (Predicate.isTagged(settlement, "Applied"))
+              return yield* requests.markPaid(id, reference);
+
+            if (!Predicate.isTagged(settlement, "Undecided"))
+              yield* requests.release(id, reference);
+
+            return;
+          }
 
           const payment = Schema.decodeSync(TransferId)(binding.value.payment);
           const found = yield* transfers.find(payment);
@@ -409,11 +449,103 @@ export class RequestPayments extends Context.Service<
         });
       });
 
-      return RequestPayments.of({ pay, read, open, cancel, activity });
+      const payExternally = Effect.fn("RequestPayments.payExternally")(
+        function* (
+          id: PaymentRequestId,
+          payer: AccountAddress,
+        ): Effect.fn.Return<ExternalPaymentStep, Failure> {
+          yield* converge(id, true);
+
+          const inspected = yield* requests.inspect(id);
+
+          if (Option.isNone(inspected)) return new PaymentRequestNotFound();
+
+          const { step: request, binding } = inspected.value;
+
+          if (!(request instanceof PaymentRequestOpen)) return request;
+
+          if (Option.isSome(binding)) {
+            const now = yield* Clock.currentTimeMillis;
+
+            const resumable = Option.filter(
+              binding.value.external,
+              (held) =>
+                held.payer === payer &&
+                now < DateTime.toEpochMillis(held.payment.expiresAt),
+            );
+
+            return Option.match(resumable, {
+              onNone: () => new PaymentRequestBeingPaid(),
+              onSome: (held) =>
+                new PaymentRequestTransaction({
+                  request,
+                  transaction: held.payment.transaction,
+                }),
+            });
+          }
+
+          const requester = yield* directory.byUsername(request.requester);
+
+          if (Option.isNone(requester))
+            return new PaymentRequestRequesterUnavailable();
+
+          const { address } = requester.value;
+
+          if (address === payer) return new PaymentRequestSelfPay();
+
+          const blocked = yield* chain.receiveBlocker(
+            address,
+            request.asset,
+            request.amount,
+          );
+
+          if (Option.isSome(blocked))
+            return new PaymentRequestRequesterUnavailable();
+
+          const holdings = yield* chain.holdings(payer, [request.asset]);
+
+          const funded = Option.exists(holdings, ({ lines }) =>
+            lines.some(
+              (line) =>
+                sameAsset(line.asset, request.asset) &&
+                line.spendable >= request.amount,
+            ),
+          );
+
+          if (!funded) return new PaymentRequestPayerUnfunded();
+
+          const held: ExternalBinding = {
+            payer,
+            requester: address,
+            payment: yield* chain.draftExternalPayment({
+              payer,
+              requester: address,
+              amount: request.amount,
+              request: request.id,
+            }),
+          };
+
+          return (yield* requests.bindExternal(id, held))
+            ? new PaymentRequestTransaction({
+                request,
+                transaction: held.payment.transaction,
+              })
+            : yield* notBound(id);
+        },
+      );
+
+      return RequestPayments.of({
+        pay,
+        read,
+        open,
+        cancel,
+        activity,
+        payExternally,
+      });
     }),
   );
   static readonly layer = RequestPayments.serviceLayer.pipe(
-    Layer.provide([PaymentRequests.serviceLayer, Wallet.layer]),
+    Layer.provide([PaymentRequests.serviceLayer, Wallet.layer, chainLayer]),
     Layer.provide(Transfers.layer),
     Layer.provideMerge(Principal.layer),
     Layer.provide(Directory.layer),

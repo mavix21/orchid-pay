@@ -99,6 +99,16 @@ export class PaymentRequestLimitReached extends Schema.TaggedClass<PaymentReques
   { limit: Schema.Number },
 ) {}
 
+export class PaymentRequestPayerUnfunded extends Schema.TaggedClass<PaymentRequestPayerUnfunded>()(
+  "PaymentRequestPayerUnfunded",
+  {},
+) {}
+
+export class PaymentRequestTransaction extends Schema.TaggedClass<PaymentRequestTransaction>()(
+  "PaymentRequestTransaction",
+  { request: PaymentRequestOpen, transaction: Schema.String },
+) {}
+
 export const PayPaymentRequestRefusal = Schema.Union([
   PaymentRequestPaid,
   PaymentRequestCancelled,
@@ -110,6 +120,19 @@ export const PayPaymentRequestRefusal = Schema.Union([
 ]);
 
 export type PayPaymentRequestRefusal = typeof PayPaymentRequestRefusal.Type;
+
+export const ExternalPaymentStep = Schema.Union([
+  PaymentRequestTransaction,
+  PaymentRequestPaid,
+  PaymentRequestCancelled,
+  PaymentRequestNotFound,
+  PaymentRequestBeingPaid,
+  PaymentRequestSelfPay,
+  PaymentRequestRequesterUnavailable,
+  PaymentRequestPayerUnfunded,
+]);
+
+export type ExternalPaymentStep = typeof ExternalPaymentStep.Type;
 
 export class OpenPaymentRequests extends Schema.TaggedClass<OpenPaymentRequests>()(
   "OpenPaymentRequests",

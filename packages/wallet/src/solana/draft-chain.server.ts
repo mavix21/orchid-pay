@@ -96,36 +96,41 @@ const transferFrom = (facts: EnvelopeFacts, from: AccountAddress) =>
     Predicate.isTagged(facts, "PaymentLinkFacts")) &&
   facts.from === address(from);
 
+export const draftingFor = Effect.fn("Chain.drafting")(function* (
+  rpc: SolanaRpc,
+  sponsor: Address,
+  computeUnitLimit: number,
+) {
+  const [latest, fees] = yield* Effect.all(
+    [
+      rpc.call(
+        "getLatestBlockhash",
+        [{ commitment: preflightCommitment }],
+        LatestBlockhash,
+      ),
+      rpc.call("getRecentPrioritizationFees", [], RecentPrioritizationFees),
+    ],
+    { concurrency: rpcReadConcurrency },
+  );
+
+  const recentPrice = medianOf(
+    fees.map(({ prioritizationFee }) => BigInt(prioritizationFee)),
+  );
+
+  const highestPrice = highestComputeUnitPrice(computeUnitLimit);
+
+  return {
+    sponsor,
+    blockhash: blockhash(latest.value.blockhash),
+    lastValidBlockHeight: BigInt(latest.value.lastValidBlockHeight),
+    draftedSlot: BigInt(latest.context.slot),
+    computeUnitPrice: recentPrice < highestPrice ? recentPrice : highestPrice,
+  } satisfies Drafting;
+});
+
 export const solanaDraftChain = (rpc: SolanaRpc, sponsor: Address) => {
-  const drafting = Effect.fn("Chain.drafting")(function* (
-    computeUnitLimit: number,
-  ) {
-    const [latest, fees] = yield* Effect.all(
-      [
-        rpc.call(
-          "getLatestBlockhash",
-          [{ commitment: preflightCommitment }],
-          LatestBlockhash,
-        ),
-        rpc.call("getRecentPrioritizationFees", [], RecentPrioritizationFees),
-      ],
-      { concurrency: rpcReadConcurrency },
-    );
-
-    const recentPrice = medianOf(
-      fees.map(({ prioritizationFee }) => BigInt(prioritizationFee)),
-    );
-
-    const highestPrice = highestComputeUnitPrice(computeUnitLimit);
-
-    return {
-      sponsor,
-      blockhash: blockhash(latest.value.blockhash),
-      lastValidBlockHeight: BigInt(latest.value.lastValidBlockHeight),
-      draftedSlot: BigInt(latest.context.slot),
-      computeUnitPrice: recentPrice < highestPrice ? recentPrice : highestPrice,
-    } satisfies Drafting;
-  });
+  const drafting = (computeUnitLimit: number) =>
+    draftingFor(rpc, sponsor, computeUnitLimit);
 
   const requestFor = (envelope: UnsignedEnvelope) =>
     Effect.map(

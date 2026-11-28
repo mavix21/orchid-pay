@@ -27,6 +27,7 @@ import {
   ScreenStatus,
 } from "@/components/screen";
 import { linkPreviewMeta } from "@/links/link-preview";
+import { ExternalPay } from "@/requests/external-pay";
 import { PayRequest } from "@/requests/pay-request";
 import { paymentRequestPort } from "@/requests/payment-requests.functions";
 import { amountLabel } from "@/send/money";
@@ -146,6 +147,7 @@ function PaymentRequestPage() {
                 {m.payment_request_status_open()}
               </Badge>,
             )}
+            <ExternalPay request={request} />
             <PayAction request={request} onPay={() => setPaying(true)} />
           </>
         ),

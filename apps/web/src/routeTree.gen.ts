@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from "./routes/__root";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as WalletRouteImport } from "./routes/_wallet";
+import { Route as ActionsDotjsonRouteImport } from "./routes/actions[.]json";
 import { Route as CreateAccountRouteImport } from "./routes/create-account";
 import { Route as RRouteImport } from "./routes/r";
 import { Route as RestoreRouteImport } from "./routes/restore";
@@ -24,6 +25,7 @@ import { Route as WalletAppHomeRouteImport } from "./routes/_wallet/_app/home";
 import { Route as WalletAppSettingsRouteImport } from "./routes/_wallet/_app/settings";
 import { Route as WalletSendIndexRouteImport } from "./routes/_wallet/send/index";
 import { Route as WalletSendAssetRouteImport } from "./routes/_wallet/send/$asset";
+import { Route as ApiActionsPayIdRouteImport } from "./routes/api/actions/pay/$id";
 
 const IndexRoute = IndexRouteImport.update({
   id: "/",
@@ -32,6 +34,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any);
 const WalletRoute = WalletRouteImport.update({
   id: "/_wallet",
+  getParentRoute: () => rootRouteImport,
+} as any);
+const ActionsDotjsonRoute = ActionsDotjsonRouteImport.update({
+  id: "/actions.json",
+  path: "/actions.json",
   getParentRoute: () => rootRouteImport,
 } as any);
 const CreateAccountRoute = CreateAccountRouteImport.update({
@@ -98,9 +105,15 @@ const WalletSendAssetRoute = WalletSendAssetRouteImport.update({
   path: "/send/$asset",
   getParentRoute: () => WalletRoute,
 } as any);
+const ApiActionsPayIdRoute = ApiActionsPayIdRouteImport.update({
+  id: "/api/actions/pay/$id",
+  path: "/api/actions/pay/$id",
+  getParentRoute: () => rootRouteImport,
+} as any);
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
+  "/actions.json": typeof ActionsDotjsonRoute;
   "/create-account": typeof CreateAccountRoute;
   "/r": typeof RRoute;
   "/restore": typeof RestoreRoute;
@@ -113,9 +126,11 @@ export interface FileRoutesByFullPath {
   "/settings": typeof WalletAppSettingsRoute;
   "/send/$asset": typeof WalletSendAssetRoute;
   "/send/": typeof WalletSendIndexRoute;
+  "/api/actions/pay/$id": typeof ApiActionsPayIdRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
+  "/actions.json": typeof ActionsDotjsonRoute;
   "/create-account": typeof CreateAccountRoute;
   "/r": typeof RRoute;
   "/restore": typeof RestoreRoute;
@@ -128,11 +143,13 @@ export interface FileRoutesByTo {
   "/settings": typeof WalletAppSettingsRoute;
   "/send/$asset": typeof WalletSendAssetRoute;
   "/send": typeof WalletSendIndexRoute;
+  "/api/actions/pay/$id": typeof ApiActionsPayIdRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
   "/_wallet": typeof WalletRouteWithChildren;
+  "/actions.json": typeof ActionsDotjsonRoute;
   "/create-account": typeof CreateAccountRoute;
   "/r": typeof RRoute;
   "/restore": typeof RestoreRoute;
@@ -146,11 +163,13 @@ export interface FileRoutesById {
   "/_wallet/_app/settings": typeof WalletAppSettingsRoute;
   "/_wallet/send/$asset": typeof WalletSendAssetRoute;
   "/_wallet/send/": typeof WalletSendIndexRoute;
+  "/api/actions/pay/$id": typeof ApiActionsPayIdRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | "/"
+    | "/actions.json"
     | "/create-account"
     | "/r"
     | "/restore"
@@ -162,10 +181,12 @@ export interface FileRouteTypes {
     | "/home"
     | "/settings"
     | "/send/$asset"
-    | "/send/";
+    | "/send/"
+    | "/api/actions/pay/$id";
   fileRoutesByTo: FileRoutesByTo;
   to:
     | "/"
+    | "/actions.json"
     | "/create-account"
     | "/r"
     | "/restore"
@@ -177,11 +198,13 @@ export interface FileRouteTypes {
     | "/home"
     | "/settings"
     | "/send/$asset"
-    | "/send";
+    | "/send"
+    | "/api/actions/pay/$id";
   id:
     | "__root__"
     | "/"
     | "/_wallet"
+    | "/actions.json"
     | "/create-account"
     | "/r"
     | "/restore"
@@ -194,16 +217,19 @@ export interface FileRouteTypes {
     | "/_wallet/_app/home"
     | "/_wallet/_app/settings"
     | "/_wallet/send/$asset"
-    | "/_wallet/send/";
+    | "/_wallet/send/"
+    | "/api/actions/pay/$id";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute;
   WalletRoute: typeof WalletRouteWithChildren;
+  ActionsDotjsonRoute: typeof ActionsDotjsonRoute;
   CreateAccountRoute: typeof CreateAccountRoute;
   RRoute: typeof RRoute;
   RestoreRoute: typeof RestoreRoute;
   PayIdRoute: typeof PayIdRoute;
+  ApiActionsPayIdRoute: typeof ApiActionsPayIdRoute;
 }
 
 declare module "@tanstack/react-router" {
@@ -220,6 +246,13 @@ declare module "@tanstack/react-router" {
       path: "";
       fullPath: "/";
       preLoaderRoute: typeof WalletRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/actions.json": {
+      id: "/actions.json";
+      path: "/actions.json";
+      fullPath: "/actions.json";
+      preLoaderRoute: typeof ActionsDotjsonRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/create-account": {
@@ -313,6 +346,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof WalletSendAssetRouteImport;
       parentRoute: typeof WalletRoute;
     };
+    "/api/actions/pay/$id": {
+      id: "/api/actions/pay/$id";
+      path: "/api/actions/pay/$id";
+      fullPath: "/api/actions/pay/$id";
+      preLoaderRoute: typeof ApiActionsPayIdRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
   }
 }
 
@@ -356,10 +396,12 @@ const WalletRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   WalletRoute: WalletRouteWithChildren,
+  ActionsDotjsonRoute: ActionsDotjsonRoute,
   CreateAccountRoute: CreateAccountRoute,
   RRoute: RRoute,
   RestoreRoute: RestoreRoute,
   PayIdRoute: PayIdRoute,
+  ApiActionsPayIdRoute: ApiActionsPayIdRoute,
 };
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

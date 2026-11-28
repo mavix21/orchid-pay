@@ -31,6 +31,7 @@ import {
   Chain,
   ChainUnreachable,
   DraftPurpose,
+  ExternalPayment,
   type LinkReceive,
   MemoRule,
   Sealed,
@@ -438,6 +439,31 @@ export const memoryChain = Layer.succeed(
 
         return Effect.void;
       }),
+    draftExternalPayment: () =>
+      Effect.suspend(() =>
+        world.ledgerDown
+          ? ledgerDown()
+          : Effect.map(Clock.currentTimeMillis, (now) => {
+              const transaction = `memory-external-${crypto.randomUUID()}`;
+
+              return new ExternalPayment({
+                reference: randomAddress(),
+                transaction,
+                envelope: transaction,
+                expiresAt: DateTime.makeUnsafe(
+                  (Math.floor(now / 1000) + draftLifetime) * 1000,
+                ),
+              });
+            }),
+      ),
+    externalPaymentSettlement: (payment) =>
+      Effect.suspend(() =>
+        world.ledgerDown
+          ? ledgerDown()
+          : Effect.succeed(
+              world.evidence.get(payment.reference) ?? new Undecided(),
+            ),
+      ),
     settlement: (sealed) =>
       Effect.suspend(() =>
         world.unreadable.has(sealed.hash)

@@ -274,3 +274,20 @@ export const paymentRequests = pgTable(
     ),
   ],
 );
+
+export const externalPayments = pgTable(
+  "external_payments",
+  {
+    reference: text().primaryKey(),
+    request: text()
+      .notNull()
+      .references(() => paymentRequests.id),
+    payer: text().notNull(),
+    requester: text().notNull(),
+    transaction: text().notNull(),
+    envelope: text().notNull(),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("external_payments_request").on(table.request)],
+);

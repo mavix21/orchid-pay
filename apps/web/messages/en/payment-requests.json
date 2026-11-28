@@ -58,5 +58,15 @@
   "pay_request_being_paid": "A payment for this request is in progress. Try again in a few minutes.",
   "pay_request_self": "You cannot pay your own request.",
   "pay_request_requester_unavailable": "@{username} cannot receive this payment into their account right now.",
-  "pay_request_payment_taken": "That payment was already used outside this request. The request is still open."
+  "pay_request_payment_taken": "That payment was already used outside this request. The request is still open.",
+  "pay_request_external_title": "Pay from a Solana wallet",
+  "pay_request_external_note": "Scan this code with a Solana wallet such as Phantom or Solflare to pay {amount}.",
+  "pay_request_external_open": "Open in my wallet",
+  "pay_request_external_qr_label": "Solana Pay code to pay {amount}",
+  "pay_request_action_label": "Pay {amount}",
+  "pay_request_action_description": "Pay it from your Solana wallet. It goes straight to @{username}'s Orchid account.",
+  "pay_request_action_paying": "Paying @{username}'s request for {amount}",
+  "pay_request_payer_unfunded": "This wallet doesn't have enough to pay this request.",
+  "pay_request_account_invalid": "That wallet address is not valid.",
+  "pay_request_requester_cannot_receive": "The requester can't receive this payment right now."
 }

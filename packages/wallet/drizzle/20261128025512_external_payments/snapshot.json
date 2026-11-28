@@ -1,0 +1,251 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "0564437c-4527-47f9-9de5-ff21784fe673",
+  "prevIds": ["29da4949-7ff6-409b-965d-6ea641229136"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "external_payments"],
+      "writes": [
+        "s|tbl|public.external_payments",
+        "n|tbl|public.external_payments",
+        "e|tbl|public.external_payments",
+        "n|rel|public.external_payments",
+        "n|type|public.external_payments",
+        "n|rel|public.external_payments_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "external_payments",
+        "external_payments_request"
+      ],
+      "writes": [
+        "s|idx|public.external_payments_request",
+        "n|idx|public.external_payments_request",
+        "e|idx|public.external_payments_request",
+        "n|rel|public.external_payments_request"
+      ],
+      "reads": [
+        "n|tbl|public.external_payments",
+        "n|sch|public",
+        "n|col|public.external_payments.request"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "external_payments"],
+      "writes": [
+        "s|fk|public.external_payments.external_payments_request_payment_requests_id_fkey",
+        "n|fk|public.external_payments.external_payments_request_payment_requests_id_fkey",
+        "e|fk|public.external_payments.external_payments_request_payment_requests_id_fkey",
+        "n|con|public.external_payments.external_payments_request_payment_requests_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.external_payments",
+        "n|sch|public",
+        "n|tbl|public.payment_requests",
+        "n|sch|public",
+        "n|col|public.external_payments.request",
+        "n|col|public.payment_requests.id",
+        "e|uniqueness|public.payment_requests.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "external_payments",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "reference",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "request",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "payer",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "requester",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "transaction",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "envelope",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "expiresAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "createdAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "external_payments_request",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "request",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "external_payments_request_payment_requests_id_fkey",
+        "nameExplicit": false,
+        "columns": ["request"],
+        "schemaTo": "public",
+        "tableTo": "payment_requests",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "external_payments",
+        "name": "external_payments_pkey",
+        "columns": ["reference"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

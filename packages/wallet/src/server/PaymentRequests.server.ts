@@ -21,7 +21,7 @@ import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import { isSqlError } from "effect/sql/SqlError";
 import {
-  type AccountAddress,
+  AccountAddress,
   AssetCode,
   AssetId,
   type CancelPaymentRequestStep,
@@ -52,14 +52,17 @@ import {
   sameAsset,
 } from "../contract";
 import { openPaymentRequestQuota } from "../policy";
+import { ExternalPayment } from "./chain-request-payments.server";
 import { epochAt, network } from "../record-network";
 import { Directory } from "./Directory.server";
 import { Principal } from "./Principal.server";
 import { walletLock } from "./slot.server";
 import { StoreFailure } from "./store-failure.server";
-import { paymentRequests, usernames } from "./tables.server";
+import { externalPayments, paymentRequests, usernames } from "./tables.server";
 
 type PaymentRequestRow = typeof paymentRequests.$inferSelect;
+
+type ExternalPaymentRow = typeof externalPayments.$inferSelect;
 
 const requestOf = (row: PaymentRequestRow) => ({
   id: Schema.decodeSync(PaymentRequestId)(row.id),
@@ -115,9 +118,16 @@ const violatesPaymentIndex = (error: EffectDrizzleQueryError) =>
       failure.reason.constraint === paymentIndex,
   );
 
+export interface ExternalBinding {
+  readonly payment: ExternalPayment;
+  readonly payer: AccountAddress;
+  readonly requester: AccountAddress;
+}
+
 export interface RequestBinding {
   readonly payment: string;
   readonly expiresAt: Option.Option<DateTime.Utc>;
+  readonly external: Option.Option<ExternalBinding>;
 }
 
 export interface InspectedRequest {
@@ -128,7 +138,21 @@ export interface InspectedRequest {
   readonly binding: Option.Option<RequestBinding>;
 }
 
-const inspectedOf = (row: PaymentRequestRow): InspectedRequest => ({
+const externalBindingOf = (row: ExternalPaymentRow): ExternalBinding => ({
+  payment: new ExternalPayment({
+    reference: row.reference,
+    transaction: row.transaction,
+    envelope: row.envelope,
+    expiresAt: DateTime.fromDateUnsafe(row.expiresAt),
+  }),
+  payer: Schema.decodeSync(AccountAddress)(row.payer),
+  requester: Schema.decodeSync(AccountAddress)(row.requester),
+});
+
+const inspectedOf = (
+  row: PaymentRequestRow,
+  external: ExternalPaymentRow | null,
+): InspectedRequest => ({
   step: stepOf(row),
   binding: Option.map(Option.fromNullishOr(row.payment), (payment) => ({
     payment,
@@ -136,6 +160,7 @@ const inspectedOf = (row: PaymentRequestRow): InspectedRequest => ({
       Option.fromNullishOr(row.paymentExpiresAt),
       DateTime.fromDateUnsafe,
     ),
+    external: Option.map(Option.fromNullishOr(external), externalBindingOf),
   })),
 });
 
@@ -156,13 +181,17 @@ export class PaymentRequests extends Context.Service<
       payment: TransferId,
       expiresAt: DateTime.Utc,
     ): Effect.Effect<boolean | PaymentRequestPaymentTaken, StoreFailure>;
+    bindExternal(
+      id: PaymentRequestId,
+      binding: ExternalBinding,
+    ): Effect.Effect<boolean, StoreFailure>;
     release(
       id: PaymentRequestId,
-      payment: TransferId,
+      payment: TransferId | ExternalPayment["reference"],
     ): Effect.Effect<void, StoreFailure>;
     markPaid(
       id: PaymentRequestId,
-      payment: TransferId,
+      payment: TransferId | ExternalPayment["reference"],
     ): Effect.Effect<void, StoreFailure>;
   }
 >()("@workspace/wallet/server/PaymentRequests") {
@@ -385,7 +414,23 @@ export class PaymentRequests extends Context.Service<
       const inspect = Effect.fn("PaymentRequests.inspect")(function* (
         id: PaymentRequestId,
       ) {
-        return Option.map(yield* find(id), inspectedOf);
+        const scope = yield* current;
+
+        const [found] = yield* stored(
+          db
+            .select({ request: paymentRequests, external: externalPayments })
+            .from(paymentRequests)
+            .leftJoin(
+              externalPayments,
+              eq(externalPayments.reference, paymentRequests.payment),
+            )
+            .where(and(scope, eq(paymentRequests.id, id))),
+        );
+
+        return Option.map(
+          Option.fromNullishOr(found),
+          ({ request, external }) => inspectedOf(request, external),
+        );
       });
 
       const openBound = Effect.fn("PaymentRequests.openBound")(function* (
@@ -446,7 +491,10 @@ export class PaymentRequests extends Context.Service<
         );
       });
 
-      const bindingTo = (id: PaymentRequestId, payment: TransferId) =>
+      const bindingTo = (
+        id: PaymentRequestId,
+        payment: TransferId | ExternalPayment["reference"],
+      ) =>
         Effect.map(current, (scope) =>
           and(
             scope,
@@ -495,9 +543,53 @@ export class PaymentRequests extends Context.Service<
         return held.length > 0;
       });
 
+      const bindExternal = Effect.fn("PaymentRequests.bindExternal")(function* (
+        id: PaymentRequestId,
+        binding: ExternalBinding,
+      ) {
+        const scope = yield* current;
+        const { payment } = binding;
+
+        return yield* stored(
+          db.transaction((tx) =>
+            Effect.gen(function* () {
+              const bound = yield* tx
+                .update(paymentRequests)
+                .set({
+                  payment: payment.reference,
+                  paymentExpiresAt: DateTime.toDateUtc(payment.expiresAt),
+                })
+                .where(
+                  and(
+                    scope,
+                    eq(paymentRequests.id, id),
+                    eq(paymentRequests.status, "open"),
+                    isNull(paymentRequests.payment),
+                  ),
+                )
+                .returning({ id: paymentRequests.id });
+
+              if (bound.length === 0) return false;
+
+              yield* tx.insert(externalPayments).values({
+                reference: payment.reference,
+                request: id,
+                payer: binding.payer,
+                requester: binding.requester,
+                transaction: payment.transaction,
+                envelope: payment.envelope,
+                expiresAt: DateTime.toDateUtc(payment.expiresAt),
+              });
+
+              return true;
+            }),
+          ),
+        );
+      });
+
       const release = Effect.fn("PaymentRequests.release")(function* (
         id: PaymentRequestId,
-        payment: TransferId,
+        payment: TransferId | ExternalPayment["reference"],
       ) {
         yield* stored(
           db
@@ -509,7 +601,7 @@ export class PaymentRequests extends Context.Service<
 
       const markPaid = Effect.fn("PaymentRequests.markPaid")(function* (
         id: PaymentRequestId,
-        payment: TransferId,
+        payment: TransferId | ExternalPayment["reference"],
       ) {
         const now = yield* Clock.currentTimeMillis;
 
@@ -534,6 +626,7 @@ export class PaymentRequests extends Context.Service<
         openBound,
         paidBy,
         bind,
+        bindExternal,
         release,
         markPaid,
       });

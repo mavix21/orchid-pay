@@ -49,6 +49,10 @@ export const encodeWireTransaction = ({
 }: WireTransaction) =>
   encoder.encode({ signatures: [...signatures], messageBytes });
 
+export const decodeWireTransaction = (
+  transactionBytes: ReadonlyUint8Array,
+): WireTransaction => decoder.decode(transactionBytes);
+
 export const signersOf = (
   messageBytes: ReadonlyUint8Array,
 ): ReadonlyArray<Address> => {
@@ -58,4 +62,4 @@ export const signersOf = (
 };
 
 export const holderOf = (transactionBytes: ReadonlyUint8Array) =>
-  signersOf(decoder.decode(transactionBytes).messageBytes)[1];
+  signersOf(decodeWireTransaction(transactionBytes).messageBytes)[1];
