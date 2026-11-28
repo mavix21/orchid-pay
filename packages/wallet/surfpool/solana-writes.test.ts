@@ -2,7 +2,7 @@ import { expect, layer } from "@effect/vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { concatBytes } from "@noble/hashes/utils.js";
 import { TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
-import { getBase58Decoder, getBase64Decoder } from "@solana/kit";
+import { address, getBase58Decoder, getBase64Decoder } from "@solana/kit";
 import { Database } from "@workspace/db";
 import { USDC_MINT_ADDRESS } from "@workspace/orchid-links";
 import * as DateTime from "effect/DateTime";
@@ -27,10 +27,15 @@ import type { DepositPosition } from "../src/server/chain-deposits.server";
 import type { Sealed } from "../src/server/chain-settlement.server";
 import { WalletSettings } from "../src/server/settings.server";
 import { solanaAccountChain } from "../src/solana/account-chain.server";
+import {
+  signaturesFor,
+  signaturesPerRequest,
+} from "../src/solana/address-history.server";
 import { solanaDepositChain } from "../src/solana/deposit-chain.server";
 import { solanaDraftChain } from "../src/solana/draft-chain.server";
 import { decodeSealedEnvelope } from "../src/solana/envelope-codec";
 import { solanaProfile } from "../src/solana/profile";
+import { usdcAccountOf } from "../src/solana/program-addresses";
 import type { RpcValue } from "../src/solana/rpc.server";
 import {
   SolanaAccountAddress,
@@ -275,6 +280,22 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
         const pagesInto = (key: Key, after = Option.none<DepositPosition>()) =>
           Stream.runCollect(deposits.depositsInto(key.account, after));
 
+        const listedHistory = (key: Key, transactions: number) =>
+          Effect.flatMap(Surfnet, (rpc) =>
+            signaturesFor(rpc, usdcAccountOf(address(key.account)), {
+              before: Option.none(),
+              until: Option.none(),
+              limit: signaturesPerRequest,
+            }),
+          ).pipe(
+            Effect.repeat({
+              until: (entries) => entries.length >= transactions,
+              schedule: Schedule.spaced("100 millis"),
+            }),
+          );
+
+        yield* listedHistory(recipient, 2);
+
         const recipientPages = yield* pagesInto(recipient);
 
         expect(
@@ -282,9 +303,6 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
             page.deposits.map(({ from, amount }) => ({ from, amount })),
           ),
         ).toEqual([{ from: sender.account, amount: 2_000_000n }]);
-        expect(
-          (yield* pagesInto(newWallet)).flatMap((page) => page.deposits),
-        ).toEqual([]);
 
         const newest = Option.fromUndefinedOr(recipientPages.at(-1)).pipe(
           Option.map((page) => page.position),

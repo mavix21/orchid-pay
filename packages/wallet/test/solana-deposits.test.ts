@@ -40,7 +40,7 @@ const RpcRequest = Schema.fromJsonString(
         Schema.Struct({
           commitment: Schema.Literal("finalized"),
           encoding: Schema.Literal("jsonParsed"),
-          maxSupportedTransactionVersion: Schema.Literal(0),
+          maxSupportedTransactionVersion: Schema.Literal(1),
         }),
       ]),
     }),
@@ -147,10 +147,16 @@ const failedBetween = Array.from({ length: signaturesPerRequest }, (_, index) =>
   signed(11 + index, { InstructionError: [0, "Custom"] }),
 );
 
-const history = [oldest, ...failedBetween, newest];
+const vaultClaim = signed(signaturesPerRequest + 15);
+
+const history = [oldest, ...failedBetween, vaultClaim, newest];
 
 const transactions = new Map<string, Schema.Json>([
   [oldest.signature, transferInto(oldest.slot, sender, 1_000_000n)],
+  [
+    vaultClaim.signature,
+    transferInto(vaultClaim.slot, randomUnclaimedFundsId(), 3_000_000n),
+  ],
   [newest.signature, transferInto(newest.slot, sender, 2_000_000n)],
 ]);
 
@@ -158,7 +164,7 @@ const depositsOf = (pages: ReadonlyArray<DepositPage>) =>
   pages.flatMap((page) => page.deposits.map(({ amount }) => amount));
 
 it.effect(
-  "reads deposits oldest first across signature pages, skips failed transactions and resumes after the stored position",
+  "reads deposits oldest first across signature pages, skips failed transactions and a claim out of an off-curve vault, and resumes after the stored position",
   () =>
     Effect.gen(function* () {
       const chain = solanaDepositChain(yield* rpcOf({ history, transactions }));

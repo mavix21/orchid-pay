@@ -145,7 +145,7 @@ export const solanaDepositChain = (rpc: SolanaRpc): DepositChain => {
         {
           commitment: readCommitment,
           encoding: "jsonParsed",
-          maxSupportedTransactionVersion: 0,
+          maxSupportedTransactionVersion: 1,
         },
       ],
       Schema.Json,
