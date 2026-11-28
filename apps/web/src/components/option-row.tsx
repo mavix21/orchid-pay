@@ -15,31 +15,23 @@ export function OptionRow({
   media,
   mediaVariant = "icon",
   render = <button type="button" />,
-  disabled = false,
 }: {
   title: string;
   description: string;
   media: React.ReactNode;
   mediaVariant?: "default" | "icon" | "muted";
   render?: useRender.RenderProp;
-  disabled?: boolean;
 }) {
   return (
-    <Item
-      variant="outline"
-      className="text-left"
-      render={disabled ? <button type="button" disabled /> : render}
-    >
+    <Item variant="outline" className="text-left" render={render}>
       <ItemMedia variant={mediaVariant}>{media}</ItemMedia>
       <ItemContent>
         <ItemTitle>{title}</ItemTitle>
         <ItemDescription>{description}</ItemDescription>
       </ItemContent>
-      {disabled ? null : (
-        <ItemActions>
-          <ChevronRightIcon absoluteStrokeWidth />
-        </ItemActions>
-      )}
+      <ItemActions>
+        <ChevronRightIcon absoluteStrokeWidth />
+      </ItemActions>
     </Item>
   );
 }

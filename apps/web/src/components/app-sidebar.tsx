@@ -128,7 +128,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-1">
           <SidebarMenu className="min-w-0 flex-1">
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg">
+              <SidebarMenuButton size="lg" render={<Link to="/settings" />}>
                 <SidebarIdentity />
               </SidebarMenuButton>
             </SidebarMenuItem>

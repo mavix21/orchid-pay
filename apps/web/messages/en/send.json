@@ -14,7 +14,6 @@
   "send_destination_address_note": "Another wallet or an exchange",
   "send_destination_link": "With a payment link",
   "send_destination_link_note": "Someone without Orchid",
-  "send_destination_phone": "To a phone",
   "send_phone_soon": "Sending to a phone is coming soon",
   "send_link_offer_note": "You can send {amount} with a payment link: whoever opens it receives it. Your money didn't move.",
   "send_link_offer_accept": "Send as a payment link",

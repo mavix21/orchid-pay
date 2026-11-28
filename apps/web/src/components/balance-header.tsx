@@ -1,10 +1,4 @@
-import {
-  ArrowDownLeftIcon,
-  ArrowUpRightIcon,
-  LinkIcon,
-  PlusIcon,
-  QrCodeIcon,
-} from "lucide-react";
+import { ArrowDownLeftIcon, ArrowUpRightIcon, LinkIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
   type Amount,
@@ -46,13 +40,6 @@ export function BalanceHeader({
         >
           @{username}
         </p>
-        <button
-          type="button"
-          aria-label={m.home_qr()}
-          className="rounded-sm text-icon-muted outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <QrCodeIcon className="size-6" />
-        </button>
       </div>
       <div className="flex flex-col gap-1">
         <p className="flex items-baseline font-display text-display">
@@ -76,7 +63,6 @@ export function BalanceHeader({
           icon={<ArrowDownLeftIcon />}
           render={<Link to="/receive" data-testid="open-receive" />}
         />
-        <ActionTile label={m.home_action_add()} icon={<PlusIcon />} />
       </div>
     </section>
   );
