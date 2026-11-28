@@ -14,7 +14,8 @@
     ".windsurf/**",
     "tools/oxlint/anti-slop/**",
     "apps/web/src/routeTree.gen.ts",
-    "apps/web/worker-configuration.d.ts"
+    "apps/web/worker-configuration.d.ts",
+    "packages/orchid-links/src/generated/**"
   ],
   "jsPlugins": [
     {
