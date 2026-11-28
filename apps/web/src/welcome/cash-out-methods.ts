@@ -49,6 +49,33 @@ export const cashOuts: CashOuts = [
     longitude: -46.63,
     latitude: -23.55,
   },
+  {
+    flag: asset("flags/ke.svg"),
+    method: "M-Pesa",
+    logo: asset("logos/mpesa.svg"),
+    amount: "KSh 2,580",
+    receiverUsername: "rosa",
+    longitude: 36.82,
+    latitude: -1.29,
+  },
+  {
+    flag: asset("flags/in.svg"),
+    method: "UPI",
+    logo: asset("logos/upi.svg"),
+    amount: "₹ 1,760",
+    receiverUsername: "priya",
+    longitude: 72.88,
+    latitude: 19.08,
+  },
+  {
+    flag: asset("flags/ph.svg"),
+    method: "GCash",
+    logo: asset("logos/gcash.svg"),
+    amount: "₱ 1,160",
+    receiverUsername: "rico",
+    longitude: 120.98,
+    latitude: 14.6,
+  },
 ];
 
 export const cashOutAt = (turn: number) =>
