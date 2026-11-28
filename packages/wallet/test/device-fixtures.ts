@@ -155,6 +155,5 @@ export const transferDraftOf = (
       expiresAt: DateTime.makeUnsafe((at + lifetime) * 1000),
     }),
     recipient,
-    memoRequired: false,
     unclaimedFunds,
   });

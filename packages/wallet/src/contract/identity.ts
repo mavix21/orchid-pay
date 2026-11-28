@@ -68,9 +68,6 @@ export const AccountAddress = schemas.account;
 
 export type AccountAddress = typeof AccountAddress.Type;
 
-export const forbidsMemo = (address: string) =>
-  addressRules.forbidsMemo(address);
-
 export class Profile extends Schema.Class<Profile>("@workspace/wallet/Profile")(
   {
     username: Username,

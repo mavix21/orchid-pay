@@ -2,8 +2,9 @@ import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import {
-  type AccountAddress,
+  AccountAddress,
   AssetUnsupported,
   type DestinationAddress,
   UnclaimedFundsLimitReached,
@@ -55,7 +56,9 @@ export const deliveryFlow = Effect.gen(function* () {
       return DeliveryRoute.PaymentLink({ address: recipient.address });
     }
 
-    const receivingAccount = chain.receivingAccount(recipient.address);
+    const receivingAccount = Schema.decodeSync(AccountAddress)(
+      recipient.address,
+    );
 
     const blocker = yield* chain.receiveBlocker(
       receivingAccount,

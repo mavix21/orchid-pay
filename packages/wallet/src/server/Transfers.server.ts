@@ -134,7 +134,6 @@ export class Transfers extends Context.Service<
 
     activity(
       address: AccountAddress,
-      destinationPrefixes: ReadonlyArray<string>,
       before?: ActivityCursor,
     ): Effect.Effect<ActivityPage, StoreFailure>;
 
@@ -561,13 +560,12 @@ export class Transfers extends Context.Service<
           ),
         fundedLink: (link) =>
           wrap(fundedLinkAt(link).pipe(Effect.provideService(Database, db))),
-        activity: (address, destinationPrefixes, before) =>
+        activity: (address, before) =>
           wrap(
             Clock.currentTimeMillis.pipe(
               Effect.flatMap((now) =>
                 activityFor({
                   address,
-                  destinationPrefixes,
                   network,
                   epoch: epochAt(now),
                   before,

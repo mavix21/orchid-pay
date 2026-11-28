@@ -101,7 +101,6 @@ const newestFirst = (left: Candidate, right: Candidate) =>
 
 export interface ActivityQuery {
   readonly address: AccountAddress;
-  readonly destinationPrefixes: ReadonlyArray<string>;
   readonly network: string;
   readonly epoch: string;
   readonly before: ActivityCursor | undefined;
@@ -109,7 +108,6 @@ export interface ActivityQuery {
 
 export const activityFor = Effect.fn("Transfers.activity")(function* ({
   address,
-  destinationPrefixes,
   network,
   epoch,
   before,
@@ -193,13 +191,7 @@ export const activityFor = Effect.fn("Transfers.activity")(function* ({
           ),
           and(
             sql`${action} ->> '_tag' = 'ReceiveLinkExternal'`,
-            or(
-              sql`${action} ->> 'destination' = ${address}`,
-              ...destinationPrefixes.map(
-                (prefix) =>
-                  sql`starts_with(${action} ->> 'destination', ${prefix})`,
-              ),
-            ),
+            sql`${action} ->> 'destination' = ${address}`,
           ),
         ),
         olderThan(assetOrders.concludedAt, assetOrders.id, cursor),

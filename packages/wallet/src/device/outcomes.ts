@@ -253,7 +253,6 @@ export class PaymentReview extends Schema.TaggedClass<PaymentReview>()(
     amount: PositiveAmount,
     memo: Schema.optional(PaymentMemo),
     claimable: Schema.Boolean,
-    memoRequired: Schema.Boolean,
     expiresAt: Schema.DateTimeUtcFromString,
   },
 ) {}
@@ -516,7 +515,6 @@ export class ExternalLinkReview extends Schema.TaggedClass<ExternalLinkReview>()
     asset: Asset,
     amount: PositiveAmount,
     memo: Schema.optional(PaymentMemo),
-    memoRequired: Schema.Boolean,
     sender: Profile,
   },
 ) {}

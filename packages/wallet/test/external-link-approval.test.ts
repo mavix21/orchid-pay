@@ -67,7 +67,6 @@ const tamperedExternalDrafts: ReadonlyArray<
     string,
     () => UnsignedEnvelope,
     {
-      readonly memoRequired?: boolean;
       readonly intentMemo?: PaymentMemo | undefined;
     },
   ]
@@ -83,11 +82,6 @@ const tamperedExternalDrafts: ReadonlyArray<
     {},
   ],
   ["dropping the requested memo", () => externalDraft({ memo: undefined }), {}],
-  [
-    "claiming memoRequired without a memo",
-    () => externalDraft({ memo: undefined }),
-    { memoRequired: true, intentMemo: undefined },
-  ],
   [
     "changing the memo text",
     () =>
@@ -135,7 +129,6 @@ it.live.each(tamperedExternalDrafts)(
                 envelope: build(),
                 expiresAt: DateTime.makeUnsafe((at + draftLifetime) * 1000),
               }),
-              memoRequired: options.memoRequired ?? false,
             });
           }),
       });
@@ -194,7 +187,6 @@ it.live(
                 }),
                 expiresAt: DateTime.makeUnsafe((at + draftLifetime) * 1000),
               }),
-              memoRequired: true,
             });
           }),
       });
@@ -212,7 +204,6 @@ it.live(
       assertTagged(reviewed, "ExternalLinkReview");
       expect(reviewed.destination).toBe(actors.stranger);
       expect(reviewed.memo).toEqual(textMemo);
-      expect(reviewed.memoRequired).toBe(true);
 
       const settled = yield* effects.confirmExternalLinkClaim(
         reviewed,

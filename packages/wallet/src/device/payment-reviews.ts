@@ -71,7 +71,6 @@ const reviewFrom = (
     amount: facts.amount,
     memo: Predicate.isTagged(facts, "PaymentFacts") ? facts.memo : undefined,
     claimable: !Predicate.isTagged(facts, "PaymentFacts"),
-    memoRequired: draft.memoRequired,
     expiresAt: DateTime.makeUnsafe(
       approvalDeadline(facts.maxTime, draft.request),
     ),

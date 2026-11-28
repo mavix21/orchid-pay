@@ -31,10 +31,6 @@ export const activityFlow = Effect.gen(function* () {
 
     if (before === undefined) yield* catchUp(address);
 
-    return yield* transfers.activity(
-      address,
-      chain.destinationPrefixesPayingInto(address),
-      before,
-    );
+    return yield* transfers.activity(address, before);
   });
 });

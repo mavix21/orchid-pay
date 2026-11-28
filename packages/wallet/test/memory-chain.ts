@@ -31,7 +31,6 @@ import {
   DraftPurpose,
   ExternalPayment,
   type LinkReceive,
-  MemoRule,
   Sealed,
   Undecided,
 } from "../src/server/Chain.server";
@@ -72,15 +71,9 @@ const sealedDrafts = new Map<string, RecordedDraft>();
 
 const reserveSponsor = randomAddress();
 
-export const exchanges = new Map<
-  AccountAddress,
-  { readonly exchange: string; readonly source: string }
->();
-
 export const resetMemoryChain = () => {
   drafts.clear();
   sealedDrafts.clear();
-  exchanges.clear();
 };
 
 export const memorySigningPayload = (envelope: UnsignedEnvelope) =>
@@ -302,22 +295,6 @@ export const memoryChain = Layer.succeed(
         address,
         DraftedChange.AssetChanged({ sequence: nextSequence(address), plan }),
       ),
-    receivingAccount: (destination) =>
-      Schema.decodeSync(AccountAddress)(destination),
-    destinationPrefixesPayingInto: () => [],
-    memoRule: (destination) =>
-      Effect.suspend(() => {
-        if (world.ledgerDown) return ledgerDown();
-
-        const address = Schema.decodeSync(AccountAddress)(destination);
-        const known = exchanges.get(address);
-
-        return Effect.succeed(
-          known
-            ? MemoRule.MemoRequired({ account: address, ...known })
-            : MemoRule.MemoOptional(),
-        );
-      }),
     receiveBlocker,
     draftCurrent: (request, purpose) =>
       Effect.suspend(() => {

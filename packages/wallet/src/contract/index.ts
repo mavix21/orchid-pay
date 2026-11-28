@@ -104,15 +104,6 @@ export class NotSponsored extends Schema.TaggedClass<NotSponsored>()(
   {},
 ) {}
 
-export class ExternalMemoRequired extends Schema.TaggedClass<ExternalMemoRequired>()(
-  "ExternalMemoRequired",
-  {
-    address: AccountAddress,
-    exchange: Schema.NonEmptyString,
-    source: Schema.String,
-  },
-) {}
-
 export class WalletClaim extends Schema.Class<WalletClaim>(
   "@workspace/wallet/WalletClaim",
 )({
@@ -217,7 +208,7 @@ export type PaymentMemo = typeof PaymentMemo.Type;
 
 export class MemoNotAllowed extends Schema.TaggedClass<MemoNotAllowed>()(
   "MemoNotAllowed",
-  { reason: Schema.Literals(["orchid", "muxed", "payment_link"]) },
+  { reason: Schema.Literals(["orchid", "payment_link"]) },
 ) {}
 
 export const UsernameRecipient = Schema.TaggedStruct("Username", {
@@ -344,7 +335,6 @@ export class TransferDraft extends Schema.TaggedClass<TransferDraft>()(
   {
     request: SigningRequest,
     recipient: ResolvedRecipient,
-    memoRequired: Schema.Boolean,
 
     unclaimedFunds: Schema.optional(UnclaimedFundsId),
   },
@@ -471,7 +461,6 @@ export const TransferStep = Schema.Union([
   InsufficientBalance,
   SenderBusy,
   InvalidAddress,
-  ExternalMemoRequired,
   MemoNotAllowed,
   RecipientCannotReceive,
   UnclaimedFundsLimitReached,
@@ -488,21 +477,15 @@ export const PayPaymentRequestStep = Schema.Union([
 
 export type PayPaymentRequestStep = typeof PayPaymentRequestStep.Type;
 
-const memoRequirementFields = {
-  memoRequired: Schema.Boolean,
-  exchange: Schema.OptionFromNullOr(Schema.String),
-};
-
 export class TransferAssessment extends Schema.TaggedClass<TransferAssessment>()(
   "TransferAssessment",
-  { recipient: ResolvedRecipient, ...memoRequirementFields },
+  { recipient: ResolvedRecipient },
 ) {}
 
 export class RecipientCheck extends Schema.TaggedClass<RecipientCheck>()(
   "RecipientCheck",
   {
     recipient: Schema.Union([Profile, ExternalRecipient]),
-    ...memoRequirementFields,
   },
 ) {}
 
@@ -531,7 +514,6 @@ export const AssessmentStep = Schema.Union([
   InsufficientBalance,
   SenderBusy,
   InvalidAddress,
-  ExternalMemoRequired,
   MemoNotAllowed,
   RecipientCannotReceive,
   UnclaimedFundsLimitReached,
@@ -629,7 +611,6 @@ export class ExternalLinkDraft extends Schema.TaggedClass<ExternalLinkDraft>()(
   "ExternalLinkDraft",
   {
     request: SigningRequest,
-    memoRequired: Schema.Boolean,
   },
 ) {}
 
@@ -663,7 +644,6 @@ export const ExternalLinkStep = Schema.Union([
   ExternalLinkSettled,
   ExternalLinkFailed,
   InvalidAddress,
-  ExternalMemoRequired,
   MemoNotAllowed,
   RecipientCannotReceive,
   NotClaimable,

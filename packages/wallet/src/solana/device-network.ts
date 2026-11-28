@@ -99,7 +99,6 @@ export const solanaDeviceNetwork: DeviceNetwork = {
   network,
   signingScheme: solanaSigningScheme,
   readDraft,
-  baseAccountOf: accountOf,
   creditedAccountOf: (destination) =>
     destinationOf(usdcAccountOf(address(destination))),
 };

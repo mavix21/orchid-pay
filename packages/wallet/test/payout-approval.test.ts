@@ -103,7 +103,6 @@ it.live.each(alteredReviews)(
                 }),
                 expiresAt: DateTime.makeUnsafe((at + draftLifetime) * 1000),
               }),
-              memoRequired: false,
             });
           }),
       });

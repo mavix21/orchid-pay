@@ -198,7 +198,6 @@ export const createLinkResult = (
     InvalidAddress: notCreated,
     UnknownRecipient: notCreated,
     PhoneNotSupported: notCreated,
-    ExternalMemoRequired: notCreated,
     MemoNotAllowed: notCreated,
     RecipientCannotReceive: notCreated,
     NoWallet: () =>

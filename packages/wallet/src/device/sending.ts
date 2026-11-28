@@ -195,8 +195,6 @@ export function sendTransfer<R>(
             Effect.succeed({ done: Option.some(outcome), pause: false }),
           InvalidAddress: (outcome) =>
             Effect.succeed({ done: Option.some(outcome), pause: false }),
-          ExternalMemoRequired: (outcome) =>
-            Effect.succeed({ done: Option.some(outcome), pause: false }),
           MemoNotAllowed: (outcome) =>
             Effect.succeed({ done: Option.some(outcome), pause: false }),
           RecipientCannotReceive: (outcome) =>

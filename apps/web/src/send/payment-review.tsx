@@ -39,11 +39,6 @@ export function PaymentReviewCard({ review }: { review: PaymentReview }) {
           {review.username === undefined ? (
             <span className="flex flex-col items-end">
               <span>{address}</span>
-              {review.memoRequired ? (
-                <span className="text-caption text-muted-foreground">
-                  {m.send_memo_required()}
-                </span>
-              ) : null}
             </span>
           ) : (
             <span className="flex flex-col items-end">

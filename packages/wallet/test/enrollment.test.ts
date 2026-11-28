@@ -162,8 +162,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           ).toEqual(
             new RecipientCheck({
               recipient: completed.profile,
-              memoRequired: false,
-              exchange: Option.none(),
             }),
           );
 

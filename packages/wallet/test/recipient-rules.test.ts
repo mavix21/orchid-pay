@@ -1,23 +1,16 @@
 import { expect, layer } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import * as Option from "effect/Option";
 import {
   type AccountAddress,
   AddressRecipient,
-  ExternalMemoRequired,
   RecipientCannotReceive,
   TransferOrder,
 } from "../src/contract";
-import { randomAddress, randomKey } from "./test-keys";
+import { randomAddress } from "./test-keys";
 import {
   addressOf,
-  approve,
-  draftTransfer,
   euro,
   euroLine,
-  exchanges,
-  findTransfer,
-  fundHolder,
   fundedWallet,
   holdingsFor,
   orderFor,
@@ -29,80 +22,8 @@ import {
 
 useDisposableDatabase();
 
-const registerExchange = (address: AccountAddress) => {
-  const entry = {
-    exchange: "Synthetic exchange fixture",
-    source: "https://example.com/fixtures/memo-required",
-  };
-
-  exchanges.set(address, entry);
-
-  return { address, ...entry };
-};
-
 layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
   (it) => {
-    it.effect(
-      "known exchange destinations refuse missing memos with client-visible source evidence",
-      () =>
-        Effect.gen(function* () {
-          const key = yield* fundedWallet();
-          const entry = registerExchange(randomAddress());
-
-          const order = orderFor(
-            key,
-            AddressRecipient.make({ value: entry.address }),
-          );
-
-          const initial = world.submitted.length;
-
-          expect(yield* send(order)).toEqual(
-            new ExternalMemoRequired({
-              address: entry.address,
-              exchange: entry.exchange,
-              source: entry.source,
-            }),
-          );
-          expect(Option.isNone(yield* findTransfer(order.id))).toBe(true);
-          expect(world.submitted).toHaveLength(initial);
-        }),
-    );
-
-    it.effect(
-      "a new registry entry blocks an unsigned draft but preserves an authorized external transfer",
-      () =>
-        Effect.gen(function* () {
-          const key = yield* fundedWallet();
-          const destKey = randomKey();
-
-          fundHolder(destKey);
-          const destination = addressOf(destKey);
-
-          const order = orderFor(
-            key,
-            AddressRecipient.make({ value: destination }),
-          );
-
-          const draft = yield* draftTransfer(order);
-
-          registerExchange(destination);
-          expect((yield* send(order, approve(draft.request, key)))._tag).toBe(
-            "ExternalMemoRequired",
-          );
-          expect(Option.getOrThrow(yield* findTransfer(order.id))._tag).toBe(
-            "Proposed",
-          );
-
-          exchanges.clear();
-          expect((yield* send(order, approve(draft.request, key)))._tag).toBe(
-            "Pending",
-          );
-
-          registerExchange(destination);
-          expect((yield* send(order))._tag).toBe("Pending");
-        }),
-    );
-
     it.effect.each([
       {
         name: "an absent account",
