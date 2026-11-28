@@ -1,4 +1,4 @@
-import { LinkIcon, PhoneIcon, UserRoundIcon, WalletIcon } from "lucide-react";
+import { LinkIcon, UserRoundIcon, WalletIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 
@@ -89,12 +89,6 @@ export function DestinationChoice({
                 data-testid="choose-link"
               />
             }
-          />
-          <OptionRow
-            title={m.send_destination_phone()}
-            description={m.send_phone_soon()}
-            media={<PhoneIcon />}
-            disabled
           />
         </div>
       </main>

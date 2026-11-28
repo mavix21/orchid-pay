@@ -32,6 +32,8 @@ export type { LinkReceive } from "./chain-links.server";
 
 export {
   ExternalPayment,
+  ExternalPaymentApplied,
+  type ExternalPaymentSettlement,
   type ExternalPaymentTerms,
 } from "./chain-request-payments.server";
 

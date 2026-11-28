@@ -6,7 +6,7 @@ import type {
   PositiveAmount,
 } from "../contract";
 import type { ChainUnreachable } from "./chain-errors.server";
-import type { Settlement } from "./chain-settlement.server";
+import type { Expired, Rejected, Undecided } from "./chain-settlement.server";
 
 export interface ExternalPaymentTerms {
   readonly payer: AccountAddress;
@@ -24,6 +24,17 @@ export class ExternalPayment extends Schema.Class<ExternalPayment>(
   expiresAt: Schema.DateTimeUtcFromString,
 }) {}
 
+export class ExternalPaymentApplied extends Schema.TaggedClass<ExternalPaymentApplied>()(
+  "ExternalPaymentApplied",
+  { at: Schema.DateTimeUtcFromString, hash: Schema.String },
+) {}
+
+export type ExternalPaymentSettlement =
+  | ExternalPaymentApplied
+  | Rejected
+  | Expired
+  | Undecided;
+
 export interface RequestPaymentChain {
   draftExternalPayment(
     terms: ExternalPaymentTerms,
@@ -31,5 +42,5 @@ export interface RequestPaymentChain {
   externalPaymentSettlement(
     payment: ExternalPayment,
     terms: ExternalPaymentTerms,
-  ): Effect.Effect<Settlement, ChainUnreachable>;
+  ): Effect.Effect<ExternalPaymentSettlement, ChainUnreachable>;
 }

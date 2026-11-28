@@ -68,5 +68,8 @@
   "pay_request_action_paying": "Pagando el cobro de {amount} de @{username}",
   "pay_request_payer_unfunded": "Esta billetera no tiene saldo suficiente para pagar este cobro.",
   "pay_request_account_invalid": "Esa dirección de billetera no es válida.",
-  "pay_request_requester_cannot_receive": "Quien cobra no puede recibir este pago por ahora."
+  "pay_request_requester_cannot_receive": "Quien cobra no puede recibir este pago por ahora.",
+  "pay_request_paid_title": "Le pagaste a @{username}",
+  "pay_request_see_activity": "Verlo en tu actividad",
+  "pay_request_invite_note": "Crea tu cuenta de Orchid para enviar y cobrar dinero con un link."
 }

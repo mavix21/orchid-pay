@@ -3,11 +3,11 @@ import { useRender } from "@base-ui/react/use-render";
 export function ActionTile({
   label,
   icon,
-  render = <button type="button" />,
+  render,
 }: {
   label: string;
   icon: React.ReactNode;
-  render?: useRender.RenderProp;
+  render: useRender.RenderProp;
 }) {
   return useRender({
     render,

@@ -11,7 +11,11 @@ import {
   baseAsset,
   sameAsset,
 } from "../src/contract";
-import type { Sealed, Settlement } from "../src/server/Chain.server";
+import type {
+  ExternalPaymentSettlement,
+  Sealed,
+  Settlement,
+} from "../src/server/Chain.server";
 import type { ChainDeposit } from "../src/server/chain-deposits.server";
 import type { Holdings } from "../src/server/holdings.server";
 import { HumanCheck } from "../src/server/HumanCheck.server";
@@ -36,6 +40,7 @@ export const world = {
   humanCheckRefused: false,
   accounts: new Map<AccountAddress, LedgerAccount>(),
   evidence: new Map<string, Settlement>(),
+  externalEvidence: new Map<string, ExternalPaymentSettlement>(),
   submitted: new Array<Sealed>(),
   queued: new Array<PendingWork>(),
   queueDown: false,
@@ -58,6 +63,7 @@ export const resetWorld = () => {
   world.deposits.clear();
   world.unreadableDeposits.clear();
   world.evidence.clear();
+  world.externalEvidence.clear();
   world.submitted.length = 0;
   world.queued.length = 0;
   world.queueDown = false;

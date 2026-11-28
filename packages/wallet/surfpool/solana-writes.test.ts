@@ -447,7 +447,7 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
           base64Encoder.encode(payment.transaction),
         );
 
-        yield* rpc.call(
+        const sent = yield* rpc.call(
           "sendTransaction",
           [
             base64Decoder.decode(
@@ -464,7 +464,10 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
           Schema.String,
         );
 
-        expect((yield* settled(payment))._tag).toBe("Applied");
+        const applied = yield* settled(payment);
+
+        assertTagged(applied, "ExternalPaymentApplied");
+        expect(applied.hash).toBe(sent);
         expect(
           (yield* settled(payment, {
             ...terms,

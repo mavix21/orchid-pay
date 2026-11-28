@@ -3,7 +3,7 @@ import { Skeleton } from "@workspace/ui/components/skeleton";
 import { Screen } from "@/components/screen";
 import { m } from "@/paraglide/messages";
 
-const actionTiles = ["send", "request", "receive", "add"];
+const actionTiles = ["send", "request", "receive"];
 const activityRows = ["first", "second", "third"];
 
 export function HomeSkeleton() {

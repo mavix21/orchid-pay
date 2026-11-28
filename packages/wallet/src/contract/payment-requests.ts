@@ -56,7 +56,10 @@ export class PaymentRequestOpen extends Schema.TaggedClass<PaymentRequestOpen>()
 
 export class PaymentRequestPaid extends Schema.TaggedClass<PaymentRequestPaid>()(
   "PaymentRequestPaid",
-  paymentRequestFields,
+  {
+    ...paymentRequestFields,
+    externalPaymentHash: Schema.optional(Schema.String),
+  },
 ) {}
 
 export class PaymentRequestCancelled extends Schema.TaggedClass<PaymentRequestCancelled>()(
