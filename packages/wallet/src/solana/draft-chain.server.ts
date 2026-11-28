@@ -27,6 +27,7 @@ import type {
 import type { Sealed } from "../server/chain-settlement.server";
 import { decodeSealedEnvelope } from "./envelope-codec";
 import {
+  type DraftWindow,
   type Drafting,
   computeUnitLimits,
   draftLinkReceive,
@@ -96,9 +97,8 @@ const transferFrom = (facts: EnvelopeFacts, from: AccountAddress) =>
     Predicate.isTagged(facts, "PaymentLinkFacts")) &&
   facts.from === address(from);
 
-export const draftingFor = Effect.fn("Chain.drafting")(function* (
+export const draftWindowFor = Effect.fn("Chain.draftWindow")(function* (
   rpc: SolanaRpc,
-  sponsor: Address,
   computeUnitLimit: number,
 ) {
   const [latest, fees] = yield* Effect.all(
@@ -120,17 +120,19 @@ export const draftingFor = Effect.fn("Chain.drafting")(function* (
   const highestPrice = highestComputeUnitPrice(computeUnitLimit);
 
   return {
-    sponsor,
     blockhash: blockhash(latest.value.blockhash),
     lastValidBlockHeight: BigInt(latest.value.lastValidBlockHeight),
     draftedSlot: BigInt(latest.context.slot),
     computeUnitPrice: recentPrice < highestPrice ? recentPrice : highestPrice,
-  } satisfies Drafting;
+  } satisfies DraftWindow;
 });
 
 export const solanaDraftChain = (rpc: SolanaRpc, sponsor: Address) => {
   const drafting = (computeUnitLimit: number) =>
-    draftingFor(rpc, sponsor, computeUnitLimit);
+    Effect.map(draftWindowFor(rpc, computeUnitLimit), (window): Drafting => ({
+      ...window,
+      sponsor,
+    }));
 
   const requestFor = (envelope: UnsignedEnvelope) =>
     Effect.map(

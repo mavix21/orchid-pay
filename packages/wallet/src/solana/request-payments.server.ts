@@ -10,6 +10,7 @@ import {
 import { USDC_MINT_ADDRESS } from "@workspace/orchid-links";
 import * as Arr from "effect/Array";
 import * as Clock from "effect/Clock";
+import * as Data from "effect/Data";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -27,8 +28,8 @@ import {
   Undecided,
 } from "../server/chain-settlement.server";
 import { rpcReadConcurrency } from "../server/settings.server";
-import type { ChainUnreachable } from "../server/chain-errors.server";
-import { draftingFor } from "./draft-chain.server";
+import { ChainUnreachable } from "../server/chain-errors.server";
+import { draftWindowFor } from "./draft-chain.server";
 import {
   decodeEnvelope,
   decodeSealedEnvelope,
@@ -38,7 +39,7 @@ import { computeUnitLimits, draftExternalPayment } from "./envelope-drafts";
 import { memoProgramAddress } from "./memo";
 import { solanaProfile } from "./profile";
 import { usdcAccountOf } from "./program-addresses";
-import { type SolanaRpc, readCommitment } from "./rpc.server";
+import { type RpcRefusal, type SolanaRpc, readCommitment } from "./rpc.server";
 import { SignatureError, rejectionCode } from "./settlement.server";
 import {
   decodeWireTransaction,
@@ -56,6 +57,8 @@ const signaturePageSize = 1000;
 
 const anyContextSlot = 0;
 
+const minContextSlotNotReached = -32016;
+
 const ReferencedSignatures = Schema.Array(
   Schema.Struct({ signature: Schema.String, slot: Schema.Int }),
 );
@@ -66,21 +69,27 @@ const TokenBalance = Schema.Struct({
   uiTokenAmount: Schema.Struct({ amount: Schema.String }),
 });
 
+const TokenBalances = Schema.optional(
+  Schema.NullOr(Schema.Array(TokenBalance)),
+);
+
 const LandedTransaction = Schema.NullOr(
   Schema.Struct({
     blockTime: Schema.NullOr(Schema.Int),
     transaction: Schema.Tuple([Schema.String, Schema.Literal("base64")]),
-    meta: Schema.Struct({
-      err: Schema.NullOr(SignatureError),
-      preTokenBalances: Schema.Array(TokenBalance),
-      postTokenBalances: Schema.Array(TokenBalance),
-      loadedAddresses: Schema.optional(
-        Schema.Struct({
-          writable: Schema.Array(Schema.String),
-          readonly: Schema.Array(Schema.String),
-        }),
-      ),
-    }),
+    meta: Schema.NullOr(
+      Schema.Struct({
+        err: Schema.NullOr(SignatureError),
+        preTokenBalances: TokenBalances,
+        postTokenBalances: TokenBalances,
+        loadedAddresses: Schema.optional(
+          Schema.Struct({
+            writable: Schema.Array(Schema.String),
+            readonly: Schema.Array(Schema.String),
+          }),
+        ),
+      }),
+    ),
   }),
 );
 
@@ -108,29 +117,54 @@ const usdcUnitsAt = (
     },
   );
 
-type Verdict = "paid" | "failed" | "unrelated";
+type Verdict = Data.TaggedEnum<{
+  Paid: { readonly blockTime: number | null };
+  Failed: { readonly code: string };
+  Unrelated: {};
+  Unverifiable: {};
+}>;
+
+const Verdict = Data.taggedEnum<Verdict>();
 
 const verdictOf = (
   landed: LandedTransaction,
   reference: Address,
   terms: ExternalPaymentTerms,
 ): Verdict => {
-  const { messageBytes } = decodeWireTransaction(
-    base64Encoder.encode(landed.transaction[0]),
+  const compiled = messageDecoder.decode(
+    decodeWireTransaction(base64Encoder.encode(landed.transaction[0]))
+      .messageBytes,
   );
 
-  if (!signersOf(messageBytes).includes(reference)) return "unrelated";
+  const signers = compiled.staticAccounts.slice(
+    0,
+    compiled.header.numSignerAccounts,
+  );
 
-  if (landed.meta.err !== null) return "failed";
+  if (!signers.includes(reference) || compiled.version === 1)
+    return Verdict.Unrelated();
 
-  const compiled = messageDecoder.decode(messageBytes);
+  const { meta } = landed;
 
-  if (compiled.version === 1) return "unrelated";
+  if (meta === null) return Verdict.Unverifiable();
+
+  if (meta.err !== null)
+    return Verdict.Failed({ code: rejectionCode(meta.err) });
+
+  const { preTokenBalances, postTokenBalances } = meta;
+
+  if (
+    preTokenBalances === undefined ||
+    preTokenBalances === null ||
+    postTokenBalances === undefined ||
+    postTokenBalances === null
+  )
+    return Verdict.Unverifiable();
 
   const accounts = [
     ...compiled.staticAccounts,
-    ...(landed.meta.loadedAddresses?.writable ?? []),
-    ...(landed.meta.loadedAddresses?.readonly ?? []),
+    ...(meta.loadedAddresses?.writable ?? []),
+    ...(meta.loadedAddresses?.readonly ?? []),
   ];
 
   const memo = textEncoder.encode(terms.request);
@@ -148,10 +182,12 @@ const verdictOf = (
   const received =
     credited < 0
       ? 0n
-      : usdcUnitsAt(landed.meta.postTokenBalances, credited) -
-        usdcUnitsAt(landed.meta.preTokenBalances, credited);
+      : usdcUnitsAt(postTokenBalances, credited) -
+        usdcUnitsAt(preTokenBalances, credited);
 
-  return carriesMemo && received >= terms.amount ? "paid" : "failed";
+  return carriesMemo && received >= terms.amount
+    ? Verdict.Paid({ blockTime: landed.blockTime })
+    : Verdict.Failed({ code: "terms_unmet" });
 };
 
 export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
@@ -162,7 +198,7 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
   ) => {
     const page = (
       before: Option.Option<string>,
-    ): Effect.Effect<ReadonlyArray<string>, ChainUnreachable> => {
+    ): Effect.Effect<ReadonlyArray<string>, ChainUnreachable | RpcRefusal> => {
       const newest = {
         commitment: readCommitment,
         limit: signaturePageSize,
@@ -175,7 +211,7 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
       });
 
       return rpc
-        .call(
+        .attempt(
           "getSignaturesForAddress",
           [reference, options],
           ReferencedSignatures,
@@ -203,7 +239,14 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
         );
     };
 
-    return page(Option.none());
+    return page(Option.none()).pipe(
+      Effect.map(Option.some),
+      Effect.catchTag("RpcRefusal", (refusal) =>
+        refusal.code === minContextSlotNotReached
+          ? Effect.succeed(Option.none())
+          : Effect.fail(new ChainUnreachable({ cause: refusal })),
+      ),
+    );
   };
 
   return {
@@ -220,17 +263,13 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
         ed25519.getPublicKey(referenceSeed),
       );
 
-      const drafting = yield* draftingFor(
-        rpc,
-        payer,
-        computeUnitLimits.payment,
-      );
+      const window = yield* draftWindowFor(rpc, computeUnitLimits.payment);
 
       const { messageBytes, lastValidBlockHeight, draftedSlot } =
         Option.getOrThrow(
           decodeEnvelope(
             draftExternalPayment({
-              ...drafting,
+              ...window,
               payer,
               reference,
               destinationTokenAccount: usdcAccountOf(address(terms.requester)),
@@ -296,36 +335,41 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
             { concurrency: rpcReadConcurrency },
           );
 
-          const ours = landed.flatMap((found) => {
-            if (found === null) return [];
+          const verdicts = landed.map((found) =>
+            found === null
+              ? Verdict.Unverifiable()
+              : verdictOf(found, reference, terms),
+          );
 
-            const verdict = verdictOf(found, reference, terms);
+          const paid = Arr.findFirst(verdicts, Verdict.$is("Paid"));
 
-            return verdict === "unrelated" ? [] : [{ found, verdict }];
-          });
-
-          const paid = ours.find(({ verdict }) => verdict === "paid");
-
-          if (paid !== undefined)
+          if (Option.isSome(paid))
             return Option.some(
               new Applied({
                 at:
-                  paid.found.blockTime === null
+                  paid.value.blockTime === null
                     ? yield* DateTime.now
-                    : DateTime.makeUnsafe(paid.found.blockTime * 1000),
+                    : DateTime.makeUnsafe(paid.value.blockTime * 1000),
               }),
             );
 
-          if (landed.includes(null)) return Option.some(new Undecided());
+          if (verdicts.some(Verdict.$is("Unverifiable")))
+            return Option.some(new Undecided());
 
-          return Option.map(Arr.head(ours), ({ found }) =>
-            found.meta.err === null
-              ? new Rejected({ code: "terms_unmet" })
-              : new Rejected({ code: rejectionCode(found.meta.err) }),
+          return Option.map(
+            Arr.findFirst(verdicts, Verdict.$is("Failed")),
+            ({ code }) => new Rejected({ code }),
           );
         });
 
-        const first = yield* concluded(
+        const undecidedOr = (lookup: Option.Option<ReadonlyArray<string>>) =>
+          Option.match(lookup, {
+            onNone: () =>
+              Effect.succeed(Option.some<Settlement>(new Undecided())),
+            onSome: concluded,
+          });
+
+        const first = yield* undecidedOr(
           yield* referencedSince(reference, draftedSlot, anyContextSlot),
         );
 
@@ -340,7 +384,7 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
         if (BigInt(finalized.blockHeight) <= lastValidBlockHeight)
           return new Undecided();
 
-        const byThen = yield* concluded(
+        const byThen = yield* undecidedOr(
           yield* referencedSince(
             reference,
             draftedSlot,
