@@ -26,16 +26,16 @@
 
 ## The Problem
 
-Roughly 4 in 10 adults in Peru have no account at a bank or mobile-money provider: account ownership was 59.3% in 2024 ([World Bank Global Findex](https://data.worldbank.org/indicator/FX.OWN.TOTL.ZS?locations=PE)). At the same time, Latin America and the Caribbean received $170 billion in personal remittances in 2025 ([World Bank](https://data.worldbank.org/indicator/BX.TRF.PWKR.CD.DT?locations=ZJ)). Stablecoins could carry that money cheaply, but the bottleneck is the first payment: before receiving a single dollar, a newcomer must install a wallet, guard a seed phrase, share an address and hold SOL for fees.
+Roughly 4 in 10 adults in Peru have no account at a bank or mobile-money provider: account ownership was 59.3% in 2024 ([World Bank Global Findex](https://data.worldbank.org/indicator/FX.OWN.TOTL.ZS?locations=PE)). At the same time, Latin America and the Caribbean received $170 billion in personal remittances in 2025 ([World Bank](https://data.worldbank.org/indicator/BX.TRF.PWKR.CD.DT?locations=ZJ)). Stablecoins could carry that money cheaply, but the bottleneck is the first payment: before receiving a single dollar, a newcomer must install a wallet, guard a secret phrase, share an address and hold SOL for fees.
 
 ## Our Solution
 
-Orchid lets anyone send USDC as a link in a chat message. The person who opens it needs nothing in advance: two taps create a self-custodial wallet secured by a passkey, with fees and rent paid by Orchid. If they would rather have local money, the same link cashes out to the wallet they already use, such as Yape in Peru. Every payment becomes a way in for a new user.
+Orchid lets anyone send USDC as a link in a chat message. The person who opens it needs nothing in advance: two taps create a self-custodial wallet secured by a passkey, with fees and rent paid by Orchid. If they would rather have local money, the same link pays out to the local wallet they already use, such as Yape in Peru. Every payment becomes a way in for a new user.
 
 ## Key Features
 
 - **Payment links that onboard.** The `orchid-links` Anchor program holds the unclaimed funds on Solana, and the link code stays in the URL `#fragment`, so the server never sees it. A recipient with no wallet claims straight into a new passkey wallet in two taps, with network fees and token-account rent sponsored. The sender can take the money back at any time; whichever of claim or reclaim lands first wins.
-- **Cash out to a local wallet.** On the same link, the recipient taps **Local wallet**, picks Yape (Peru), PIX (Brazil), Nequi (Colombia) or Mercado Pago (Mexico), enters a phone number, PIX key or email, reviews the local-currency quote and follows the payout to completion. _On devnet a simulated payout partner receives the funds and nobody is paid; live payouts need a licensed partner._
+- **Receive in a local wallet.** On the same link, the recipient taps **Local wallet**, picks Yape (Peru), PIX (Brazil), Nequi (Colombia) or Mercado Pago (Mexico), enters a phone number, PIX key or email, reviews the local-currency quote and follows the payout to completion. _On devnet a simulated payout partner receives the funds and nobody is paid; live payouts need a licensed partner._
 - **Payment requests payable from any Solana wallet.** Share a public `/pay/<id>` link for an exact USDC amount and an optional note. Payers settle in Orchid, or from Phantom, Solflare or any other Solana wallet through Solana Pay and Blinks, paying their own network fee.
 
 <table>
@@ -48,7 +48,7 @@ Orchid lets anyone send USDC as a link in a chat message. The person who opens i
     <td align="center" width="33%">
       <img src="docs/assets/local-wallet-payout-simulation.png" alt="Local wallet picker offering Yape, PIX, Nequi and Mercado Pago under a devnet simulation notice" width="195" />
       <br />
-      <sub><strong>Local wallet cash-out (simulated)</strong></sub>
+      <sub><strong>Local wallet payout (simulated)</strong></sub>
     </td>
     <td align="center" width="33%">
       <img src="docs/assets/payment-request-solana-pay.png" alt="Public payment request page for 20 USDC with a Solana Pay QR code and an Orchid pay button" width="195" />
@@ -69,19 +69,21 @@ sequenceDiagram
     participant Partner as Payout partner<br/>(simulated on devnet)
 
     Sender->>Sender: Generate link code, derive link key
-    Sender->>Orchid: Request a draft (no link code)
-    Orchid-->>Sender: Draft, fees paid by the sponsor
-    Sender->>Program: create: move USDC into the link's vault
+    Orchid-->>Sender: Draft create (no link code sent)
+    Sender->>Orchid: Approval (passkey-unlocked signature)
+    Orchid->>Program: Co-sign as fee payer, submit create
     Sender-->>Recipient: Share "https://…/r#link-code" in any chat
+    Recipient->>Recipient: Derive link key from the fragment
     alt Receive in Orchid
-        Recipient->>Recipient: Create passkey wallet, derive link key from the fragment
-        Recipient->>Program: claim to the new wallet (sponsored)
-    else Cash out to a local wallet
-        Recipient->>Orchid: Choose Yape, PIX, Nequi or Mercado Pago and accept the quote
-        Recipient->>Program: claim to the partner's deposit address
+        Recipient->>Orchid: Create passkey wallet, approve claim
+        Orchid->>Program: Co-sign, submit claim to the new wallet
+    else Receive in a local wallet
+        Recipient->>Orchid: Pick Yape, PIX, Nequi or Mercado Pago, accept quote, approve claim
+        Orchid->>Program: Co-sign, submit claim to the partner's deposit address
         Partner-->>Recipient: Pay the local-currency amount
     else Sender takes it back
-        Sender->>Program: reclaim to the sender's wallet
+        Sender->>Orchid: Approve reclaim
+        Orchid->>Program: Co-sign, submit reclaim to the sender's wallet
     end
 ```
 
@@ -126,8 +128,8 @@ Playwright runs against Chromium with a virtual passkey authenticator, a local S
 
 ## Challenges and Accomplishments
 
-- **Switched chains mid-build.** Orchid started on another network. We first pulled every chain-specific detail behind one chain binding, then rebuilt addresses, signing, the link escrow, settlement and deposit reads for Solana, one tracked issue at a time.
-- **The link's secret never reaches the server.** The link code lives only in the URL fragment and on the devices. Browser tests assert that no request and no stored value ever contains it.
+- **Switched chains mid-build.** Orchid started on another network. We first pulled every chain-specific detail behind one chain binding, then rebuilt addresses, signing, the `orchid-links` program, settlement and deposit reads for Solana, one tracked issue at a time.
+- **The link code never reaches the server.** The link code lives only in the URL fragment and on the devices. Browser tests assert that no request and no stored value ever contains it.
 - **Passkeys inside chat apps.** The in-app browsers of WhatsApp, Instagram and TikTok cannot evaluate a passkey's PRF, which is exactly where links get opened. Orchid detects them and hands the user off to their own browser before any passkey prompt.
 - **Honest settlement on Solana.** Deciding that a transaction expired is unsafe when an RPC node lags or has pruned history. Settlement only reports expiry when the node has caught up and still holds the history from when the transaction was drafted.
 - **Deposits from anywhere.** USDC sent from an exchange or another wallet is read per wallet from the history of its USDC account, with a cursor per wallet and a 64-bit ledger.
@@ -136,10 +138,10 @@ Playwright runs against Chromium with a virtual passkey authenticator, a local S
 ## What is Next
 
 - [x] Passkey wallets with sponsored fees and rent on Solana devnet
-- [x] Payment links backed by the `orchid-links` escrow program, with reclaim at any time
+- [x] Payment links backed by the `orchid-links` program, with reclaim at any time
 - [x] Payment requests payable through Solana Pay and Blinks
-- [x] Local wallet cash-out with a simulated payout partner
-- [ ] A licensed payout partner, so local wallet cash-outs pay real money
+- [x] Local wallet payouts through a simulated payout partner
+- [ ] A licensed payout partner, so local wallet payouts pay real money
 - [ ] Security review of the `orchid-links` program
 - [ ] Mainnet launch in Peru
 
