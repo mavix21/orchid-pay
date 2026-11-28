@@ -1,4 +1,3 @@
-import { USDC_MINT_ADDRESS } from "@workspace/orchid-links";
 import { Database } from "@workspace/db";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -8,16 +7,13 @@ import * as HttpClient from "effect/http/HttpClient";
 import { AccountAddress, type Asset, baseAsset, sameAsset } from "../contract";
 import { Chain } from "../server/Chain.server";
 import {
-  type DepositChain,
-  EventsStart,
-} from "../server/chain-deposits.server";
-import {
   validateRpcTimeout,
   validateRpcUrl,
 } from "../server/rpc-settings.server";
 import { WalletSettings } from "../server/settings.server";
 import { solanaAccountChain } from "./account-chain.server";
 import { solanaAddressRules } from "./address-rules";
+import { solanaDepositChain } from "./deposit-chain.server";
 import { solanaDestinationChain } from "./destination-chain.server";
 import { solanaDraftChain } from "./draft-chain.server";
 import { solanaHoldings } from "./holdings.server";
@@ -30,21 +26,6 @@ import { solanaUnclaimedFunds } from "./unclaimed-funds.server";
 
 const isUsdc = (asset: Asset) => sameAsset(asset, baseAsset);
 
-const fromGenesis = EventsStart.FromLedger({ ledger: 0 });
-
-const pendingDeposits: DepositChain = {
-  depositFeed: USDC_MINT_ADDRESS,
-  resumeDeposits: (cursor) => Effect.as(cursor, fromGenesis),
-  catchUpDeposits: () => Effect.succeed(fromGenesis),
-  assetEvents: () =>
-    Effect.succeed({
-      events: [],
-      position: { cursor: "", ledger: 0 },
-      drained: true,
-      cursorClosedAt: Option.none(),
-    }),
-};
-
 export const solanaChainLayer = Layer.effect(
   Chain,
   Effect.gen(function* () {
@@ -56,13 +37,17 @@ export const solanaChainLayer = Layer.effect(
     const sponsorAddress = Schema.decodeSync(AccountAddress)(sponsor.address);
     const holdings = solanaHoldings(rpc, sponsorAddress);
     const drafts = solanaDraftChain(rpc, sponsor.address);
-    const { unclaimedFunds } = solanaUnclaimedFunds(rpc, sponsorAddress);
+
+    const { unclaimedFunds, unclaimedFundsClosedAt } = solanaUnclaimedFunds(
+      rpc,
+      sponsorAddress,
+    );
 
     return Chain.of({
       ...solanaAccountChain(rpc, sponsorAddress),
       ...holdings,
       ...solanaDestinationChain(holdings),
-      ...pendingDeposits,
+      ...solanaDepositChain(rpc),
       ...drafts,
       ...solanaSubmission(rpc, sponsoredFailuresIn(yield* Database)),
       validAsset: isUsdc,
@@ -72,6 +57,7 @@ export const solanaChainLayer = Layer.effect(
           isUsdc(asset) ? Option.some({ authRequired: false }) : Option.none(),
         ),
       unclaimedFunds,
+      unclaimedFundsClosedAt,
       draftClaimable: () =>
         Effect.die(
           new RangeError("A Solana transfer never waits as a claimable"),

@@ -1,3 +1,4 @@
+import type * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -12,6 +13,7 @@ import {
   sameAsset,
 } from "../src/contract";
 import type { Sealed, Settlement } from "../src/server/Chain.server";
+import type { ChainDeposit } from "../src/server/chain-deposits.server";
 import type { Holdings } from "../src/server/holdings.server";
 import { HumanCheck } from "../src/server/HumanCheck.server";
 import type { UnclaimedFundsEntry } from "../src/server/unclaimed-funds.server";
@@ -47,6 +49,9 @@ export const world = {
   claimablesDown: false,
   holdings: new Map<AccountAddress, Holdings>(),
   claimables: new Map<string, UnclaimedFundsEntry>(),
+  closures: new Map<string, DateTime.Utc>(),
+  deposits: new Map<AccountAddress, Array<ChainDeposit>>(),
+  unreadableDeposits: new Set<string>(),
   issuers: new Map<AssetId, { readonly authRequired: boolean }>(),
 };
 
@@ -54,6 +59,9 @@ export const resetWorld = () => {
   world.accounts.clear();
   world.holdings.clear();
   world.claimables.clear();
+  world.closures.clear();
+  world.deposits.clear();
+  world.unreadableDeposits.clear();
   world.issuers.clear();
   world.evidence.clear();
   world.submitted.length = 0;

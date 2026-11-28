@@ -160,7 +160,7 @@ export const deposits = pgTable(
     amount: bigint({ mode: "bigint" }).notNull(),
     sender: text().notNull(),
     hash: text().notNull(),
-    ledger: integer().notNull(),
+    ledger: bigint({ mode: "number" }).notNull(),
     closedAt: timestamp({ withTimezone: true }).notNull(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
@@ -180,15 +180,21 @@ export const depositCursors = pgTable(
   {
     network: text().notNull(),
     testnetEpoch: text().notNull(),
-    contractId: text().notNull(),
-    cursor: text().notNull(),
-    ledger: integer().notNull(),
-    closedAt: timestamp({ withTimezone: true }),
+    wallet: text()
+      .notNull()
+      .references(() => wallets.address),
+    cursor: text(),
+    ledger: bigint({ mode: "number" }),
+    scannedAt: timestamp({ withTimezone: true }),
   },
   (table) => [
     primaryKey({
-      columns: [table.network, table.testnetEpoch, table.contractId],
+      columns: [table.network, table.testnetEpoch, table.wallet],
     }),
+    check(
+      "deposit_cursors_position",
+      sql`(${table.cursor} is null) = (${table.ledger} is null)`,
+    ),
   ],
 );
 

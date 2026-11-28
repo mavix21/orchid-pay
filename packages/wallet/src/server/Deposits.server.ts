@@ -1,5 +1,5 @@
 import { Database } from "@workspace/db";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -14,7 +14,7 @@ import {
   precisionOf,
 } from "../contract";
 import { assetColumns, epochAt, network } from "../record-network";
-import { AssetEvent } from "./chain-deposits.server";
+import type { DepositPage, DepositPosition } from "./chain-deposits.server";
 import { StoreFailure } from "./Directory.server";
 import {
   assetOrders,
@@ -25,21 +25,49 @@ import {
 } from "./tables.server";
 
 export interface DepositCursor {
-  readonly feed: string;
-  readonly cursor: string;
-  readonly ledger: number;
-  readonly closedAt: Option.Option<DateTime.Utc>;
+  readonly position: Option.Option<DepositPosition>;
+  readonly scannedAt: Option.Option<DateTime.Utc>;
 }
+
+export interface WalletToScan {
+  readonly wallet: AccountAddress;
+  readonly cursor: DepositCursor;
+}
+
+type CursorRow = Pick<
+  typeof depositCursors.$inferSelect,
+  "cursor" | "ledger" | "scannedAt"
+>;
+
+const cursorOf = (row: CursorRow | undefined): DepositCursor => ({
+  position: Option.fromUndefinedOr(row).pipe(
+    Option.flatMap(({ cursor, ledger }) =>
+      cursor === null || ledger === null
+        ? Option.none()
+        : Option.some({ cursor, ledger }),
+    ),
+  ),
+  scannedAt: Option.fromUndefinedOr(row).pipe(
+    Option.flatMap(({ scannedAt }) => Option.fromNullOr(scannedAt)),
+    Option.map(DateTime.fromDateUnsafe),
+  ),
+});
 
 export class Deposits extends Context.Service<
   Deposits,
   {
-    cursor(
-      feed: string,
-    ): Effect.Effect<Option.Option<DepositCursor>, StoreFailure>;
-    store(
-      events: ReadonlyArray<AssetEvent>,
-      advance: Option.Option<DepositCursor>,
+    cursor(wallet: AccountAddress): Effect.Effect<DepositCursor, StoreFailure>;
+    readonly walletsToScan: Effect.Effect<
+      ReadonlyArray<WalletToScan>,
+      StoreFailure
+    >;
+    record(
+      wallet: AccountAddress,
+      page: DepositPage,
+    ): Effect.Effect<void, StoreFailure>;
+    scanned(
+      wallet: AccountAddress,
+      at: DateTime.Utc,
     ): Effect.Effect<void, StoreFailure>;
   }
 >()("@workspace/wallet/server/Deposits") {
@@ -51,76 +79,75 @@ export class Deposits extends Context.Service<
       const wrap = <A, E>(program: Effect.Effect<A, E>) =>
         program.pipe(Effect.mapError((cause) => new StoreFailure({ cause })));
 
-      const cursor = (feed: string) =>
+      const currentEpoch = Effect.map(Clock.currentTimeMillis, epochAt);
+
+      const cursor = (wallet: AccountAddress) =>
         wrap(
-          Clock.currentTimeMillis.pipe(
-            Effect.flatMap((now) =>
+          currentEpoch.pipe(
+            Effect.flatMap((epoch) =>
               db
                 .select()
                 .from(depositCursors)
                 .where(
                   and(
                     eq(depositCursors.network, network),
-                    eq(depositCursors.testnetEpoch, epochAt(now)),
-                    eq(depositCursors.contractId, feed),
+                    eq(depositCursors.testnetEpoch, epoch),
+                    eq(depositCursors.wallet, wallet),
                   ),
                 ),
             ),
-            Effect.map((rows) =>
-              Option.fromUndefinedOr(rows[0]).pipe(
-                Option.map((row): DepositCursor => ({
-                  feed,
-                  cursor: row.cursor,
-                  ledger: row.ledger,
-                  closedAt: Option.fromNullishOr(row.closedAt).pipe(
-                    Option.map(DateTime.fromDateUnsafe),
-                  ),
-                })),
-              ),
-            ),
+            Effect.map((rows) => cursorOf(rows[0])),
           ),
         );
 
-      const store = (
-        events: ReadonlyArray<AssetEvent>,
-        advance: Option.Option<DepositCursor>,
-      ) =>
+      const walletsToScan = wrap(
+        currentEpoch.pipe(
+          Effect.flatMap((epoch) =>
+            db
+              .select({
+                wallet: wallets.address,
+                cursor: depositCursors.cursor,
+                ledger: depositCursors.ledger,
+                scannedAt: depositCursors.scannedAt,
+              })
+              .from(wallets)
+              .leftJoin(
+                depositCursors,
+                and(
+                  eq(depositCursors.network, wallets.network),
+                  eq(depositCursors.testnetEpoch, wallets.testnetEpoch),
+                  eq(depositCursors.wallet, wallets.address),
+                ),
+              )
+              .where(
+                and(
+                  eq(wallets.network, network),
+                  eq(wallets.testnetEpoch, epoch),
+                  eq(wallets.status, "active"),
+                ),
+              )
+              .orderBy(
+                sql`${depositCursors.scannedAt} asc nulls first`,
+                asc(wallets.address),
+              ),
+          ),
+          Effect.map((rows) =>
+            rows.map((row): WalletToScan => ({
+              wallet: Schema.decodeSync(AccountAddress)(row.wallet),
+              cursor: cursorOf(row),
+            })),
+          ),
+        ),
+      );
+
+      const record = (wallet: AccountAddress, page: DepositPage) =>
         wrap(
-          Clock.currentTimeMillis.pipe(
-            Effect.flatMap((now) =>
+          currentEpoch.pipe(
+            Effect.flatMap((epoch) =>
               db.transaction((tx) =>
                 Effect.gen(function* () {
-                  const epoch = epochAt(now);
-                  const payments = events.filter(AssetEvent.$is("Payment"));
-
-                  const claims = events.filter(
-                    AssetEvent.$is("UnclaimedFundsClaim"),
-                  );
-
-                  const recipients = [
-                    ...new Set(payments.map((payment) => payment.to)),
-                  ];
-
-                  const known =
-                    recipients.length === 0
-                      ? []
-                      : yield* tx
-                          .select({ address: wallets.address })
-                          .from(wallets)
-                          .where(
-                            and(
-                              eq(wallets.network, network),
-                              eq(wallets.testnetEpoch, epoch),
-                              inArray(wallets.address, recipients),
-                            ),
-                          );
-
-                  const addressed = payments.filter((payment) =>
-                    known.some((wallet) => wallet.address === payment.to),
-                  );
-
                   const hashes = [
-                    ...new Set(addressed.map((payment) => payment.hash)),
+                    ...new Set(page.deposits.map((deposit) => deposit.hash)),
                   ];
 
                   const orchidHashes =
@@ -137,13 +164,13 @@ export class Deposits extends Context.Service<
                             .where(inArray(assetOrders.hash, hashes))),
                         ];
 
-                  const rows = addressed.flatMap((payment) => {
+                  const rows = page.deposits.flatMap((deposit) => {
                     const sender = Schema.decodeOption(AccountAddress)(
-                      payment.from,
+                      deposit.from,
                     );
 
                     const amount = Schema.decodeOption(PositiveAmount)(
-                      payment.amount.toString(),
+                      deposit.amount.toString(),
                     ).pipe(
                       Option.filter(
                         (units) => units <= precisionOf(baseAsset).maximum,
@@ -152,19 +179,19 @@ export class Deposits extends Context.Service<
 
                     return Option.isSome(sender) &&
                       Option.isSome(amount) &&
-                      !orchidHashes.some((own) => own.hash === payment.hash)
+                      !orchidHashes.some((own) => own.hash === deposit.hash)
                       ? [
                           {
                             network,
                             testnetEpoch: epoch,
-                            eventId: payment.eventId,
-                            wallet: payment.to,
+                            eventId: deposit.eventId,
+                            wallet,
                             ...assetColumns(baseAsset),
                             amount: amount.value,
                             sender: sender.value,
-                            hash: payment.hash,
-                            ledger: payment.ledger,
-                            closedAt: DateTime.toDateUtc(payment.closedAt),
+                            hash: deposit.hash,
+                            ledger: deposit.ledger,
+                            closedAt: DateTime.toDateUtc(deposit.closedAt),
                           },
                         ]
                       : [];
@@ -182,89 +209,58 @@ export class Deposits extends Context.Service<
                         ],
                       });
 
-                  const open =
-                    claims.length === 0
-                      ? []
-                      : yield* tx
-                          .select({ unclaimedFunds: transfers.balanceId })
-                          .from(transfers)
-                          .where(
-                            and(
-                              eq(transfers.network, network),
-                              eq(transfers.testnetEpoch, epoch),
-                              eq(transfers.status, "settled"),
-                              isNull(transfers.balanceClosedAt),
-                              inArray(
-                                transfers.balanceId,
-                                claims.map((claim) => claim.unclaimedFunds),
-                              ),
-                            ),
-                          );
-
-                  yield* Effect.forEach(
-                    claims.filter((claim) =>
-                      open.some(
-                        (entry) =>
-                          entry.unclaimedFunds === claim.unclaimedFunds,
-                      ),
-                    ),
-                    (claim) =>
-                      tx
-                        .update(transfers)
-                        .set({
-                          balanceClosedAt: DateTime.toDateUtc(claim.closedAt),
-                        })
-                        .where(
-                          and(
-                            eq(transfers.network, network),
-                            eq(transfers.testnetEpoch, epoch),
-                            eq(transfers.balanceId, claim.unclaimedFunds),
-                            isNull(transfers.balanceClosedAt),
-                          ),
-                        ),
-                    { discard: true },
-                  );
-
-                  if (Option.isSome(advance))
-                    yield* tx
-                      .insert(depositCursors)
-                      .values({
-                        network,
-                        testnetEpoch: epoch,
-                        contractId: advance.value.feed,
-                        cursor: advance.value.cursor,
-                        ledger: advance.value.ledger,
-                        closedAt: Option.getOrNull(
-                          Option.map(
-                            advance.value.closedAt,
-                            DateTime.toDateUtc,
-                          ),
-                        ),
-                      })
-                      .onConflictDoUpdate({
-                        target: [
-                          depositCursors.network,
-                          depositCursors.testnetEpoch,
-                          depositCursors.contractId,
-                        ],
-                        set: {
-                          cursor: advance.value.cursor,
-                          ledger: advance.value.ledger,
-                          closedAt: Option.getOrNull(
-                            Option.map(
-                              advance.value.closedAt,
-                              DateTime.toDateUtc,
-                            ),
-                          ),
-                        },
-                      });
+                  yield* tx
+                    .insert(depositCursors)
+                    .values({
+                      network,
+                      testnetEpoch: epoch,
+                      wallet,
+                      cursor: page.position.cursor,
+                      ledger: page.position.ledger,
+                    })
+                    .onConflictDoUpdate({
+                      target: [
+                        depositCursors.network,
+                        depositCursors.testnetEpoch,
+                        depositCursors.wallet,
+                      ],
+                      set: {
+                        cursor: page.position.cursor,
+                        ledger: page.position.ledger,
+                      },
+                    });
                 }),
               ),
             ),
           ),
         );
 
-      return Deposits.of({ cursor, store });
+      const scanned = (wallet: AccountAddress, at: DateTime.Utc) =>
+        wrap(
+          currentEpoch.pipe(
+            Effect.flatMap((epoch) =>
+              db
+                .insert(depositCursors)
+                .values({
+                  network,
+                  testnetEpoch: epoch,
+                  wallet,
+                  scannedAt: DateTime.toDateUtc(at),
+                })
+                .onConflictDoUpdate({
+                  target: [
+                    depositCursors.network,
+                    depositCursors.testnetEpoch,
+                    depositCursors.wallet,
+                  ],
+                  set: { scannedAt: DateTime.toDateUtc(at) },
+                }),
+            ),
+            Effect.asVoid,
+          ),
+        );
+
+      return Deposits.of({ cursor, walletsToScan, record, scanned });
     }),
   );
 }

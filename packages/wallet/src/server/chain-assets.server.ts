@@ -1,3 +1,4 @@
+import type * as DateTime from "effect/DateTime";
 import type * as Effect from "effect/Effect";
 import type * as Option from "effect/Option";
 import type {
@@ -24,6 +25,9 @@ export interface AssetChain {
   unclaimedFunds(
     ids: ReadonlyArray<UnclaimedFundsId>,
   ): Effect.Effect<ReadonlyArray<UnclaimedFundsEntry>, ChainUnreachable>;
+  unclaimedFundsClosedAt(
+    id: UnclaimedFundsId,
+  ): Effect.Effect<Option.Option<DateTime.Utc>, ChainUnreachable>;
   draftClaimable(
     from: AccountAddress,
     to: AccountAddress,
