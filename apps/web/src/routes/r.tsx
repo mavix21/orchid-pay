@@ -410,7 +410,10 @@ function ReceiveLink({ opened }: { opened: ReadLinkCode }) {
             </BloomHero>
           </main>
           <BloomActions>
-            <ResultLink link={<Link to="/home" />}>
+            <ResultLink link={<Link to="/send" />}>
+              {m.claim_send_some()}
+            </ResultLink>
+            <ResultLink link={<Link to="/home" />} variant="secondary">
               {m.receive_go_account()}
             </ResultLink>
           </BloomActions>

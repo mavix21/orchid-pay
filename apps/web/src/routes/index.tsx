@@ -56,7 +56,7 @@ function Welcome() {
               {m.welcome_headline_send()}
             </span>
             <span className="block md:welcome-rise md:welcome-delay-1">
-              {m.welcome_headline_link()}
+              {m.welcome_headline_recipient()}
             </span>
           </h1>
           <p className="flex flex-col gap-1 font-display text-h1 max-md:text-2xl md:welcome-rise md:welcome-delay-2 md:gap-2 md:text-5xl">

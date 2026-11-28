@@ -108,6 +108,7 @@
   "claim_not_received_title": "We couldn't receive this money",
   "claim_received_title": "You received {amount}",
   "claim_received": "It's in your Orchid account.",
+  "claim_send_some": "Send some",
   "claim_currency_unsupported": "Your account can't receive this currency.",
   "claim_passkey_cancelled": "You cancelled using your passkey.",
   "claim_passkey_failed": "We couldn't use your passkey.",

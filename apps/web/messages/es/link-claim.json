@@ -108,6 +108,7 @@
   "claim_not_received_title": "No pudimos recibir este dinero",
   "claim_received_title": "Recibiste {amount}",
   "claim_received": "Ya está en tu cuenta de Orchid.",
+  "claim_send_some": "Enviar dinero",
   "claim_currency_unsupported": "Tu cuenta no puede recibir esta moneda.",
   "claim_passkey_cancelled": "Cancelaste el uso de tu passkey.",
   "claim_passkey_failed": "No pudimos usar tu passkey.",

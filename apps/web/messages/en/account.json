@@ -1,8 +1,8 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
   "welcome_headline_send": "Send dollars",
-  "welcome_headline_link": "with a link.",
-  "welcome_cash_out_in": "They cash out with",
+  "welcome_headline_recipient": "to someone who doesn't have a wallet",
+  "welcome_cash_out_in": "Simulated cash-out on devnet with",
   "welcome_create_account": "Create account",
   "welcome_have_account": "I already have an account",
   "welcome_key_stays": "Your key stays on your device.",
