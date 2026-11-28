@@ -79,6 +79,14 @@ export const airdrop = async (rpcUrl: string, recipient: Address) => {
   await confirmed(rpcUrl, signature);
 };
 
+export const isFunded = async (rpcUrl: string, owner: Address) => {
+  const { value } = await createSolanaRpc(rpcUrl)
+    .getBalance(owner, { commitment: "confirmed" })
+    .send();
+
+  return value > 0n;
+};
+
 export const hasUsdcAccount = async (rpcUrl: string, owner: Address) => {
   const { value } = await createSolanaRpc(rpcUrl)
     .getAccountInfo(usdcAccountOf(owner), { encoding: "base64" })
