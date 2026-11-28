@@ -14,6 +14,7 @@ import {
   ExternalLinkOrder,
   ExternalLinkStep,
   HumanCheckToken,
+  LocalCurrency,
   PasskeyAssertion,
   PasskeyChallenge,
   RestoreStep,
@@ -78,7 +79,10 @@ const ResolvePaymentLinkCall = Schema.Struct({
   receipt: PaymentLinkReceipt,
 });
 
-const QuotePayoutCall = Schema.Struct({ link: AccountAddress });
+const QuotePayoutCall = Schema.Struct({
+  link: AccountAddress,
+  currency: LocalCurrency,
+});
 
 const RequestPayoutCall = Schema.Struct({
   order: PayoutOrder,
@@ -205,7 +209,11 @@ const quotePayoutFn = createServerFn({ method: "POST" })
   .validator(accepted<typeof QuotePayoutCall.Encoded>())
   .handler(({ data }) =>
     answerWallet(QuotePayoutCall, data, PayoutQuoteStep, (decoded) =>
-      publicly(Wallet.use((wallet) => wallet.quotePayout(decoded.link))),
+      publicly(
+        Wallet.use((wallet) =>
+          wallet.quotePayout(decoded.link, decoded.currency),
+        ),
+      ),
     ),
   );
 
@@ -339,8 +347,8 @@ export const port: WalletPort = {
       { order, approval },
       claimPaymentLinkFn,
     ),
-  quotePayout: (link) =>
-    reach(PayoutQuoteStep, QuotePayoutCall, { link }, quotePayoutFn),
+  quotePayout: (link, currency) =>
+    reach(PayoutQuoteStep, QuotePayoutCall, { link, currency }, quotePayoutFn),
   requestPayout: (order, approval) =>
     reach(
       PayoutClaimStep,

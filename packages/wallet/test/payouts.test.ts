@@ -11,12 +11,15 @@ import {
   InvalidAddress,
   LocalAmount,
   PayoutCompleted,
+  type PayoutDestination,
   PayoutNotFound,
   PayoutOrder,
   PayoutProcessing,
   PayoutQuoteChanged,
   PayoutSending,
   PeruvianMobile,
+  PixAccount,
+  PixKey,
   YapeAccount,
 } from "../src/contract";
 import { Applied } from "../src/server/Chain.server";
@@ -41,37 +44,52 @@ useDisposableDatabase();
 layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
   (it) => {
     it.effect(
-      "a Yape payout claims the link to the simulated partner at the quoted soles, refuses another destination or a stale quote, and completes after the partner's delay",
+      "a payout claims the link to the simulated partner at the quote in its destination's currency, refuses another deposit address, a stale quote or another currency's quote, and completes after the partner's delay",
       () =>
         Effect.gen(function* () {
-          const yape = YapeAccount.make({
-            mobile: Schema.decodeSync(PeruvianMobile)("987654321"),
-          });
+          const yape = {
+            destination: YapeAccount.make({
+              mobile: Schema.decodeSync(PeruvianMobile)("987654321"),
+            }),
+            local: LocalAmount.make({ currency: "PEN", minorUnits: 375n }),
+          };
 
-          const soles = (minorUnits: bigint) =>
-            LocalAmount.make({ currency: "PEN", minorUnits });
+          const pix = {
+            destination: PixAccount.make({
+              key: Schema.decodeSync(PixKey)("camila@example.com"),
+            }),
+            local: LocalAmount.make({ currency: "BRL", minorUnits: 540n }),
+          };
 
           world.accounts.set(partnerAddress, accountState());
 
-          const pendingPayout = Effect.fn(function* (name: string) {
+          const pendingPayout = Effect.fn(function* (
+            name: string,
+            payee: { destination: PayoutDestination; local: LocalAmount },
+            otherPayee: { destination: PayoutDestination; local: LocalAmount },
+          ) {
             const { wallet, link, unclaimedFunds } = yield* fundLink(name);
 
             world.accounts.set(addressOf(link), accountState());
 
-            const quote = yield* wallet.quotePayout(addressOf(link));
+            const quote = yield* wallet.quotePayout(
+              addressOf(link),
+              payee.local.currency,
+            );
 
             assertTagged(quote, "PayoutQuote");
             expect({
               local: quote.local,
               depositAddress: quote.depositAddress,
             }).toEqual({
-              local: soles(375n),
+              local: payee.local,
               depositAddress: partnerAddress,
             });
 
             const payoutTo = (
               destination: DestinationAddress,
               local: LocalAmount,
+              to: PayoutDestination = payee.destination,
             ) =>
               new PayoutOrder({
                 claim: new ExternalLinkOrder({
@@ -80,7 +98,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
                   unclaimedFunds,
                   destination,
                 }),
-                destination: yape,
+                destination: to,
                 local,
               });
 
@@ -94,10 +112,28 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             ).toEqual(new InvalidAddress({ address: elsewhere }));
             expect(
               yield* wallet.requestPayout(
-                payoutTo(quote.depositAddress, soles(400n)),
+                payoutTo(
+                  quote.depositAddress,
+                  LocalAmount.make({
+                    currency: payee.local.currency,
+                    minorUnits: payee.local.minorUnits + 25n,
+                  }),
+                ),
                 Option.none(),
               ),
             ).toEqual(new PayoutQuoteChanged({ quote }));
+
+            const otherCurrency = yield* wallet.requestPayout(
+              payoutTo(
+                quote.depositAddress,
+                quote.local,
+                otherPayee.destination,
+              ),
+              Option.none(),
+            );
+
+            assertTagged(otherCurrency, "PayoutQuoteChanged");
+            expect(otherCurrency.quote.local).toEqual(otherPayee.local);
 
             const order = payoutTo(quote.depositAddress, quote.local);
             const drafted = yield* wallet.requestPayout(order, Option.none());
@@ -138,15 +174,15 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             };
           });
 
-          const recent = yield* pendingPayout("payoutnow");
+          const recent = yield* pendingPayout("payoutnow", yape, pix);
 
           for (const hash of recent.hashes) settleHash(hash);
 
           expect(yield* recent.wallet.payout(recent.id)).toEqual(
-            new PayoutProcessing({ id: recent.id, local: soles(375n) }),
+            new PayoutProcessing({ id: recent.id, local: yape.local }),
           );
 
-          const earlier = yield* pendingPayout("payoutearly");
+          const earlier = yield* pendingPayout("payoutearly", pix, yape);
 
           const settledAt = DateTime.makeUnsafe(
             Date.now() - Duration.toMillis(payoutCompletesAfter) * 2,
@@ -158,7 +194,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           expect(yield* earlier.wallet.payout(earlier.id)).toEqual(
             new PayoutCompleted({
               id: earlier.id,
-              local: soles(375n),
+              local: pix.local,
               completedAt: DateTime.addDuration(
                 settledAt,
                 payoutCompletesAfter,

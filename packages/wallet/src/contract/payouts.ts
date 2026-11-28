@@ -10,19 +10,84 @@ export const PeruvianMobile = Schema.String.check(
 
 export type PeruvianMobile = typeof PeruvianMobile.Type;
 
+export const ColombianMobile = Schema.String.check(
+  Schema.isPattern(/^3[0-9]{9}$/u),
+).pipe(Schema.brand("ColombianMobile"));
+
+export type ColombianMobile = typeof ColombianMobile.Type;
+
+const email = String.raw`[^\s@]{1,64}@[^\s@]+\.[^\s@]{2,}`;
+
+const pixKeyPatterns = [
+  "[0-9]{11}",
+  "[0-9]{14}",
+  String.raw`\+55[0-9]{10,11}`,
+  "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+  email,
+];
+
+const maxIdentifierLength = 77;
+
+export const PayoutEmail = Schema.String.check(
+  Schema.isPattern(new RegExp(`^${email}$`, "u")),
+  Schema.isMaxLength(maxIdentifierLength),
+).pipe(Schema.brand("PayoutEmail"));
+
+export type PayoutEmail = typeof PayoutEmail.Type;
+
+export const PixKey = Schema.String.check(
+  Schema.isPattern(new RegExp(`^(?:${pixKeyPatterns.join("|")})$`, "u")),
+  Schema.isMaxLength(maxIdentifierLength),
+).pipe(Schema.brand("PixKey"));
+
+export type PixKey = typeof PixKey.Type;
+
 export const YapeAccount = Schema.TaggedStruct("YapeAccount", {
   mobile: PeruvianMobile,
 });
 
 export type YapeAccount = typeof YapeAccount.Type;
 
-export const PayoutDestination = Schema.Union([YapeAccount]);
+export const NequiAccount = Schema.TaggedStruct("NequiAccount", {
+  mobile: ColombianMobile,
+});
+
+export type NequiAccount = typeof NequiAccount.Type;
+
+export const PixAccount = Schema.TaggedStruct("PixAccount", {
+  key: PixKey,
+});
+
+export type PixAccount = typeof PixAccount.Type;
+
+export const MercadoPagoAccount = Schema.TaggedStruct("MercadoPagoAccount", {
+  email: PayoutEmail,
+});
+
+export type MercadoPagoAccount = typeof MercadoPagoAccount.Type;
+
+export const PayoutDestination = Schema.Union([
+  YapeAccount,
+  NequiAccount,
+  PixAccount,
+  MercadoPagoAccount,
+]);
 
 export type PayoutDestination = typeof PayoutDestination.Type;
 
-export const LocalCurrency = Schema.Literals(["PEN"]);
+export const LocalCurrency = Schema.Literals(["PEN", "COP", "BRL", "MXN"]);
 
 export type LocalCurrency = typeof LocalCurrency.Type;
+
+export const payoutCurrencies = {
+  YapeAccount: "PEN",
+  NequiAccount: "COP",
+  PixAccount: "BRL",
+  MercadoPagoAccount: "MXN",
+} satisfies { readonly [Kind in PayoutDestination["_tag"]]: LocalCurrency };
+
+export const payoutCurrency = (destination: PayoutDestination) =>
+  payoutCurrencies[destination._tag];
 
 export const LocalAmount = Schema.Struct({
   currency: LocalCurrency,

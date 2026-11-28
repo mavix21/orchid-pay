@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { WalletIcon } from "lucide-react";
+import { BanknoteIcon, WalletIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -295,15 +295,11 @@ function ReceiveLink({ opened }: { opened: ReadLinkCode }) {
             <Button
               variant="ghost"
               size="sm"
-              data-testid="receive-yape"
+              data-testid="receive-local-wallet"
               onClick={() => setStep(ReceiveStep.PayingOut({ open }))}
             >
-              <img
-                src="/cash-out/logos/yape.png"
-                alt=""
-                className="size-5 rounded-sm"
-              />
-              {m.receive_yape()}
+              <BanknoteIcon className="text-icon-muted" />
+              {m.receive_local_wallet()}
             </Button>
             <Button
               variant="ghost"

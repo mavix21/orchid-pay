@@ -9,6 +9,7 @@ import {
   type Asset,
   type AssetOrderId,
   LocalAmount,
+  type LocalCurrency,
   type PayoutTerms,
   type PositiveAmount,
   baseAsset,
@@ -31,6 +32,7 @@ export class PayoutPartner extends Context.Service<
     quote(
       asset: Asset,
       amount: PositiveAmount,
+      currency: LocalCurrency,
     ): Effect.Effect<Option.Option<LocalAmount>>;
     completedAt(
       payout: SettledPayout,
@@ -59,7 +61,12 @@ export class PayoutPartner extends Context.Service<
     );
 }
 
-const sandboxCentimosPerDollar = 375n;
+const sandboxMinorUnitsPerDollar: Record<LocalCurrency, bigint> = {
+  PEN: 375n,
+  COP: 400_000n,
+  BRL: 540n,
+  MXN: 1_850n,
+};
 
 const sandboxPartner = (
   depositAddress: AccountAddress,
@@ -67,17 +74,17 @@ const sandboxPartner = (
 ) =>
   PayoutPartner.of({
     depositAddress,
-    quote: (asset, amount) =>
+    quote: (asset, amount, currency) =>
       Effect.succeed(
         Option.some(
-          (amount * sandboxCentimosPerDollar) /
+          (amount * sandboxMinorUnitsPerDollar[currency]) /
             10n ** BigInt(precisionOf(asset).decimals),
         ).pipe(
           Option.filter(
             (minorUnits) => sameAsset(asset, baseAsset) && minorUnits > 0n,
           ),
           Option.map((minorUnits) =>
-            LocalAmount.make({ currency: "PEN", minorUnits }),
+            LocalAmount.make({ currency, minorUnits }),
           ),
         ),
       ),

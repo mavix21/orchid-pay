@@ -5,6 +5,7 @@ import * as Schema from "effect/Schema";
 import {
   type AssetOrderId,
   type LocalAmount,
+  type LocalCurrency,
   type PayoutDestination,
   PayoutOrder,
   PayoutQuote,
@@ -77,18 +78,20 @@ export function devicePayouts(
 
   const quote = Effect.fn("Device.quotePayout")(function* (
     code: LinkCode,
+    currency: LocalCurrency,
   ): Effect.fn.Return<QuotePayoutOutcome, WalletUnavailable> {
     const target = yield* openLink(port, code);
 
     if (!(target instanceof OpenedLink)) return target;
 
-    const quoted = yield* port.quotePayout(target.link);
+    const quoted = yield* port.quotePayout(target.link, currency);
 
     if (!(quoted instanceof PayoutQuote)) return quoted;
 
     return quoted.link === target.link &&
       quoted.unclaimedFunds === target.unclaimedFunds &&
       quoted.amount === target.amount &&
+      quoted.local.currency === currency &&
       sameAsset(quoted.asset, target.asset)
       ? quoted
       : new DraftRejected();

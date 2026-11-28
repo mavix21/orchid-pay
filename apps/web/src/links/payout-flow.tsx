@@ -8,27 +8,27 @@ import {
   FieldError,
   FieldLabel,
 } from "@workspace/ui/components/field";
+import { Input } from "@workspace/ui/components/input";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   InputGroupText,
 } from "@workspace/ui/components/input-group";
-import {
-  type LinkCode,
-  type PaymentLinkOpen,
-  PeruvianMobile,
-  type PayoutQuote,
-  type PayoutReview,
-  type PayoutStep,
-  YapeAccount,
+import type {
+  LinkCode,
+  PaymentLinkOpen,
+  PayoutDestination,
+  PayoutQuote,
+  PayoutReview,
+  PayoutStep,
 } from "@workspace/wallet";
 import * as Data from "effect/Data";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
-import * as Schema from "effect/Schema";
 
+import { OptionRow } from "@/components/option-row";
 import { Screen, ScreenActions } from "@/components/screen";
 import { TopNav } from "@/components/top-nav";
 import {
@@ -45,20 +45,32 @@ import { useWalletTask } from "@/send/use-wallet-task";
 import { walletEffects } from "@/wallet";
 
 import type { ExternalClaimAction } from "./external-claim-outcomes";
-import { localAmountLabel, mobileDigits, mobileLabel } from "./payout-labels";
+import { localAmountLabel } from "./payout-labels";
+import {
+  type PayoutMethod,
+  payoutAccountLabel,
+  payoutMethodOf,
+  payoutMethods,
+  shownAccount,
+  typedAccount,
+} from "./payout-methods";
 import {
   type PayoutConclusion,
   payoutFailedScreen,
   payoutNotFoundScreen,
   payoutScreen,
 } from "./payout-outcomes";
-import { PayoutTracker, SimulationNotice } from "./payout-status";
+import { PayoutLogo, PayoutTracker, SimulationNotice } from "./payout-status";
 
 const followInterval = 2000;
 
 type PayoutFlowStep = Data.TaggedEnum<{
-  Form: { readonly notice: Option.Option<string> };
-  Preparing: {};
+  Choosing: {};
+  Form: {
+    readonly method: PayoutMethod;
+    readonly notice: Option.Option<string>;
+  };
+  Preparing: { readonly method: PayoutMethod };
   Reviewing: {
     readonly review: PayoutReview;
     readonly notice: Option.Option<string>;
@@ -94,18 +106,19 @@ export function PayoutFlow({
   onRecheck: () => void;
 }) {
   const task = useWalletTask();
-  const [mobile, setMobile] = useState("");
+  const [account, setAccount] = useState("");
   const [touched, setTouched] = useState(false);
   const [quote, setQuote] = useState(Option.none<PayoutQuote>());
 
-  const [step, setStep] = useState<PayoutFlowStep>(
-    PayoutFlowStep.Form({ notice: Option.none() }),
-  );
+  const [step, setStep] = useState<PayoutFlowStep>(PayoutFlowStep.Choosing());
 
-  const requote = (fresh: PayoutQuote) => {
+  const requote = (fresh: PayoutQuote, destination: PayoutDestination) => {
     setQuote(Option.some(fresh));
     setStep(
-      PayoutFlowStep.Form({ notice: Option.some(m.payout_quote_changed()) }),
+      PayoutFlowStep.Form({
+        method: payoutMethodOf(destination),
+        notice: Option.some(m.payout_quote_changed()),
+      }),
     );
   };
 
@@ -117,13 +130,21 @@ export function PayoutFlow({
       }),
     );
 
-  useEffect(() => {
-    task.run(walletEffects.quotePayout(code), (answer) =>
+  const choose = (method: PayoutMethod) => {
+    setAccount("");
+    setTouched(false);
+    setStep(PayoutFlowStep.Form({ method, notice: Option.none() }));
+    task.run(walletEffects.quotePayout(code, method.currency), (answer) =>
       Predicate.isTagged(answer, "PayoutQuote")
         ? setQuote(Option.some(answer))
         : conclude(answer),
     );
-  }, []);
+  };
+
+  const chooseAgain = () => {
+    task.stop();
+    setStep(PayoutFlowStep.Choosing());
+  };
 
   useEffect(() => {
     if (
@@ -179,10 +200,12 @@ export function PayoutFlow({
     return () => window.clearTimeout(timer);
   }, [step]);
 
-  const review = (quoted: PayoutQuote, typed: PeruvianMobile) => {
-    const destination = YapeAccount.make({ mobile: typed });
-
-    setStep(PayoutFlowStep.Preparing());
+  const review = (
+    method: PayoutMethod,
+    quoted: PayoutQuote,
+    destination: PayoutDestination,
+  ) => {
+    setStep(PayoutFlowStep.Preparing({ method }));
     task.run(walletEffects.reviewPayout(code, destination, quoted), (answer) =>
       Match.value(answer).pipe(
         Match.tag("PayoutReview", (shown) =>
@@ -190,7 +213,9 @@ export function PayoutFlow({
             PayoutFlowStep.Reviewing({ review: shown, notice: Option.none() }),
           ),
         ),
-        Match.tag("PayoutQuoteChanged", ({ quote: fresh }) => requote(fresh)),
+        Match.tag("PayoutQuoteChanged", ({ quote: fresh }) =>
+          requote(fresh, destination),
+        ),
         Match.orElse(conclude),
       ),
     );
@@ -225,7 +250,9 @@ export function PayoutFlow({
             }),
           ),
         ),
-        Match.tag("PayoutQuoteChanged", ({ quote: fresh }) => requote(fresh)),
+        Match.tag("PayoutQuoteChanged", ({ quote: fresh }) =>
+          requote(fresh, shown.destination),
+        ),
         Match.tags({
           ExternalLinkSettled: follow,
           ExternalLinkPending: follow,
@@ -244,33 +271,89 @@ export function PayoutFlow({
   };
 
   const sent = amountLabel(open.amount, open.asset);
-  const parsed = Schema.decodeOption(PeruvianMobile)(mobile);
 
   return Match.valueTags(step, {
-    Form: ({ notice }) => {
-      const showProblem = touched && Option.isNone(parsed) && mobile !== "";
+    Choosing: () => (
+      <Screen>
+        <TopNav
+          title={m.payout_methods_title()}
+          label={m.common_back()}
+          icon={<ChevronLeftIcon />}
+          onClick={onBack}
+        />
+        <main
+          className="flex flex-1 flex-col gap-6 px-5 pt-2"
+          data-testid="payout-methods"
+        >
+          <SimulationNotice />
+          <h1 className="font-display text-h1">{m.payout_methods_heading()}</h1>
+          <div className="flex flex-col gap-3">
+            {payoutMethods.map((method) => (
+              <OptionRow
+                key={method.kind}
+                title={method.name}
+                description={`${method.country()} · ${method.currency}`}
+                media={<PayoutLogo method={method} size="tile" />}
+                mediaVariant="default"
+                render={
+                  <button
+                    type="button"
+                    onClick={() => choose(method)}
+                    data-testid="choose-payout-method"
+                    data-method={method.kind}
+                  />
+                }
+              />
+            ))}
+          </div>
+        </main>
+      </Screen>
+    ),
+    Form: ({ method, notice }) => {
+      const destination = method.destination(account);
+
+      const shownQuote = Option.filter(
+        quote,
+        (found) => found.local.currency === method.currency,
+      );
+
+      const showProblem =
+        touched && Option.isNone(destination) && account !== "";
 
       const submit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setTouched(true);
 
-        if (Option.isSome(quote) && Option.isSome(parsed))
-          review(quote.value, parsed.value);
+        if (Option.isSome(shownQuote) && Option.isSome(destination))
+          review(method, shownQuote.value, destination.value);
+      };
+
+      const field = {
+        id: "payout-account",
+        "data-testid": "payout-account",
+        autoFocus: true,
+        value: shownAccount(method.entry, account),
+        onChange: (event: React.ChangeEvent<HTMLInputElement>) =>
+          setAccount(typedAccount(method.entry, event.target.value)),
+        onBlur: () => setTouched(true),
+        "aria-invalid": showProblem || undefined,
+        "aria-describedby": showProblem ? "payout-account-error" : undefined,
       };
 
       return (
         <Screen>
           <TopNav
-            title={m.payout_title()}
+            title={m.payout_title({ method: method.name })}
             label={m.common_back()}
             icon={<ChevronLeftIcon />}
-            onClick={onBack}
+            onClick={chooseAgain}
           />
           <form
             className="flex flex-1 flex-col"
             noValidate
             onSubmit={submit}
             data-testid="payout-form"
+            data-method={method.kind}
           >
             <main className="flex flex-1 flex-col gap-8 px-5 pt-2">
               <SimulationNotice />
@@ -285,7 +368,7 @@ export function PayoutFlow({
                   className="font-display text-display tabular-nums"
                   data-testid="payout-quote"
                 >
-                  {Option.match(quote, {
+                  {Option.match(shownQuote, {
                     onNone: () => (
                       <span className="text-disabled-foreground">
                         {m.payout_quoting()}
@@ -302,43 +385,48 @@ export function PayoutFlow({
                 </p>
               </div>
               <Field>
-                <FieldLabel htmlFor="payout-mobile">
-                  {m.payout_mobile_label()}
+                <FieldLabel htmlFor="payout-account">
+                  {method.accountLabel()}
                 </FieldLabel>
-                <InputGroup>
-                  <InputGroupAddon>
-                    <img
-                      src="/cash-out/flags/pe.svg"
-                      alt=""
-                      className="size-5 rounded-full"
+                {Match.value(method.entry).pipe(
+                  Match.tag("Mobile", ({ dialCode, placeholder }) => (
+                    <InputGroup>
+                      <InputGroupAddon>
+                        <img
+                          src={method.flag}
+                          alt=""
+                          className="size-5 rounded-full"
+                        />
+                        <InputGroupText>{dialCode}</InputGroupText>
+                      </InputGroupAddon>
+                      <InputGroupInput
+                        {...field}
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
+                        placeholder={placeholder}
+                      />
+                    </InputGroup>
+                  )),
+                  Match.tag("Text", ({ type, placeholder }) => (
+                    <Input
+                      {...field}
+                      type={type}
+                      inputMode={type}
+                      autoComplete={type === "email" ? "email" : "off"}
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      placeholder={placeholder}
                     />
-                    <InputGroupText>+51</InputGroupText>
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    id="payout-mobile"
-                    data-testid="payout-mobile"
-                    type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel-national"
-                    autoFocus
-                    placeholder="987 654 321"
-                    value={mobileLabel(mobile)}
-                    onChange={(event) =>
-                      setMobile(mobileDigits(event.target.value))
-                    }
-                    onBlur={() => setTouched(true)}
-                    aria-invalid={showProblem || undefined}
-                    aria-describedby={
-                      showProblem ? "payout-mobile-error" : undefined
-                    }
-                  />
-                </InputGroup>
+                  )),
+                  Match.exhaustive,
+                )}
                 {showProblem ? (
-                  <FieldError id="payout-mobile-error">
-                    {m.payout_mobile_invalid()}
+                  <FieldError id="payout-account-error">
+                    {method.accountInvalid()}
                   </FieldError>
                 ) : (
-                  <FieldDescription>{m.payout_mobile_hint()}</FieldDescription>
+                  <FieldDescription>{method.accountHint()}</FieldDescription>
                 )}
               </Field>
               {Option.isSome(notice) ? (
@@ -352,7 +440,9 @@ export function PayoutFlow({
                 className="w-full"
                 type="submit"
                 data-testid="review-payout"
-                disabled={Option.isNone(quote) || Option.isNone(parsed)}
+                disabled={
+                  Option.isNone(shownQuote) || Option.isNone(destination)
+                }
               >
                 {m.payout_continue()}
               </Button>
@@ -361,84 +451,85 @@ export function PayoutFlow({
         </Screen>
       );
     },
-    Preparing: () => (
+    Preparing: ({ method }) => (
       <Screen>
         <div className="px-5 pt-4">
           <SimulationNotice />
         </div>
-        <LinkWorking label={m.payout_preparing()} />
+        <LinkWorking label={m.payout_preparing({ method: method.name })} />
       </Screen>
     ),
-    Reviewing: ({ review: shown, notice }) => (
-      <Screen>
-        <TopNav
-          title={m.payout_review_title()}
-          label={m.common_back()}
-          icon={<ChevronLeftIcon />}
-          onClick={() =>
-            setStep(PayoutFlowStep.Form({ notice: Option.none() }))
-          }
-        />
-        <main
-          className="flex flex-1 flex-col gap-6 px-5 pt-2"
-          data-testid="payout-review"
-        >
-          <SimulationNotice />
-          <div className="flex flex-col items-center gap-1 text-center">
-            <p className="text-label text-muted-foreground">
-              {m.payout_you_receive()}
-            </p>
-            <p className="font-display text-display tabular-nums">
-              {localAmountLabel(shown.local)}
-            </p>
-          </div>
-          <dl
-            aria-label={m.payout_review_summary()}
-            className="flex flex-col divide-y divide-border rounded-lg border border-border px-4"
+    Reviewing: ({ review: shown, notice }) => {
+      const method = payoutMethodOf(shown.destination);
+
+      return (
+        <Screen>
+          <TopNav
+            title={m.payout_review_title()}
+            label={m.common_back()}
+            icon={<ChevronLeftIcon />}
+            onClick={() =>
+              setStep(PayoutFlowStep.Form({ method, notice: Option.none() }))
+            }
+          />
+          <main
+            className="flex flex-1 flex-col gap-6 px-5 pt-2"
+            data-testid="payout-review"
           >
-            <ReviewRow label={m.payout_review_to()}>
-              <span className="inline-flex items-center gap-2">
-                <img
-                  src="/cash-out/logos/yape.png"
-                  alt=""
-                  className="size-5 rounded-sm"
-                />
-                {m.payout_review_yape_mobile({
-                  mobile: mobileLabel(shown.destination.mobile),
-                })}
-              </span>
-            </ReviewRow>
-            <ReviewRow label={m.payout_review_from_link()}>
-              {amountLabel(shown.claim.amount, shown.claim.asset)}
-            </ReviewRow>
-            <ReviewRow label={m.payout_review_fee()}>
-              {m.payout_review_free()}
-            </ReviewRow>
-          </dl>
-          <p className="text-body text-pretty text-muted-foreground">
-            {m.payout_review_note()}
-          </p>
-          {Option.isSome(notice) ? (
-            <p role="alert" className="text-body text-destructive">
-              {notice.value}
+            <SimulationNotice />
+            <div className="flex flex-col items-center gap-1 text-center">
+              <p className="text-label text-muted-foreground">
+                {m.payout_you_receive()}
+              </p>
+              <p className="font-display text-display tabular-nums">
+                {localAmountLabel(shown.local)}
+              </p>
+            </div>
+            <dl
+              aria-label={m.payout_review_summary({ method: method.name })}
+              className="flex flex-col divide-y divide-border rounded-lg border border-border px-4"
+            >
+              <ReviewRow label={m.payout_review_to()}>
+                <span className="inline-flex items-center gap-2">
+                  <PayoutLogo method={method} />
+                  {m.payout_review_account({
+                    method: method.name,
+                    account: payoutAccountLabel(shown.destination),
+                  })}
+                </span>
+              </ReviewRow>
+              <ReviewRow label={m.payout_review_from_link()}>
+                {amountLabel(shown.claim.amount, shown.claim.asset)}
+              </ReviewRow>
+              <ReviewRow label={m.payout_review_fee()}>
+                {m.payout_review_free()}
+              </ReviewRow>
+            </dl>
+            <p className="text-body text-pretty text-muted-foreground">
+              {m.payout_review_note()}
             </p>
-          ) : null}
-        </main>
-        <ScreenActions>
-          <Button
-            className="w-full"
-            data-testid="confirm-payout"
-            onClick={() => confirm(shown)}
-          >
-            {m.payout_confirm()}
-          </Button>
-        </ScreenActions>
-      </Screen>
-    ),
+            {Option.isSome(notice) ? (
+              <p role="alert" className="text-body text-destructive">
+                {notice.value}
+              </p>
+            ) : null}
+          </main>
+          <ScreenActions>
+            <Button
+              className="w-full"
+              data-testid="confirm-payout"
+              onClick={() => confirm(shown)}
+            >
+              {m.payout_confirm({ method: method.name })}
+            </Button>
+          </ScreenActions>
+        </Screen>
+      );
+    },
     Following: ({ review: shown, status }) => (
       <PayoutTracker
         local={shown.local}
-        mobile={shown.destination.mobile}
+        destination={shown.destination}
         status={status}
       />
     ),

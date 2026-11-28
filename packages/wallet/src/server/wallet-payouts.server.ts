@@ -11,6 +11,7 @@ import {
   type ExternalLinkPending,
   type ExternalLinkStep,
   InvalidAddress,
+  type LocalCurrency,
   NotClaimable,
   type PayoutClaimStep,
   PayoutCompleted,
@@ -25,6 +26,7 @@ import {
   type PayoutStep,
   type PayoutTerms,
   PayoutUnavailable,
+  payoutCurrency,
   sameLocalAmount,
 } from "../contract";
 import {
@@ -61,6 +63,7 @@ export const payoutFlow = (claims: PayoutClaims) =>
 
     const quotePayout = Effect.fn("Wallet.quotePayout")(function* (
       link: AccountAddress,
+      currency: LocalCurrency,
     ): Effect.fn.Return<PayoutQuoteStep, StoreFailure> {
       if (!chain.validAddress(link))
         return new InvalidAddress({ address: link });
@@ -71,7 +74,7 @@ export const payoutFlow = (claims: PayoutClaims) =>
         return new NotClaimable({ claimableAt: Option.none() });
 
       const { unclaimedFunds, asset, amount } = funded.value;
-      const local = yield* partner.quote(asset, amount);
+      const local = yield* partner.quote(asset, amount, currency);
 
       if (Option.isNone(local)) return new PayoutUnavailable();
 
@@ -96,7 +99,10 @@ export const payoutFlow = (claims: PayoutClaims) =>
       )
         return Option.some(new InvalidAddress({ address: claim.destination }));
 
-      const quote = yield* quotePayout(claim.link);
+      const quote = yield* quotePayout(
+        claim.link,
+        payoutCurrency(order.destination),
+      );
 
       if (!(quote instanceof PayoutQuote)) return Option.some(quote);
 

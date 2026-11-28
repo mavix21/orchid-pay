@@ -2,6 +2,7 @@ import type * as Effect from "effect/Effect";
 import type {
   AssetOrderId,
   PasskeyChallenge,
+  LocalCurrency,
   PayoutDestination,
   PayoutQuote,
   TransferId,
@@ -84,7 +85,10 @@ export interface WalletClient {
     review: ExternalLinkReview,
     code: LinkCode,
   ): Promise<ConfirmExternalLinkOutcome>;
-  quotePayout(code: LinkCode): Promise<QuotePayoutOutcome>;
+  quotePayout(
+    code: LinkCode,
+    currency: LocalCurrency,
+  ): Promise<QuotePayoutOutcome>;
   reviewPayout(
     code: LinkCode,
     destination: PayoutDestination,
@@ -139,7 +143,10 @@ export interface WalletEffects {
     review: ExternalLinkReview,
     code: LinkCode,
   ): Effect.Effect<ConfirmExternalLinkOutcome>;
-  quotePayout(code: LinkCode): Effect.Effect<QuotePayoutOutcome>;
+  quotePayout(
+    code: LinkCode,
+    currency: LocalCurrency,
+  ): Effect.Effect<QuotePayoutOutcome>;
   reviewPayout(
     code: LinkCode,
     destination: PayoutDestination,

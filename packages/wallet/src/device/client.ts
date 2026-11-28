@@ -390,8 +390,10 @@ export function makeWalletEffects(
           Effect.flatMap(({ confirm }) => confirm(shown, code)),
         ),
       ),
-    quotePayout: (code) =>
-      networkOnly(payouts.pipe(Effect.flatMap(({ quote }) => quote(code)))),
+    quotePayout: (code, currency) =>
+      networkOnly(
+        payouts.pipe(Effect.flatMap(({ quote }) => quote(code, currency))),
+      ),
     reviewPayout: (code, destination, quoted) =>
       networkOnly(
         payouts.pipe(
@@ -449,7 +451,8 @@ export function makeWalletClient(
       Effect.runPromise(effects.reviewExternalLinkClaim(code, intent)),
     confirmExternalLinkClaim: (shown, code) =>
       Effect.runPromise(effects.confirmExternalLinkClaim(shown, code)),
-    quotePayout: (code) => Effect.runPromise(effects.quotePayout(code)),
+    quotePayout: (code, currency) =>
+      Effect.runPromise(effects.quotePayout(code, currency)),
     reviewPayout: (code, destination, quoted) =>
       Effect.runPromise(effects.reviewPayout(code, destination, quoted)),
     confirmPayout: (shown, code) =>
