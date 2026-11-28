@@ -89,7 +89,7 @@ export function RecipientStep({
           <FieldLabel htmlFor="recipient">
             {destination === "username"
               ? m.send_username_label()
-              : m.common_stellar_address()}
+              : m.common_solana_address()}
           </FieldLabel>
           {destination === "username" ? (
             <InputGroup>

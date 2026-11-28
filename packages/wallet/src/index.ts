@@ -1,5 +1,7 @@
 export * from "./contract";
 
+export { network } from "./device-network";
+
 export * from "./device/client";
 
 export * from "./device/key-store";

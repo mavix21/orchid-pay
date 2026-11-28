@@ -416,7 +416,7 @@ export const reclaimResult = (
         ),
       ),
     TrustlineLimitReached: ({ limit }) =>
-      cannotRecover(m.link_trustline_limit({ limit, asset: code })),
+      cannotRecover(m.link_asset_limit({ limit, asset: code })),
     AssetUnsupported: () =>
       cannotRecover(m.link_own_cannot_receive({ asset: code })),
     NotClaimable: ({ claimableAt }) =>

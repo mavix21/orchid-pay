@@ -13,7 +13,7 @@ const intentFor = (memo: string, recipient = destination) =>
 it.each([
   ["001234", "001234"],
   [`  ${"é".repeat(14)} `, "é".repeat(14)],
-])("the memo %j is sent as MEMO_TEXT %j", (typed, sent) => {
+])("the memo %j is sent as the text memo %j", (typed, sent) => {
   expect(
     Option.map(Result.getSuccess(intentFor(typed)), (intent) => intent.memo),
   ).toEqual(Option.some({ type: "text", value: sent }));

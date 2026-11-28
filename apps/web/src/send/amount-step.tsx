@@ -3,7 +3,6 @@ import { Button } from "@workspace/ui/components/button";
 import {
   type Amount,
   type Asset,
-  forbidsMemo,
   type TransferIntent,
   parseAmount,
   precisionOf,
@@ -110,7 +109,7 @@ export function AmountStep({
         </main>
         <ScreenActions>
           <div className="flex w-full gap-2">
-            {destination === "address" && !forbidsMemo(recipient) ? (
+            {destination === "address" ? (
               <Button
                 type="button"
                 variant="secondary"
