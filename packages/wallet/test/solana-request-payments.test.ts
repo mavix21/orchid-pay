@@ -13,6 +13,7 @@ import * as HttpClient from "effect/http/HttpClient";
 import { PaymentRequestId, PositiveAmount } from "../src/contract";
 import type { ExternalPaymentTerms } from "../src/server/chain-request-payments.server";
 import {
+  Expired,
   Rejected,
   type Settlement,
   Undecided,
@@ -134,7 +135,13 @@ const settlementOn = ({
         return {
           blockTime: 1_795_149_020,
           transaction: [other.transaction, "base64"],
-          meta: { err: null, preTokenBalances: [], postTokenBalances: [] },
+          meta: {
+            err: null,
+            preTokenBalances: [usdcAt(creditedIndex(other.transaction), "0")],
+            postTokenBalances: [
+              usdcAt(creditedIndex(other.transaction), "2000000"),
+            ],
+          },
         };
 
       const credited = creditedIndex(payment.transaction);
@@ -199,10 +206,9 @@ const cases: ReadonlyArray<Node & { name: string; outcome: Settlement }> = [
     outcome: new Rejected({ code: "InstructionError" }),
   },
   {
-    name: "ignores a transaction the reference did not sign",
+    name: "expires past a transaction that pays the requester without the reference's signature",
     landing: { kind: "other" },
-    pastWindow: false,
-    outcome: new Undecided(),
+    outcome: new Expired(),
   },
   {
     name: "waits for a listed transaction the node cannot return yet",
