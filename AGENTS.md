@@ -10,7 +10,7 @@ Use official documentation and installed package APIs. Do not introduce any/unkn
 
 Keep no temporary records in any tracked file (.md, .txt, .json or otherwise): no test results, command outputs, evidence, review rounds, decision logs or dated status notes. Results go in the PR description, decisions in commit messages or the PR.
 
-Docs describe only code that exists. Write no docs for unbuilt designs. Keep docs minimal and update them in place; delete a doc that goes stale instead of growing it. Exception: the product sections of the root `README.md`, everything before "Run it locally", describe the finished product and its roadmap; keep them aligned with the issue tracker rather than with the current code.
+Docs describe only code that exists. Write no docs for unbuilt designs. Keep docs minimal and update them in place; delete a doc that goes stale instead of growing it. Exception: the product sections of the root `README.md`, from the top through "How It Works" plus "What is Next", describe the finished product and its roadmap; keep them aligned with the issue tracker rather than with the current code.
 
 Never write code comments, including JSDoc, inline explanations, TODOs, or commented-out code. Convey meaning and functionality through precise names, domain language from `GLOSSARY.md`, and clear code structure. Preserve executable shebangs and machine-required migration separators. Rust sources (`.rs`) are exempt from this rule: comments are allowed there. Generated files (`apps/web/src/routeTree.gen.ts`, `apps/web/worker-configuration.d.ts` and the Codama client in `packages/orchid-links/src/generated/`) are exempt from this rule and from linting and formatting; keep them exactly as their generators write them.
 
