@@ -229,6 +229,7 @@ const writeUnclaimedFunds = Effect.fn("writeUnclaimedFunds")(function* (held: {
   readonly link: Address;
   readonly rentRecipient: Address;
   readonly program?: Address;
+  readonly reclaimableAt?: bigint;
 }) {
   const [account, bump] = yield* Effect.promise(() =>
     findUnclaimedFundsAddress(
@@ -247,7 +248,7 @@ const writeUnclaimedFunds = Effect.fn("writeUnclaimedFunds")(function* (held: {
         ...held,
         mint: USDC_MINT_ADDRESS,
         amount: 5_500_001n,
-        reclaimableAt: 1_700_000_000n,
+        reclaimableAt: held.reclaimableAt ?? 1_700_000_000n,
         bump,
       }),
     ),
@@ -330,6 +331,12 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
             rentRecipient,
           });
 
+          const locked = yield* writeUnclaimedFunds({
+            ...held,
+            rentRecipient,
+            reclaimableAt: 4_000_000_000n,
+          });
+
           const impostor = yield* writeUnclaimedFunds({
             ...held,
             rentRecipient,
@@ -338,23 +345,25 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
 
           const reads = solanaUnclaimedFunds(rpc, sponsor);
 
-          const found = yield* reads.unclaimedFunds([sponsored, impostor]);
+          const found = yield* reads.unclaimedFunds([
+            sponsored,
+            locked,
+            impostor,
+          ]);
 
-          const beforeReclaim = DateTime.makeUnsafe(1_699_999_999_000);
-          const reclaim = DateTime.makeUnsafe(1_700_000_000_000);
+          const serverBehindChain = DateTime.makeUnsafe(1_699_999_999_000);
 
           expect(
             found.map((entry) => ({
               unclaimedFunds: entry.unclaimedFunds,
               asset: entry.asset,
               amount: entry.amount,
-              linkClaimsEarly: Option.exists(entry.claimOf(link), (claim) =>
-                claim.claimableAt(beforeReclaim),
+              linkClaims: Option.exists(entry.claimOf(link), (claim) =>
+                claim.claimableAt(serverBehindChain),
               ),
               senderClaims: Option.map(entry.claimOf(sender), (claim) => ({
                 opensAt: claim.opensAt,
-                early: claim.claimableAt(beforeReclaim),
-                onTime: claim.claimableAt(reclaim),
+                claimable: claim.claimableAt(serverBehindChain),
               })),
               strangerClaims: Option.isSome(entry.claimOf(stranger)),
               linkFromSender: entry.paymentLinkFrom(sender),
@@ -365,11 +374,23 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
               unclaimedFunds: sponsored,
               asset: usdc,
               amount: 5_500_001n,
-              linkClaimsEarly: true,
+              linkClaims: true,
               senderClaims: Option.some({
-                opensAt: Option.some(reclaim),
-                early: false,
-                onTime: true,
+                opensAt: Option.some(DateTime.makeUnsafe(1_700_000_000_000)),
+                claimable: true,
+              }),
+              strangerClaims: false,
+              linkFromSender: Option.some(link),
+              linkFromStranger: Option.none(),
+            },
+            {
+              unclaimedFunds: locked,
+              asset: usdc,
+              amount: 5_500_001n,
+              linkClaims: true,
+              senderClaims: Option.some({
+                opensAt: Option.some(DateTime.makeUnsafe(4_000_000_000_000)),
+                claimable: false,
               }),
               strangerClaims: false,
               linkFromSender: Option.some(link),
@@ -392,6 +413,7 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
             Arr.sortWith(
               [
                 { id: sponsored, paymentLink: Option.some(link) },
+                { id: locked, paymentLink: Option.some(link) },
                 { id: unsponsored, paymentLink: Option.none() },
               ],
               (entry) => entry.id,

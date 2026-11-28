@@ -70,16 +70,10 @@ const claimAnytime: Claim = {
   claimableAt: () => true,
 };
 
-const reclaimOf = (held: UnclaimedFunds, chainTime: bigint): Claim => {
-  const opensAt = DateTime.makeUnsafe(Number(held.reclaimableAt) * 1000);
-
-  return {
-    opensAt: Option.some(opensAt),
-    claimableAt: (at) =>
-      chainTime >= held.reclaimableAt &&
-      DateTime.toEpochMillis(at) >= DateTime.toEpochMillis(opensAt),
-  };
-};
+const reclaimOf = (held: UnclaimedFunds, chainTime: bigint): Claim => ({
+  opensAt: Option.some(DateTime.makeUnsafe(Number(held.reclaimableAt) * 1000)),
+  claimableAt: () => chainTime >= held.reclaimableAt,
+});
 
 const entryOf = (
   unclaimedFunds: UnclaimedFundsId,

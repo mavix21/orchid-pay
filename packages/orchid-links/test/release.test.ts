@@ -108,21 +108,32 @@ describe("claim", () => {
 });
 
 describe("reclaim", () => {
-  it("pays the sender back right after the link is created and leaves nothing to claim", async () => {
+  it("refuses before the stored reclaim time, pays the sender back from creation and leaves nothing to claim", async () => {
     const harness = await createLinkHarness();
+    const createdAt = harness.now();
     const created = await harness.createLink(1_000_000n);
     const destination = await harness.tokenAccount(created.link.address, 0n);
 
+    const reclaim = await getReclaimInstruction({
+      signer: harness.sender.address,
+      unclaimedFunds: created.address,
+      destination: created.source,
+      rentRecipient: harness.sponsor.address,
+    });
+
+    harness.setNow(createdAt - 1n);
+
+    const early = await harness.send(
+      harness.sponsor,
+      [reclaim],
+      [harness.sender],
+    );
+
+    harness.setNow(createdAt);
+
     const reclaimed = await harness.send(
       harness.sponsor,
-      [
-        await getReclaimInstruction({
-          signer: harness.sender.address,
-          unclaimedFunds: created.address,
-          destination: created.source,
-          rentRecipient: harness.sponsor.address,
-        }),
-      ],
+      [reclaim],
       [harness.sender],
     );
 
@@ -139,6 +150,10 @@ describe("reclaim", () => {
       [created.link],
     );
 
+    expect(early).toEqual({
+      kind: "failed",
+      code: orchidLinksErrorCode.notYetReclaimable,
+    });
     expect(reclaimed).toEqual({ kind: "succeeded" });
     expect(claimed).toEqual({
       kind: "failed",
