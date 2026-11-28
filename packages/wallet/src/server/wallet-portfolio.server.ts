@@ -12,6 +12,7 @@ import {
 } from "../contract";
 import { AssetOrders } from "./AssetOrders.server";
 import { Chain } from "./Chain.server";
+import { claimableQuotaFlow } from "./claimable-quota.server";
 import { rpcReadConcurrency } from "./settings.server";
 import { Transfers } from "./Transfers.server";
 
@@ -19,6 +20,7 @@ export const portfolioFlow = Effect.gen(function* () {
   const chain = yield* Chain;
   const assets = yield* AssetOrders;
   const transfers = yield* Transfers;
+  const { closeGoneUnclaimedFunds } = yield* claimableQuotaFlow;
 
   const loadHoldings = (
     address: AccountAddress,
@@ -116,16 +118,7 @@ export const portfolioFlow = Effect.gen(function* () {
 
       yield* Effect.forEach(
         missing,
-        (id) =>
-          permits
-            .withPermit(chain.unclaimedFunds([id]))
-            .pipe(
-              Effect.flatMap((confirmed) =>
-                confirmed.length === 0
-                  ? transfers.closeUnclaimedFunds(id)
-                  : Effect.void,
-              ),
-            ),
+        (id) => permits.withPermit(closeGoneUnclaimedFunds(id)),
         { concurrency: rpcReadConcurrency, discard: true },
       );
 

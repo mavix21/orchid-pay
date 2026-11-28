@@ -8,6 +8,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
+import * as Stream from "effect/Stream";
 import { addressRules } from "../src/address-rules";
 import {
   AccountAddress,
@@ -35,7 +36,6 @@ import {
   Sealed,
   Undecided,
 } from "../src/server/Chain.server";
-import { EventsStart } from "../src/server/chain-deposits.server";
 import type { UnclaimedFundsEntry } from "../src/server/unclaimed-funds.server";
 import { approvalMargin, draftLifetime } from "../src/policy";
 import { accountState, amount, holdingsReader, world } from "./ledger-world";
@@ -301,6 +301,8 @@ export const memoryChain = Layer.succeed(
               }),
             ),
       ),
+    unclaimedFundsClosedAt: (id) =>
+      Effect.succeed(Option.fromUndefinedOr(world.closures.get(id))),
     draftClaimable: (from, to, asset, value) =>
       heldDraft(from, to, asset, value, false),
     draftPaymentLink: (from, to, asset, value) =>
@@ -374,21 +376,35 @@ export const memoryChain = Layer.succeed(
       Effect.sync(
         () => !world.unmergeable.has(link) && !world.accounts.delete(link),
       ),
-    depositFeed: "memory-ledger",
-    resumeDeposits: (cursor) =>
-      Effect.as(cursor, EventsStart.FromLedger({ ledger: 0 })),
-    catchUpDeposits: () =>
-      Effect.succeed(EventsStart.FromLedger({ ledger: 0 })),
-    assetEvents: () =>
-      Effect.suspend(() =>
-        world.ledgerDown
-          ? ledgerDown()
-          : Effect.succeed({
-              events: [],
-              position: { cursor: "0", ledger: 0 },
-              drained: true,
-              cursorClosedAt: Option.some(DateTime.nowUnsafe()),
-            }),
+    depositsInto: (wallet, after) =>
+      Stream.unwrap(
+        Effect.suspend(() => {
+          if (world.ledgerDown) return ledgerDown();
+
+          const received = world.deposits.get(wallet) ?? [];
+
+          const start = Option.match(after, {
+            onNone: () => 0,
+            onSome: ({ cursor }) =>
+              received.findIndex((deposit) => deposit.eventId === cursor) + 1,
+          });
+
+          return Effect.succeed(
+            Stream.fromIterable(received.slice(start)).pipe(
+              Stream.mapEffect((deposit) =>
+                world.unreadableDeposits.has(deposit.eventId)
+                  ? ledgerDown()
+                  : Effect.succeed({
+                      deposits: [deposit],
+                      position: {
+                        cursor: deposit.eventId,
+                        ledger: deposit.ledger,
+                      },
+                    }),
+              ),
+            ),
+          );
+        }),
       ),
     validAddress: addressRules.hasValidChecksum,
     pastOpeningWindow: (sealed) =>

@@ -21,7 +21,13 @@ export const claimableQuotaFlow = Effect.gen(function* () {
       .pipe(
         Effect.flatMap((confirmed) =>
           confirmed.length === 0
-            ? transfers.closeUnclaimedFunds(id)
+            ? chain
+                .unclaimedFundsClosedAt(id)
+                .pipe(
+                  Effect.flatMap((closedAt) =>
+                    transfers.closeUnclaimedFunds(id, closedAt),
+                  ),
+                )
             : Effect.void,
         ),
       );

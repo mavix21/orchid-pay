@@ -454,7 +454,9 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             "Pending",
           );
 
-          yield* Transfers.use((t) => t.closeUnclaimedFunds(inflightBalance));
+          yield* Transfers.use((t) =>
+            t.closeUnclaimedFunds(inflightBalance, Option.none()),
+          );
 
           const submitted = Option.getOrThrow(
             Option.fromNullishOr(world.submitted.at(-1)),

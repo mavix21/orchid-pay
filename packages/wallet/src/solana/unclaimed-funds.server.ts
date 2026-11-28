@@ -32,6 +32,7 @@ import type {
   UnclaimedFundsEntry,
 } from "../server/unclaimed-funds.server";
 import type { ChainUnreachable } from "../server/chain-errors.server";
+import { blockTimeOf, signaturesFor } from "./address-history.server";
 import { solanaProfile } from "./profile";
 import {
   RawAccount,
@@ -42,6 +43,8 @@ import {
 import { SolanaAccountAddress, SolanaUnclaimedFundsId } from "./schemas";
 
 const accountsPerRequest = 100;
+
+const closingSearchLimit = 100;
 
 const clockSysvarAddress = address(
   "SysvarC1ock11111111111111111111111111111111",
@@ -127,6 +130,9 @@ export interface SolanaUnclaimedFunds {
   unclaimedFundsFrom(
     sender: AccountAddress,
   ): Effect.Effect<ReadonlyArray<UnclaimedFundsEntry>, ChainUnreachable>;
+  unclaimedFundsClosedAt(
+    id: UnclaimedFundsId,
+  ): Effect.Effect<Option.Option<DateTime.Utc>, ChainUnreachable>;
 }
 
 export const solanaUnclaimedFunds = (
@@ -168,6 +174,18 @@ export const solanaUnclaimedFunds = (
     .pipe(Effect.map(({ value }) => chainTimeOf(value)));
 
   return {
+    unclaimedFundsClosedAt: (id) =>
+      signaturesFor(rpc, id, {
+        before: Option.none(),
+        until: Option.none(),
+        limit: closingSearchLimit,
+      }).pipe(
+        Effect.map((entries) =>
+          Option.fromUndefinedOr(
+            entries.find((entry) => entry.err === null),
+          ).pipe(Option.flatMap((entry) => blockTimeOf(entry.blockTime))),
+        ),
+      ),
     unclaimedFunds: (ids) =>
       Effect.forEach(
         Arr.chunksOf(Arr.dedupe(ids), accountsPerRequest - 1),

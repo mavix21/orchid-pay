@@ -2,6 +2,7 @@ import type { Account } from "@stellar/stellar-sdk";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import {
   type AccountAddress,
   type Asset,
@@ -78,6 +79,7 @@ export const assetChain = (
       read([issuerAccountKey(asset)], (result) =>
         issuerFromEntries(result.entries ?? [], asset),
       ),
+    unclaimedFundsClosedAt: () => Effect.succeed(Option.none()),
     unclaimedFunds: (ids) =>
       ids.length === 0
         ? Effect.succeed([])

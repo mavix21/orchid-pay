@@ -27,14 +27,6 @@ export const claimableReadLimit = 50;
 
 export const activityPageSize = 20;
 
-export const depositPageLimit = 10_000;
-
-export const depositCatchUpLimit = 1_000;
-
-export const depositLedgerScan = 10_000;
-
 export const depositFreshness = 60;
-
-export const depositCatchUpSpan = 13 * 60 * 60;
 
 export const depositTimeBudget = 4 * 60;

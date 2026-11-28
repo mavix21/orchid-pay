@@ -153,6 +153,7 @@ export class Transfers extends Context.Service<
 
     closeUnclaimedFunds(
       unclaimedFunds: UnclaimedFundsId,
+      closedAt: Option.Option<DateTime.Utc>,
     ): Effect.Effect<void, StoreFailure>;
   }
 >()("@workspace/wallet/server/Transfers") {
@@ -595,13 +596,17 @@ export class Transfers extends Context.Service<
               Effect.provideService(Database, db),
             ),
           ),
-        closeUnclaimedFunds: (unclaimedFunds) =>
+        closeUnclaimedFunds: (unclaimedFunds, closedAt) =>
           wrap(
             DateTime.now.pipe(
               Effect.flatMap((now) =>
                 db
                   .update(transfers)
-                  .set({ balanceClosedAt: DateTime.toDateUtc(now) })
+                  .set({
+                    balanceClosedAt: DateTime.toDateUtc(
+                      Option.getOrElse(closedAt, () => now),
+                    ),
+                  })
                   .where(
                     and(
                       unclaimedAt(DateTime.toEpochMillis(now)),

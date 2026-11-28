@@ -1,0 +1,236 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "29da4949-7ff6-409b-965d-6ea641229136",
+  "prevIds": ["949c203d-d300-43e2-8f95-2e3144f7fbdd"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "deposit_cursors", "wallet"],
+      "writes": [
+        "s|col|public.deposit_cursors.wallet",
+        "n|col|public.deposit_cursors.wallet",
+        "e|col|public.deposit_cursors.wallet"
+      ],
+      "reads": ["n|tbl|public.deposit_cursors", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "deposit_cursors", "scannedAt"],
+      "writes": [
+        "s|col|public.deposit_cursors.scannedAt",
+        "n|col|public.deposit_cursors.scannedAt",
+        "e|col|public.deposit_cursors.scannedAt"
+      ],
+      "reads": ["n|tbl|public.deposit_cursors", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "deposit_cursors", "contractId"],
+      "writes": [
+        "s|col|public.deposit_cursors.contractId",
+        "n|col|public.deposit_cursors.contractId",
+        "e|col|public.deposit_cursors.contractId"
+      ],
+      "reads": ["n|tbl|public.deposit_cursors", "n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "deposit_cursors", "closedAt"],
+      "writes": [
+        "s|col|public.deposit_cursors.closedAt",
+        "n|col|public.deposit_cursors.closedAt",
+        "e|col|public.deposit_cursors.closedAt"
+      ],
+      "reads": ["n|tbl|public.deposit_cursors", "n|sch|public"]
+    },
+    {
+      "statementType": "alter_pk",
+      "statementTarget": ["table", "public", "deposit_cursors"],
+      "writes": ["s|pk|public.deposit_cursors"],
+      "reads": [
+        "n|tbl|public.deposit_cursors",
+        "n|sch|public",
+        "n|col|public.deposit_cursors.network",
+        "n|col|public.deposit_cursors.testnetEpoch",
+        "n|col|public.deposit_cursors.wallet"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.deposit_cursors.contractId.network.testnetEpoch"
+      ]
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "deposit_cursors", "cursor"],
+      "writes": ["s|colprop|public.deposit_cursors.cursor.notNull"],
+      "reads": [
+        "n|tbl|public.deposit_cursors",
+        "n|sch|public",
+        "n|col|public.deposit_cursors.cursor"
+      ],
+      "sqlHash": "714d05cb9c9749d6"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "deposit_cursors", "ledger"],
+      "writes": [
+        "s|colprop|public.deposit_cursors.ledger.notNull",
+        "s|colprop|public.deposit_cursors.ledger.type",
+        "s|colprop|public.deposit_cursors.ledger.default"
+      ],
+      "reads": [
+        "n|tbl|public.deposit_cursors",
+        "n|sch|public",
+        "n|col|public.deposit_cursors.ledger"
+      ],
+      "sqlHash": "4985a279007e2922"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "deposits", "ledger"],
+      "writes": [
+        "s|colprop|public.deposits.ledger.type",
+        "s|colprop|public.deposits.ledger.default"
+      ],
+      "reads": [
+        "n|tbl|public.deposits",
+        "n|sch|public",
+        "n|col|public.deposits.ledger"
+      ],
+      "sqlHash": "e04d6c599795335d"
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "deposit_cursors"],
+      "writes": [
+        "s|fk|public.deposit_cursors.deposit_cursors_wallet_wallets_address_fkey",
+        "n|fk|public.deposit_cursors.deposit_cursors_wallet_wallets_address_fkey",
+        "e|fk|public.deposit_cursors.deposit_cursors_wallet_wallets_address_fkey",
+        "n|con|public.deposit_cursors.deposit_cursors_wallet_wallets_address_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.deposit_cursors",
+        "n|sch|public",
+        "n|tbl|public.wallets",
+        "n|sch|public",
+        "n|col|public.deposit_cursors.wallet",
+        "n|col|public.wallets.address",
+        "e|uniqueness|public.wallets.address"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": ["table", "public", "deposit_cursors"],
+      "writes": [
+        "s|ck|public.deposit_cursors.deposit_cursors_position",
+        "n|ck|public.deposit_cursors.deposit_cursors_position",
+        "e|ck|public.deposit_cursors.deposit_cursors_position",
+        "n|con|public.deposit_cursors.deposit_cursors_position"
+      ],
+      "reads": [
+        "n|tbl|public.deposit_cursors",
+        "n|sch|public",
+        "n|col|public.deposit_cursors.cursor",
+        "n|col|public.deposit_cursors.ledger"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "deposit_cursors",
+        "name": "wallet",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "deposit_cursors",
+        "name": "scannedAt",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "deposit_cursors",
+        "name": "deposit_cursors_wallet_wallets_address_fkey",
+        "nameExplicit": false,
+        "columns": ["wallet"],
+        "schemaTo": "public",
+        "tableTo": "wallets",
+        "columnsTo": ["address"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "deposit_cursors",
+        "name": "deposit_cursors_position",
+        "value": "(\"cursor\" is null) = (\"ledger\" is null)",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"deposit_cursors\",\"contractId\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"deposit_cursors\",\"closedAt\"]"
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"deposit_cursors\",\"cursor\"]",
+      "set": {
+        "notNull": false
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"deposit_cursors\",\"ledger\"]",
+      "set": {
+        "type": "bigint",
+        "notNull": false
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"deposits\",\"ledger\"]",
+      "set": {
+        "type": "bigint"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "pks\u0000[\"public\",\"deposit_cursors\",\"deposit_cursors_pkey\"]",
+      "set": {
+        "columns": ["network", "testnetEpoch", "wallet"]
+      }
+    }
+  ]
+}

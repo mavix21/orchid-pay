@@ -13,6 +13,7 @@ import * as Predicate from "effect/Predicate";
 import * as Redacted from "effect/Redacted";
 import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
+import * as Stream from "effect/Stream";
 import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import {
   Approval,
@@ -22,9 +23,11 @@ import {
 } from "../src/contract";
 import { chainLayer } from "../src/binding/chain.server";
 import { Chain } from "../src/server/Chain.server";
+import type { DepositPosition } from "../src/server/chain-deposits.server";
 import type { Sealed } from "../src/server/chain-settlement.server";
 import { WalletSettings } from "../src/server/settings.server";
 import { solanaAccountChain } from "../src/solana/account-chain.server";
+import { solanaDepositChain } from "../src/solana/deposit-chain.server";
 import { solanaDraftChain } from "../src/solana/draft-chain.server";
 import { decodeSealedEnvelope } from "../src/solana/envelope-codec";
 import { solanaProfile } from "../src/solana/profile";
@@ -38,6 +41,7 @@ import { solanaSigningScheme } from "../src/solana/signing-scheme";
 import { sponsoredFailuresIn } from "../src/solana/sponsored-failures.server";
 import { solanaSubmission } from "../src/solana/submission.server";
 import { solanaUnclaimedFunds } from "../src/solana/unclaimed-funds.server";
+import { assertTagged } from "../test/tagged";
 import { dbLayer, useMigratedDatabase } from "../test/test-database";
 import { Surfnet, surfnetLayer } from "./surfnet";
 
@@ -104,6 +108,7 @@ const writer = Effect.gen(function* () {
 
   const accounts = solanaAccountChain(rpc, sponsorKey.account);
   const unclaimed = solanaUnclaimedFunds(rpc, sponsorKey.account);
+  const deposits = solanaDepositChain(rpc);
 
   const sealedBy = (request: SigningRequest, key: Key) =>
     seal(
@@ -172,6 +177,7 @@ const writer = Effect.gen(function* () {
     submission,
     accounts,
     unclaimed,
+    deposits,
     sealedBy,
     concluded,
     land,
@@ -196,8 +202,15 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
     "opens wallets, sends, and pays out two links to a new wallet and a payout partner",
     () =>
       Effect.gen(function* () {
-        const { accounts, drafts, unclaimed, land, open, createLink } =
-          yield* writer;
+        const {
+          accounts,
+          drafts,
+          unclaimed,
+          deposits,
+          land,
+          open,
+          createLink,
+        } = yield* writer;
 
         const sender = yield* open(10_000_000);
         const recipient = yield* open();
@@ -239,9 +252,9 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
             );
           });
 
-        expect((yield* receive(claimed, newWallet, 3_000_000n))._tag).toBe(
-          "Applied",
-        );
+        const claim = yield* receive(claimed, newWallet, 3_000_000n);
+
+        assertTagged(claim, "Applied");
         expect((yield* receive(paidOut, partner, 1_000_000n))._tag).toBe(
           "Applied",
         );
@@ -255,6 +268,29 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
             paidOut.unclaimedFunds,
           ]),
         ).toEqual([]);
+        expect(
+          yield* unclaimed.unclaimedFundsClosedAt(claimed.unclaimedFunds),
+        ).toEqual(Option.some(claim.at));
+
+        const pagesInto = (key: Key, after = Option.none<DepositPosition>()) =>
+          Stream.runCollect(deposits.depositsInto(key.account, after));
+
+        const recipientPages = yield* pagesInto(recipient);
+
+        expect(
+          recipientPages.flatMap((page) =>
+            page.deposits.map(({ from, amount }) => ({ from, amount })),
+          ),
+        ).toEqual([{ from: sender.account, amount: 2_000_000n }]);
+        expect(
+          (yield* pagesInto(newWallet)).flatMap((page) => page.deposits),
+        ).toEqual([]);
+
+        const newest = Option.fromUndefinedOr(recipientPages.at(-1)).pipe(
+          Option.map((page) => page.position),
+        );
+
+        expect(yield* pagesInto(recipient, newest)).toEqual([]);
       }),
   );
 
