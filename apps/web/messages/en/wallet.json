@@ -70,10 +70,11 @@
   "activity_yesterday": "Yesterday, {time}",
   "deposit_title": "Receive USDC",
   "deposit_preparing": "Preparing your address…",
-  "deposit_opening_explanation": "Your account isn't open on the Stellar network yet. Confirm with your passkey to open it and see your address.",
+  "deposit_opening_explanation": "Your account isn't open on the Solana network yet. Confirm with your passkey to open it and see your address.",
   "deposit_unavailable_title": "We couldn't show your address",
   "deposit_copy_failed": "We couldn't copy it. Press and hold the address.",
   "deposit_qr_label": "QR code of your address",
-  "deposit_address_title": "Your Stellar address",
-  "deposit_usdc_only": "Send only USDC over the Stellar network. Anything sent over another network is lost."
+  "deposit_address_title": "Your Solana address",
+  "deposit_usdc_only": "Send only USDC over the Solana network. Anything sent over another network is lost.",
+  "explorer_view": "View on Solana Explorer"
 }

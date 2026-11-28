@@ -1,4 +1,4 @@
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
@@ -20,6 +20,7 @@ import {
   ModalTitle,
 } from "@/components/modal";
 import { ActivityRow, amountTone } from "@/components/activity-row";
+import { explorerAddressUrl } from "@/components/explorer";
 
 import {
   type Party,
@@ -189,6 +190,21 @@ function PartyValue({ party }: { party: Party }) {
         onClick={() => void copy()}
       >
         {copied ? <CheckIcon /> : <CopyIcon />}
+      </Button>
+      <Button
+        variant="secondary"
+        size="icon"
+        aria-label={m.explorer_view()}
+        nativeButton={false}
+        render={
+          <a
+            href={explorerAddressUrl(party.address)}
+            target="_blank"
+            rel="noreferrer"
+          />
+        }
+      >
+        <ExternalLinkIcon />
       </Button>
     </span>
   );

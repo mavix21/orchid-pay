@@ -1,4 +1,4 @@
-import { Badge } from "@workspace/ui/components/badge";
+import { NetworkBadge } from "@/components/network-badge";
 
 export function ReviewHero({
   title,
@@ -13,7 +13,7 @@ export function ReviewHero({
     <header className="flex flex-col items-center gap-2 pt-6 text-center">
       <h1 className="text-body text-muted-foreground">{title}</h1>
       <p className="font-display text-display">{amount}</p>
-      {network === "testnet" ? <Badge variant="neutral">Testnet</Badge> : null}
+      <NetworkBadge network={network} />
     </header>
   );
 }

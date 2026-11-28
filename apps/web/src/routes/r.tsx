@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { WalletIcon } from "lucide-react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import {
   type AssetStep,
@@ -20,6 +19,7 @@ import * as Predicate from "effect/Predicate";
 
 import { PasskeyBrowserGate } from "@/browser/passkey-browser-gate";
 import { BrandLogo } from "@/components/brand-logo";
+import { NetworkBadge } from "@/components/network-badge";
 import { BloomActions, BloomHero } from "@/components/orchid-bloom";
 import { Screen } from "@/components/screen";
 import { ExternalClaimFlow } from "@/links/external-claim-flow";
@@ -356,7 +356,6 @@ function ReceiveLink({ opened }: { opened: ReadLinkCode }) {
       <ReceiveReview
         sender={open.sender.username}
         amount={amountLabel(open.amount, open.asset)}
-        testnet={false}
         problem={Option.none()}
       />
     ),
@@ -365,7 +364,6 @@ function ReceiveLink({ opened }: { opened: ReadLinkCode }) {
         <ReceiveReview
           sender={open.sender.username}
           amount={amountLabel(open.amount, open.asset)}
-          testnet={false}
           problem={Option.none()}
         />
         <SessionConfirmation
@@ -378,7 +376,7 @@ function ReceiveLink({ opened }: { opened: ReadLinkCode }) {
       <ReceiveReview
         sender={shown.sender.username}
         amount={amountLabel(shown.amount, shown.asset)}
-        testnet={shown.network === "testnet"}
+        network={shown.network}
         problem={problem}
         onConfirm={() => confirm(open, shown)}
       />
@@ -454,13 +452,13 @@ function ReceiveLink({ opened }: { opened: ReadLinkCode }) {
 function ReceiveReview({
   sender,
   amount,
-  testnet,
+  network,
   problem,
   onConfirm,
 }: {
   sender: string;
   amount: string;
-  testnet: boolean;
+  network?: string;
   problem: Option.Option<string>;
   onConfirm?: () => void;
 }) {
@@ -480,7 +478,7 @@ function ReceiveReview({
           amount={amount}
         >
           <div className="flex h-6 items-center">
-            {testnet ? <Badge variant="neutral">Testnet</Badge> : null}
+            {network === undefined ? null : <NetworkBadge network={network} />}
           </div>
           <p className="text-body text-pretty text-muted-foreground">
             {m.receive_review_note()}

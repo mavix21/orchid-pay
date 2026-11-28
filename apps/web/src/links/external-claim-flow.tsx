@@ -18,7 +18,6 @@ import {
   type ExternalLinkReview,
   type LinkCode,
   type PaymentLinkOpen,
-  forbidsMemo,
 } from "@workspace/wallet";
 import * as Data from "effect/Data";
 import * as Match from "effect/Match";
@@ -101,7 +100,6 @@ export function ExternalClaimFlow({
   );
 
   const sent = amountLabel(open.amount, open.asset);
-  const muxed = forbidsMemo(form.destination.trim());
 
   useEffect(() => {
     if (!Predicate.isTagged(step, "Form") || Option.isNone(step.problem))
@@ -206,7 +204,7 @@ export function ExternalClaimFlow({
               </div>
               <Field>
                 <FieldLabel htmlFor="external-destination">
-                  {m.common_stellar_address()}
+                  {m.common_solana_address()}
                 </FieldLabel>
                 <Input
                   id="external-destination"
@@ -252,8 +250,7 @@ export function ExternalClaimFlow({
                     id="external-memo"
                     name="memo"
                     ref={memoRef}
-                    value={muxed ? "" : form.memo}
-                    disabled={muxed}
+                    value={form.memo}
                     onChange={(event) => {
                       setForm((current) => ({
                         ...current,
@@ -276,17 +273,13 @@ export function ExternalClaimFlow({
                         : undefined
                     }
                   />
-                  {muxed ? null : (
-                    <InputGroupAddon align="inline-end">
-                      <span className="text-label tabular-nums">
-                        {memoBytes(form.memo)}/{memoByteLimit}
-                      </span>
-                    </InputGroupAddon>
-                  )}
+                  <InputGroupAddon align="inline-end">
+                    <span className="text-label tabular-nums">
+                      {memoBytes(form.memo)}/{memoByteLimit}
+                    </span>
+                  </InputGroupAddon>
                 </InputGroup>
-                <FieldDescription>
-                  {muxed ? m.external_muxed_note() : m.external_memo_hint()}
-                </FieldDescription>
+                <FieldDescription>{m.external_memo_hint()}</FieldDescription>
                 {Option.isSome(memoProblem) ? (
                   <FieldError id="external-memo-error">
                     {memoProblem.value}

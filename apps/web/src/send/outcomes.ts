@@ -94,16 +94,15 @@ export const sendResult = (
       new FieldProblem(
         "memo",
         reason === "muxed"
-          ? m.send_memo_not_allowed_muxed()
+          ? m.send_memo_not_allowed_address()
           : m.send_memo_not_allowed_orchid(),
       ),
     RecipientCannotReceive: ({ reason }) =>
       new FieldProblem(
         "recipient",
         Match.value(reason).pipe(
-          Match.when("no_account", () => m.common_account_cannot_receive()),
-          Match.when("no_trustline", () =>
-            m.common_recipient_no_trustline({ asset: asset.code }),
+          Match.whenOr("no_account", "no_trustline", () =>
+            m.common_account_cannot_receive({ asset: asset.code }),
           ),
           Match.when("not_authorized", () =>
             m.common_recipient_not_authorized({ asset: asset.code }),

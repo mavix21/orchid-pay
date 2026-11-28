@@ -3,7 +3,6 @@ import {
   ExternalLinkIntent,
   PaymentMemo,
   RecognisedAddress,
-  forbidsMemo,
   recogniseAddress,
 } from "@workspace/wallet";
 import * as Option from "effect/Option";
@@ -55,9 +54,6 @@ export function externalClaimIntentOf(
     );
 
   const destination = decoded.value;
-
-  if (forbidsMemo(destination))
-    return Result.succeed(new ExternalLinkIntent({ destination }));
 
   const trimmed = form.memo.trim();
 

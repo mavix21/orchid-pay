@@ -7,7 +7,7 @@ import { externalClaimIntentOf } from "../src/links/external-claim-intent";
 const destination = "GmaDrppBC7P5ARKV8g3djiwP89vz1jLK23V2GBjuAEGB";
 
 it.each([
-  ["digits stay MEMO_TEXT unchanged", "001234", "001234"],
+  ["digits stay unchanged text", "001234", "001234"],
   [
     "edge whitespace trimmed and inner spaces kept",
     "  00 12 34 \n",

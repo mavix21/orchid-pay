@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, ExternalLinkIcon } from "lucide-react";
 import { Button } from "@workspace/ui/components/button";
 import type { AccountAddress } from "@workspace/wallet";
 
 import { AddressQr } from "@/components/address-qr";
+import { explorerAddressUrl } from "@/components/explorer";
 import { ScreenActions } from "@/components/screen";
 import { m } from "@/paraglide/messages";
 
@@ -52,6 +53,22 @@ export function DepositAddress({ address }: { address: AccountAddress }) {
         <Button className="w-full" onClick={copy} data-testid="copy-address">
           {copied ? <CheckIcon /> : <CopyIcon />}
           {copied ? m.activity_address_copied() : m.activity_copy_address()}
+        </Button>
+        <Button
+          className="w-full"
+          variant="ghost"
+          nativeButton={false}
+          render={
+            <a
+              href={explorerAddressUrl(address)}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="deposit-explorer"
+            />
+          }
+        >
+          <ExternalLinkIcon />
+          {m.explorer_view()}
         </Button>
       </ScreenActions>
     </>

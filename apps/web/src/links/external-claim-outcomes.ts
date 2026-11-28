@@ -148,14 +148,13 @@ const mapResult = (
       fieldProblem("destination", m.common_address_invalid()),
     ExternalMemoRequired: () =>
       fieldProblem("memo", m.external_deposit_needs_memo()),
-    MemoNotAllowed: () => fieldProblem("memo", m.external_muxed_note()),
+    MemoNotAllowed: () => fieldProblem("memo", m.external_memo_not_allowed()),
     RecipientCannotReceive: ({ reason }) =>
       fieldProblem(
         "destination",
         Match.value(reason).pipe(
-          Match.when("no_account", () => m.common_account_cannot_receive()),
-          Match.when("no_trustline", () =>
-            m.common_recipient_no_trustline({ asset: code }),
+          Match.whenOr("no_account", "no_trustline", () =>
+            m.common_account_cannot_receive({ asset: code }),
           ),
           Match.when("not_authorized", () =>
             m.common_recipient_not_authorized({ asset: code }),

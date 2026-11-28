@@ -9,7 +9,6 @@ import {
   TransferIntent,
   Username,
   UsernameRecipient,
-  forbidsMemo,
   parseAmount,
   precisionOf,
   recogniseAddress,
@@ -114,11 +113,7 @@ export function intentOf(
 
   const memo = form.memo.trim();
 
-  if (
-    destination === "username" ||
-    memo === "" ||
-    forbidsMemo(to.success.value)
-  )
+  if (destination === "username" || memo === "")
     return Result.succeed(
       new TransferIntent({ to: to.success, asset, amount: amount.value }),
     );

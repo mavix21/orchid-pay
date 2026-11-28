@@ -91,7 +91,7 @@
   "link_own_cannot_receive": "Tu cuenta no puede recibir {asset} en este momento.",
   "link_own_not_authorized": "El emisor de esta moneda no permite que tu cuenta reciba dinero.",
   "link_own_no_capacity": "Tu cuenta no puede recibir esta cantidad de {asset} en este momento.",
-  "link_trustline_limit": "Tu cuenta ya tiene el máximo de {limit} monedas y {asset} no está entre ellas.",
+  "link_asset_limit": "Tu cuenta ya tiene el máximo de {limit} monedas y {asset} no está entre ellas.",
   "link_not_yet_recoverable_title": "Aún no puedes recuperar este dinero",
   "link_recoverable_from": "Podrás recuperarlo desde el {date}.",
   "link_operation_unconfirmed_title": "No pudimos confirmar la operación",
