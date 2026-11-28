@@ -20,7 +20,6 @@
     "required": [
       "SOLANA_RPC_URL",
       "SPONSOR_SECRET",
-      "TURNSTILE_SITE_KEY",
       "TURNSTILE_SECRET_KEY",
       "SESSION_SECRET",
     ],
