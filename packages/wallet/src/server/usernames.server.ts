@@ -29,7 +29,6 @@ export const reservedUsernames: ReadonlySet<string> = new Set([
   "contact",
   "noreply",
   "no_reply",
-  "stellar",
   "usdc",
   "circle",
   "null",

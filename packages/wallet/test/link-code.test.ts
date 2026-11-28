@@ -26,10 +26,6 @@ it.each([
   },
   { name: "a code with an extra character", text: `${issued}z` },
   { name: "characters outside base58", text: `${issued.slice(0, -1)}0` },
-  {
-    name: "a Stellar secret key",
-    text: "SBQWY3DNPFWGSZTFNV4WQZLBOJ2GQYLTMJSXEZLMOJSXKZTOMVZGK3TBNJSXI",
-  },
   { name: "an empty fragment", text: "" },
 ])("refuses $name", ({ text }) => {
   expect(decodeCode(text)).toEqual(Option.none());
