@@ -41,10 +41,8 @@ import {
 import { chainLayer } from "../binding/chain.server";
 import { Chain, type ChainUnreachable } from "./Chain.server";
 import { Directory } from "./Directory.server";
-import {
-  type ExternalBinding,
-  PaymentRequests,
-} from "./PaymentRequests.server";
+import { PaymentRequests } from "./PaymentRequests.server";
+import type { ExternalBinding } from "./payment-request-rows.server";
 import { Principal } from "./Principal.server";
 import { StoreFailure } from "./store-failure.server";
 import {
@@ -154,8 +152,12 @@ export class RequestPayments extends Context.Service<
               termsOf(request, external.value),
             );
 
-            if (Predicate.isTagged(settlement, "Applied"))
-              return yield* requests.markPaid(id, reference);
+            if (Predicate.isTagged(settlement, "ExternalPaymentApplied"))
+              return yield* requests.markPaidExternally(
+                id,
+                reference,
+                settlement.hash,
+              );
 
             if (!Predicate.isTagged(settlement, "Undecided"))
               yield* requests.release(id, reference);

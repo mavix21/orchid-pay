@@ -22,8 +22,6 @@ import * as Schema from "effect/Schema";
 import { isSqlError } from "effect/sql/SqlError";
 import {
   AccountAddress,
-  AssetCode,
-  AssetId,
   type CancelPaymentRequestStep,
   type CreatePaymentRequestStep,
   NeedsReopening,
@@ -37,14 +35,12 @@ import {
   PaymentRequestCancelled,
   PaymentRequestId,
   PaymentRequestLimitReached,
-  PaymentRequestNote,
   PaymentRequestNotFound,
   PaymentRequestOpen,
   PaymentRequestPaid,
   PaymentRequestPaymentTaken,
   type PaymentRequestPort,
   type PaymentRequestStep,
-  PositiveAmount,
   type Profile,
   TransferId,
   Username,
@@ -52,45 +48,21 @@ import {
   sameAsset,
 } from "../contract";
 import { openPaymentRequestQuota } from "../policy";
-import { ExternalPayment } from "./chain-request-payments.server";
+import type { ExternalPayment } from "./chain-request-payments.server";
 import { epochAt, network } from "../record-network";
 import { Directory } from "./Directory.server";
 import { Principal } from "./Principal.server";
 import { walletLock } from "./slot.server";
 import { StoreFailure } from "./store-failure.server";
 import { externalPayments, paymentRequests, usernames } from "./tables.server";
-
-type PaymentRequestRow = typeof paymentRequests.$inferSelect;
-
-type ExternalPaymentRow = typeof externalPayments.$inferSelect;
-
-const requestOf = (row: PaymentRequestRow) => ({
-  id: Schema.decodeSync(PaymentRequestId)(row.id),
-  requester: Schema.decodeSync(Username)(row.requester),
-  asset: {
-    id: Schema.decodeSync(AssetId)(row.assetId),
-    code: Schema.decodeSync(AssetCode)(row.assetCode),
-  },
-  amount: Schema.decodeSync(PositiveAmount)(row.amount.toString()),
-  note:
-    row.note === null
-      ? undefined
-      : Schema.decodeSync(PaymentRequestNote)(row.note),
-  createdAt: DateTime.fromDateUnsafe(row.createdAt),
-});
-
-const stepOf = (row: PaymentRequestRow) => {
-  const request = requestOf(row);
-
-  switch (row.status) {
-    case "open":
-      return new PaymentRequestOpen(request);
-    case "paid":
-      return new PaymentRequestPaid(request);
-    case "cancelled":
-      return new PaymentRequestCancelled(request);
-  }
-};
+import {
+  type ExternalBinding,
+  type InspectedRequest,
+  type PaymentRequestRow,
+  inspectedOf,
+  requestOf,
+  stepOf,
+} from "./payment-request-rows.server";
 
 const stored = <A, E>(query: Effect.Effect<A, E>) =>
   query.pipe(Effect.mapError((cause) => new StoreFailure({ cause })));
@@ -117,52 +89,6 @@ const violatesPaymentIndex = (error: EffectDrizzleQueryError) =>
       Predicate.isTagged(failure.reason, "UniqueViolation") &&
       failure.reason.constraint === paymentIndex,
   );
-
-export interface ExternalBinding {
-  readonly payment: ExternalPayment;
-  readonly payer: AccountAddress;
-  readonly requester: AccountAddress;
-}
-
-export interface RequestBinding {
-  readonly payment: string;
-  readonly expiresAt: Option.Option<DateTime.Utc>;
-  readonly external: Option.Option<ExternalBinding>;
-}
-
-export interface InspectedRequest {
-  readonly step:
-    | PaymentRequestOpen
-    | PaymentRequestPaid
-    | PaymentRequestCancelled;
-  readonly binding: Option.Option<RequestBinding>;
-}
-
-const externalBindingOf = (row: ExternalPaymentRow): ExternalBinding => ({
-  payment: new ExternalPayment({
-    reference: row.reference,
-    transaction: row.transaction,
-    envelope: row.envelope,
-    expiresAt: DateTime.fromDateUnsafe(row.expiresAt),
-  }),
-  payer: Schema.decodeSync(AccountAddress)(row.payer),
-  requester: Schema.decodeSync(AccountAddress)(row.requester),
-});
-
-const inspectedOf = (
-  row: PaymentRequestRow,
-  external: ExternalPaymentRow | null,
-): InspectedRequest => ({
-  step: stepOf(row),
-  binding: Option.map(Option.fromNullishOr(row.payment), (payment) => ({
-    payment,
-    expiresAt: Option.map(
-      Option.fromNullishOr(row.paymentExpiresAt),
-      DateTime.fromDateUnsafe,
-    ),
-    external: Option.map(Option.fromNullishOr(external), externalBindingOf),
-  })),
-});
 
 export class PaymentRequests extends Context.Service<
   PaymentRequests,
@@ -191,7 +117,12 @@ export class PaymentRequests extends Context.Service<
     ): Effect.Effect<void, StoreFailure>;
     markPaid(
       id: PaymentRequestId,
-      payment: TransferId | ExternalPayment["reference"],
+      payment: TransferId,
+    ): Effect.Effect<void, StoreFailure>;
+    markPaidExternally(
+      id: PaymentRequestId,
+      payment: ExternalPayment["reference"],
+      hash: string,
     ): Effect.Effect<void, StoreFailure>;
   }
 >()("@workspace/wallet/server/PaymentRequests") {
@@ -340,12 +271,25 @@ export class PaymentRequests extends Context.Service<
       const read = Effect.fn("PaymentRequests.read")(function* (
         id: PaymentRequestId,
       ): Effect.fn.Return<PaymentRequestStep, StoreFailure> {
-        const found = yield* find(id);
+        const scope = yield* current;
 
-        return Option.match(found, {
-          onNone: () => new PaymentRequestNotFound(),
-          onSome: stepOf,
-        });
+        const [found] = yield* stored(
+          db
+            .select({
+              request: paymentRequests,
+              externalPaymentHash: externalPayments.hash,
+            })
+            .from(paymentRequests)
+            .leftJoin(
+              externalPayments,
+              eq(externalPayments.reference, paymentRequests.payment),
+            )
+            .where(and(scope, eq(paymentRequests.id, id))),
+        );
+
+        return found === undefined
+          ? new PaymentRequestNotFound()
+          : stepOf(found.request, found.externalPaymentHash);
       });
 
       const open = Effect.fn("PaymentRequests.open")(function* (
@@ -599,21 +543,54 @@ export class PaymentRequests extends Context.Service<
         );
       });
 
+      const paidColumns = Effect.map(
+        Clock.currentTimeMillis,
+        (now): Partial<PaymentRequestRow> => ({
+          status: "paid",
+          paidAt: new Date(now),
+          paymentExpiresAt: null,
+        }),
+      );
+
       const markPaid = Effect.fn("PaymentRequests.markPaid")(function* (
         id: PaymentRequestId,
-        payment: TransferId | ExternalPayment["reference"],
+        payment: TransferId,
       ) {
-        const now = yield* Clock.currentTimeMillis;
-
         yield* stored(
           db
             .update(paymentRequests)
-            .set({
-              status: "paid",
-              paidAt: new Date(now),
-              paymentExpiresAt: null,
-            })
+            .set(yield* paidColumns)
             .where(yield* bindingTo(id, payment)),
+        );
+      });
+
+      const markPaidExternally = Effect.fn(
+        "PaymentRequests.markPaidExternally",
+      )(function* (
+        id: PaymentRequestId,
+        payment: ExternalPayment["reference"],
+        hash: string,
+      ) {
+        const paid = yield* paidColumns;
+        const bound = yield* bindingTo(id, payment);
+
+        yield* stored(
+          db.transaction((tx) =>
+            Effect.gen(function* () {
+              const marked = yield* tx
+                .update(paymentRequests)
+                .set(paid)
+                .where(bound)
+                .returning({ id: paymentRequests.id });
+
+              if (marked.length === 0) return;
+
+              yield* tx
+                .update(externalPayments)
+                .set({ hash })
+                .where(eq(externalPayments.reference, payment));
+            }),
+          ),
         );
       });
 
@@ -629,6 +606,7 @@ export class PaymentRequests extends Context.Service<
         bindExternal,
         release,
         markPaid,
+        markPaidExternally,
       });
     }),
   );

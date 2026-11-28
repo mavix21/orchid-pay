@@ -1,0 +1,1 @@
+ALTER TABLE "external_payments" ADD COLUMN "hash" text;

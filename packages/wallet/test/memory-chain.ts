@@ -411,7 +411,7 @@ export const memoryChain = Layer.succeed(
         world.ledgerDown
           ? ledgerDown()
           : Effect.succeed(
-              world.evidence.get(payment.reference) ?? new Undecided(),
+              world.externalEvidence.get(payment.reference) ?? new Undecided(),
             ),
       ),
     settlement: (sealed) =>

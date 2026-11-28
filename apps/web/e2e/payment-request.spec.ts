@@ -211,9 +211,12 @@ test("a payer without a wallet creates one on the request page and pays it", asy
     timeout: 120_000,
   });
   await expect(payer.getByTestId("pay-request")).toHaveCount(0);
+  await expect(payer.getByTestId("paid-activity")).toBeVisible();
   await payer.reload();
   await expect(request).toHaveAttribute("data-state", "PaymentRequestPaid");
   await expect(payer.getByTestId("pay-request")).toHaveCount(0);
+  await expect(payer.getByTestId("paid-home")).toBeVisible();
+  await expect(payer.getByTestId("paid-activity")).toHaveCount(0);
   await payerContext.close();
 
   await page.goto("/activity");

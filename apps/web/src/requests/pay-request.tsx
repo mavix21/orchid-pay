@@ -82,9 +82,11 @@ const refusedWith = (
 export function PayRequest({
   request,
   onBack,
+  onPaid,
 }: {
   request: PaymentRequestOpen;
   onBack: () => void;
+  onPaid: () => void;
 }) {
   const router = useRouter();
   const { walletClient } = useRouteContext({ from: "__root__" });
@@ -92,10 +94,14 @@ export function PayRequest({
   const [step, setStep] = useState<PayStep>(PayStep.Preparing());
   const { asset } = request;
 
-  const reload = () => {
+  const reloadThen = (then: () => void) => {
     setStep(PayStep.Following());
-    void router.invalidate().finally(onBack);
+    void router.invalidate().finally(then);
   };
+
+  const reload = () => reloadThen(onBack);
+
+  const paid = () => reloadThen(onPaid);
 
   const refuse = (refusal: PayPaymentRequestRefusal) =>
     Match.valueTags(refusal, {
@@ -147,7 +153,7 @@ export function PayRequest({
       if (Predicate.isTagged(answer, "SessionRequired"))
         return setStep(PayStep.SessionNeeded({ retry: () => follow(id) }));
 
-      if (Predicate.isTagged(answer, "Settled")) return reload();
+      if (Predicate.isTagged(answer, "Settled")) return paid();
 
       return show(
         readOutcome(answer, asset),
@@ -167,7 +173,7 @@ export function PayRequest({
       if (Predicate.isTagged(answer, "SessionRequired"))
         return setStep(PayStep.SessionNeeded({ retry: review }));
 
-      if (Predicate.isTagged(answer, "Settled")) return reload();
+      if (Predicate.isTagged(answer, "Settled")) return paid();
 
       return show(
         readReview(answer, asset),
@@ -189,7 +195,7 @@ export function PayRequest({
       if (Predicate.isTagged(answer, "SessionRequired"))
         return setStep(PayStep.SessionNeeded({ retry: review }));
 
-      if (Predicate.isTagged(answer, "Settled")) return reload();
+      if (Predicate.isTagged(answer, "Settled")) return paid();
 
       const answered = readConfirm(answer, asset);
 

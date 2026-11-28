@@ -17,14 +17,14 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import {
   ExternalPayment,
+  ExternalPaymentApplied,
+  type ExternalPaymentSettlement,
   type ExternalPaymentTerms,
   type RequestPaymentChain,
 } from "../server/chain-request-payments.server";
 import {
-  Applied,
   Expired,
   Rejected,
-  type Settlement,
   Undecided,
 } from "../server/chain-settlement.server";
 import { rpcReadConcurrency } from "../server/settings.server";
@@ -118,7 +118,7 @@ const usdcUnitsAt = (
   );
 
 type Verdict = Data.TaggedEnum<{
-  Paid: { readonly blockTime: number | null };
+  Paid: { readonly hash: string; readonly blockTime: number | null };
   Failed: { readonly code: string };
   Unrelated: {};
   Unverifiable: {};
@@ -127,6 +127,7 @@ type Verdict = Data.TaggedEnum<{
 const Verdict = Data.taggedEnum<Verdict>();
 
 const verdictOf = (
+  hash: string,
   landed: LandedTransaction,
   reference: Address,
   terms: ExternalPaymentTerms,
@@ -186,7 +187,7 @@ const verdictOf = (
         usdcUnitsAt(preTokenBalances, credited);
 
   return carriesMemo && received >= terms.amount
-    ? Verdict.Paid({ blockTime: landed.blockTime })
+    ? Verdict.Paid({ hash, blockTime: landed.blockTime })
     : Verdict.Failed({ code: "terms_unmet" });
 };
 
@@ -316,7 +317,10 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
 
         const concluded = Effect.fn("Chain.concludeExternalPayment")(function* (
           signatures: ReadonlyArray<string>,
-        ): Effect.fn.Return<Option.Option<Settlement>, ChainUnreachable> {
+        ): Effect.fn.Return<
+          Option.Option<ExternalPaymentSettlement>,
+          ChainUnreachable
+        > {
           const landed = yield* Effect.forEach(
             signatures,
             (signature) =>
@@ -335,17 +339,18 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
             { concurrency: rpcReadConcurrency },
           );
 
-          const verdicts = landed.map((found) =>
+          const verdicts = Arr.zipWith(signatures, landed, (hash, found) =>
             found === null
               ? Verdict.Unverifiable()
-              : verdictOf(found, reference, terms),
+              : verdictOf(hash, found, reference, terms),
           );
 
           const paid = Arr.findFirst(verdicts, Verdict.$is("Paid"));
 
           if (Option.isSome(paid))
             return Option.some(
-              new Applied({
+              new ExternalPaymentApplied({
+                hash: paid.value.hash,
                 at:
                   paid.value.blockTime === null
                     ? yield* DateTime.now
@@ -365,7 +370,9 @@ export const solanaRequestPayments = (rpc: SolanaRpc): RequestPaymentChain => {
         const undecidedOr = (lookup: Option.Option<ReadonlyArray<string>>) =>
           Option.match(lookup, {
             onNone: () =>
-              Effect.succeed(Option.some<Settlement>(new Undecided())),
+              Effect.succeed(
+                Option.some<ExternalPaymentSettlement>(new Undecided()),
+              ),
             onSome: concluded,
           });
 

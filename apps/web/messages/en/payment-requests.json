@@ -68,5 +68,8 @@
   "pay_request_action_paying": "Paying @{username}'s request for {amount}",
   "pay_request_payer_unfunded": "This wallet doesn't have enough to pay this request.",
   "pay_request_account_invalid": "That wallet address is not valid.",
-  "pay_request_requester_cannot_receive": "The requester can't receive this payment right now."
+  "pay_request_requester_cannot_receive": "The requester can't receive this payment right now.",
+  "pay_request_paid_title": "You paid @{username}",
+  "pay_request_see_activity": "See it in your activity",
+  "pay_request_invite_note": "Create your Orchid account to send and request money with a link."
 }

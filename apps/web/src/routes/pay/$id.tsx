@@ -1,5 +1,6 @@
+import { ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -19,6 +20,7 @@ import * as Schema from "effect/Schema";
 
 import { PasskeyBrowserGate } from "@/browser/passkey-browser-gate";
 import { BrandLogo } from "@/components/brand-logo";
+import { explorerTransactionUrl } from "@/components/explorer";
 import { FlowerAvatar } from "@/components/flower-avatar";
 import {
   Screen,
@@ -117,17 +119,27 @@ export const Route = createFileRoute("/pay/$id")({
 function PaymentRequestPage() {
   const answer = decodeAnswer(Route.useLoaderData());
   const [paying, setPaying] = useState(false);
+  const [paidHere, setPaidHere] = useState(false);
 
   if (paying && Predicate.isTagged(answer, "PaymentRequestOpen"))
     return (
       <PasskeyBrowserGate>
-        <PayRequest request={answer} onBack={() => setPaying(false)} />
+        <PayRequest
+          request={answer}
+          onBack={() => setPaying(false)}
+          onPaid={() => {
+            setPaying(false);
+            setPaidHere(true);
+          }}
+        />
       </PasskeyBrowserGate>
     );
 
-  const found = (request: FoundRequest, status: React.ReactNode) => (
-    <RequestDetails request={request} status={status} />
-  );
+  const found = (
+    request: FoundRequest,
+    status: React.ReactNode,
+    heading = m.payment_request_asks({ username: request.requester }),
+  ) => <RequestDetails request={request} heading={heading} status={status} />;
 
   const unavailable = (failure: WalletUnavailable) => (
     <RequestUnavailable failure={failure} />
@@ -151,11 +163,20 @@ function PaymentRequestPage() {
             <PayAction request={request} onPay={() => setPaying(true)} />
           </>
         ),
-        PaymentRequestPaid: (request) =>
-          found(
-            request,
-            <Badge variant="success">{m.payment_request_status_paid()}</Badge>,
-          ),
+        PaymentRequestPaid: (request) => (
+          <>
+            {found(
+              request,
+              <Badge variant="success">
+                {m.payment_request_status_paid()}
+              </Badge>,
+              paidHere
+                ? m.pay_request_paid_title({ username: request.requester })
+                : undefined,
+            )}
+            <PaidNextStep request={request} paidHere={paidHere} />
+          </>
+        ),
         PaymentRequestCancelled: (request) =>
           found(
             request,
@@ -204,11 +225,94 @@ function PayAction({
   );
 }
 
+function PaidNextStep({
+  request,
+  paidHere,
+}: {
+  request: PaymentRequestPaid;
+  paidHere: boolean;
+}) {
+  const saved = useSavedUsername();
+
+  if (!saved.read) return null;
+
+  const home = (
+    <Button
+      className="w-full"
+      nativeButton={false}
+      render={<Link to="/home" data-testid="paid-home" />}
+    >
+      {m.common_back_home()}
+    </Button>
+  );
+
+  if (paidHere)
+    return (
+      <ScreenActions>
+        {home}
+        <Button
+          className="w-full"
+          variant="secondary"
+          nativeButton={false}
+          render={<Link to="/activity" data-testid="paid-activity" />}
+        >
+          {m.pay_request_see_activity()}
+        </Button>
+      </ScreenActions>
+    );
+
+  if (Option.contains(saved.username, request.requester))
+    return <ScreenActions>{home}</ScreenActions>;
+
+  return (
+    <ScreenActions>
+      {Option.isSome(saved.username) ? (
+        home
+      ) : (
+        <>
+          <p className="pb-2 text-center text-body text-pretty text-muted-foreground">
+            {m.pay_request_invite_note()}
+          </p>
+          <Button
+            className="w-full"
+            nativeButton={false}
+            render={
+              <Link to="/create-account" data-testid="paid-create-account" />
+            }
+          >
+            {m.pay_request_create_account()}
+          </Button>
+        </>
+      )}
+      {request.externalPaymentHash === undefined ? null : (
+        <Button
+          className="w-full"
+          variant="ghost"
+          nativeButton={false}
+          render={
+            <a
+              href={explorerTransactionUrl(request.externalPaymentHash)}
+              target="_blank"
+              rel="noreferrer"
+              data-testid="paid-transaction"
+            />
+          }
+        >
+          <ExternalLinkIcon />
+          {m.explorer_view()}
+        </Button>
+      )}
+    </ScreenActions>
+  );
+}
+
 function RequestDetails({
   request,
+  heading,
   status,
 }: {
   request: FoundRequest;
+  heading: string;
   status: React.ReactNode;
 }) {
   const { username, amount } = named(request);
@@ -224,9 +328,7 @@ function RequestDetails({
         <FlowerAvatar username={username} size="xl" />
       </div>
       <div className="flex flex-col items-center gap-1">
-        <h1 className="text-body-lg text-muted-foreground">
-          {m.payment_request_asks({ username })}
-        </h1>
+        <h1 className="text-body-lg text-muted-foreground">{heading}</h1>
         <p
           className="font-display text-display"
           data-testid="payment-request-amount"

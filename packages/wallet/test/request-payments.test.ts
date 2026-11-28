@@ -19,7 +19,12 @@ import {
   UsernameRecipient,
   baseAsset,
 } from "../src/contract";
-import { Applied, Expired, Rejected, Sealed } from "../src/server/Chain.server";
+import {
+  Expired,
+  ExternalPaymentApplied,
+  Rejected,
+  Sealed,
+} from "../src/server/Chain.server";
 import { Directory } from "../src/server/Directory.server";
 import { PaymentRequests } from "../src/server/PaymentRequests.server";
 import { RequestPayments } from "../src/server/RequestPayments.server";
@@ -157,9 +162,12 @@ const externalWallet = (overrides?: Parameters<typeof accountState>[0]) => {
 const payExternally = (id: PaymentRequestId, payer: AccountAddress) =>
   RequestPayments.use((payments) => payments.payExternally(id, payer));
 
-const settleReference = (id: PaymentRequestId, settlement: Applied | Expired) =>
+const settleReference = (
+  id: PaymentRequestId,
+  settlement: ExternalPaymentApplied | Expired,
+) =>
   Effect.map(boundTo(id), (reference) =>
-    world.evidence.set(Option.getOrThrow(reference), settlement),
+    world.externalEvidence.set(Option.getOrThrow(reference), settlement),
   );
 
 const testLayer = RequestPayments.serviceLayer.pipe(
@@ -186,7 +194,11 @@ layer(testLayer, { excludeTestServices: true, concurrent: false })(
           const settled = yield* pay(id, order);
 
           assertTagged(settled, "Settled");
-          assertTagged(yield* publicRead(id), "PaymentRequestPaid");
+
+          const paid = yield* publicRead(id);
+
+          assertTagged(paid, "PaymentRequestPaid");
+          expect(paid).not.toHaveProperty("externalPaymentHash");
           expect(yield* boundTo(id)).toEqual(Option.some(order.id));
           expect(yield* pay(id, order)).toEqual(settled);
           expect(yield* pay(id, order, approve(draft.request, rosa))).toEqual(
@@ -413,9 +425,18 @@ layer(testLayer, { excludeTestServices: true, concurrent: false })(
           );
           assertTagged(yield* cancel(maria, id), "PaymentRequestBeingPaid");
 
-          yield* settleReference(id, new Applied({ at: DateTime.nowUnsafe() }));
+          yield* settleReference(
+            id,
+            new ExternalPaymentApplied({
+              at: DateTime.nowUnsafe(),
+              hash: "external-signature",
+            }),
+          );
 
-          assertTagged(yield* publicRead(id), "PaymentRequestPaid");
+          const paid = yield* publicRead(id);
+
+          assertTagged(paid, "PaymentRequestPaid");
+          expect(paid.externalPaymentHash).toBe("external-signature");
           assertTagged(yield* payExternally(id, payer), "PaymentRequestPaid");
         }),
     );

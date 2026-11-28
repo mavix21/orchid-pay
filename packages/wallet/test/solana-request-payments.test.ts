@@ -5,17 +5,21 @@ import {
   getCompiledTransactionMessageDecoder,
 } from "@solana/kit";
 import { USDC_MINT_ADDRESS } from "@workspace/orchid-links";
+import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as HttpClient from "effect/http/HttpClient";
 import { PaymentRequestId, PositiveAmount } from "../src/contract";
-import type { ExternalPaymentTerms } from "../src/server/chain-request-payments.server";
+import {
+  ExternalPaymentApplied,
+  type ExternalPaymentSettlement,
+  type ExternalPaymentTerms,
+} from "../src/server/chain-request-payments.server";
 import {
   Expired,
   Rejected,
-  type Settlement,
   Undecided,
 } from "../src/server/chain-settlement.server";
 import { usdcAccountOf } from "../src/solana/program-addresses";
@@ -195,7 +199,17 @@ const settlementOn = ({
     ),
   );
 
-const cases: ReadonlyArray<Node & { name: string; outcome: Settlement }> = [
+const cases: ReadonlyArray<
+  Node & { name: string; outcome: ExternalPaymentSettlement }
+> = [
+  {
+    name: "applies its own transaction that pays the requester, naming its signature",
+    landing: { kind: "ours", err: null, balances: true },
+    outcome: new ExternalPaymentApplied({
+      hash: "landed-signature",
+      at: DateTime.makeUnsafe(1_795_149_020_000),
+    }),
+  },
   {
     name: "rejects its own transaction that landed with an error",
     landing: {

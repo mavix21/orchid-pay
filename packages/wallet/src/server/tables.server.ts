@@ -264,6 +264,7 @@ export const externalPayments = pgTable(
     envelope: text().notNull(),
     expiresAt: timestamp({ withTimezone: true }).notNull(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    hash: text(),
   },
   (table) => [index("external_payments_request").on(table.request)],
 );
