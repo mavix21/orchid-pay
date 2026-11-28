@@ -16,6 +16,18 @@ const idl: AnchorIdl = JSON.parse(await readFile(idlPath, "utf8"));
 await createFromRoot(rootNodeFromAnchor(idl)).accept(
   renderVisitor(packageFolder, {
     kitImportStrategy: "rootOnly",
+    prettierOptions: {
+      printWidth: 80,
+      tabWidth: 2,
+      useTabs: false,
+      semi: true,
+      singleQuote: false,
+      quoteProps: "as-needed",
+      trailingComma: "all",
+      bracketSpacing: true,
+      arrowParens: "always",
+      endOfLine: "lf",
+    },
     syncPackageJson: false,
     nameTransformers: { fileName: (name) => `${name}.gen` },
   }),

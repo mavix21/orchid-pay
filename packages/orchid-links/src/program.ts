@@ -1,16 +1,8 @@
 import { address } from "@solana/kit";
 
-import {
-  ORCHID_LINKS_ERROR__CLOCK_OVERFLOW,
-  ORCHID_LINKS_ERROR__DESTINATION_IS_VAULT,
-  ORCHID_LINKS_ERROR__LINK_IS_SENDER,
-  ORCHID_LINKS_ERROR__NOT_YET_RECLAIMABLE,
-  ORCHID_LINKS_ERROR__WRONG_RENT_RECIPIENT,
-  ORCHID_LINKS_ERROR__WRONG_SIGNER,
-  ORCHID_LINKS_ERROR__ZERO_AMOUNT,
-} from "./generated";
+import type { OrchidLinksError } from "./generated/errors";
 
-export { ORCHID_LINKS_PROGRAM_ADDRESS } from "./generated";
+export { ORCHID_LINKS_PROGRAM_ADDRESS } from "./generated/programs";
 
 export const USDC_MINT_ADDRESS = address(
   "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
@@ -27,11 +19,11 @@ export const SYSTEM_PROGRAM_ADDRESS = address(
 export const RECLAIM_DELAY_SECONDS = 7n * 24n * 60n * 60n;
 
 export const orchidLinksErrorCode = {
-  zeroAmount: ORCHID_LINKS_ERROR__ZERO_AMOUNT,
-  linkIsSender: ORCHID_LINKS_ERROR__LINK_IS_SENDER,
-  notYetReclaimable: ORCHID_LINKS_ERROR__NOT_YET_RECLAIMABLE,
-  wrongSigner: ORCHID_LINKS_ERROR__WRONG_SIGNER,
-  wrongRentRecipient: ORCHID_LINKS_ERROR__WRONG_RENT_RECIPIENT,
-  destinationIsVault: ORCHID_LINKS_ERROR__DESTINATION_IS_VAULT,
-  clockOverflow: ORCHID_LINKS_ERROR__CLOCK_OVERFLOW,
-} as const;
+  zeroAmount: 6000,
+  linkIsSender: 6001,
+  notYetReclaimable: 6002,
+  wrongSigner: 6003,
+  wrongRentRecipient: 6004,
+  destinationIsVault: 6005,
+  clockOverflow: 6006,
+} as const satisfies Record<string, OrchidLinksError>;
