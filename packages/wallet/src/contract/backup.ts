@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema";
+import { AssetOrderId } from "./asset-orders";
 import { AccountAddress, Profile, Username } from "./identity";
 
 export const PasskeyChallenge = Schema.String.check(
@@ -67,6 +68,7 @@ export class BackupEnrollment extends Schema.Class<BackupEnrollment>(
   username: Username,
   registration: PasskeyRegistration,
   sealed: SealedPhrase,
+  receiveOrderId: Schema.optional(AssetOrderId),
 }) {}
 
 export class BackupStored extends Schema.TaggedClass<BackupStored>()(

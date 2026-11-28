@@ -30,6 +30,7 @@ import {
   type Party,
   createdAtLabel,
   entryKey,
+  isLinkClaimerMedia,
   paidRequestOf,
   partyName,
   shownEntry,
@@ -97,8 +98,8 @@ function EntryDetail({
   return (
     <>
       <ModalHeader>
-        {shown.media !== "link" && "linkClaimer" in shown.media ? (
-          <div className="mx-auto w-fit">
+        {isLinkClaimerMedia(shown.media) ? (
+          <div className="mx-auto w-fit md:mx-0">
             <EntryAvatar media={shown.media} />
           </div>
         ) : null}

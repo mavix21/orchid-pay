@@ -6,6 +6,7 @@ import * as Predicate from "effect/Predicate";
 import * as Result from "effect/Result";
 import {
   type AssetStep,
+  BackupEnrollment,
   type EnrollStep,
   InvalidResponse,
   type OpenStep,
@@ -110,7 +111,13 @@ export const enrollmentRelease = (
       return yield* refusedBeforeCommit(new DraftRejected());
 
     const committed = yield* deps.port
-      .enroll(held.enrollment, held.approvals)
+      .enroll(
+        new BackupEnrollment({
+          ...held.enrollment,
+          receiveOrderId: held.receive?.review.order.id,
+        }),
+        held.approvals,
+      )
       .pipe(Effect.result);
 
     if (Result.isFailure(committed)) return committed.failure;

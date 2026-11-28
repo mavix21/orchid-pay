@@ -30,6 +30,7 @@ import {
   authorizeExternalOrder,
   linkCleaned,
   ordersOnUnclaimedFunds,
+  scopeAt,
 } from "./asset-order-links.server";
 import {
   type AssetAuthorized,
@@ -51,6 +52,7 @@ import {
   receivedLinksToClean,
 } from "./asset-order-sweep.server";
 import { assetOrders, transfers, trustlines, wallets } from "./tables.server";
+import type { Transaction } from "./transaction.server";
 import {
   CleanUpReceivedLink,
   ReconcileAssetOrder,
@@ -92,7 +94,6 @@ export class AssetOrders extends Context.Service<
       order: StoredOrder,
       request: SigningRequest,
       opens: Option.Option<Asset>,
-      enrollmentReceive?: boolean,
     ): Effect.Effect<StoredAssetOrder, StoreFailure>;
     redraft(
       proposed: AssetProposed,
@@ -144,14 +145,6 @@ export class AssetOrders extends Context.Service<
     AssetOrders,
     Effect.gen(function* () {
       const db = yield* Database;
-
-      type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-      const scopeAt = (now: number) =>
-        and(
-          eq(assetOrders.network, network),
-          eq(assetOrders.testnetEpoch, epochAt(now)),
-        );
 
       const decode = (row: AssetOrderRow) =>
         Effect.try({
@@ -228,7 +221,6 @@ export class AssetOrders extends Context.Service<
         order: StoredOrder,
         request: SigningRequest,
         opens: Option.Option<Asset>,
-        enrollmentReceive = false,
       ) {
         const now = yield* Clock.currentTimeMillis;
 
@@ -237,7 +229,6 @@ export class AssetOrders extends Context.Service<
           wallet: order instanceof AssetOrder ? order.wallet : null,
           order: Schema.encodeSync(StoredOrderJson)(order),
           opens: opensColumn(opens),
-          enrollmentReceive,
           balanceId:
             Predicate.isTagged(order.action, "ClaimUnclaimedFunds") ||
             Predicate.isTagged(order.action, "ReceiveLink") ||
@@ -321,7 +312,10 @@ export class AssetOrders extends Context.Service<
             yield* tx.execute(walletLock(wallet));
 
             const owner = yield* tx
-              .select({ status: wallets.status })
+              .select({
+                status: wallets.status,
+                enrollmentReceiveOrderId: wallets.enrollmentReceiveOrderId,
+              })
               .from(wallets)
               .where(
                 and(eq(wallets.network, network), eq(wallets.address, wallet)),
@@ -364,6 +358,9 @@ export class AssetOrders extends Context.Service<
               .update(assetOrders)
               .set({
                 status: "authorized",
+                enrollmentReceive:
+                  Predicate.isTagged(proposed.order.action, "ReceiveLink") &&
+                  owner[0].enrollmentReceiveOrderId === id,
                 envelope: sealed.envelope,
                 hash: sealed.hash,
               })
@@ -593,8 +590,8 @@ export class AssetOrders extends Context.Service<
       return AssetOrders.of({
         find: (id) => wrap(find(id)),
         inFlightFor: (wallet) => wrap(inFlightFor(wallet)),
-        propose: (order, request, opens, enrollmentReceive) =>
-          wrap(propose(order, request, opens, enrollmentReceive)),
+        propose: (order, request, opens) =>
+          wrap(propose(order, request, opens)),
         redraft: (proposed, request, opens) =>
           wrap(redraft(proposed, request, opens)),
         authorize: (proposed, sealed) =>

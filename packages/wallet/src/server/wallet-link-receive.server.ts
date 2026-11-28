@@ -382,7 +382,7 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
         Option.isSome(proposed) &&
         Predicate.isTagged(proposed.value, "AssetProposed")
           ? yield* orders.redraft(proposed.value, request, Option.none())
-          : yield* orders.propose(order, request, Option.none(), walletOpening);
+          : yield* orders.propose(order, request, Option.none());
 
       return yield* Match.valueTags(stored, {
         AssetAuthorized: (entry) =>

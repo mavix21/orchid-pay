@@ -24,6 +24,7 @@ import {
   type EntryMedia,
   type Party,
   createdWhen,
+  isLinkClaimerMedia,
   shownEntry,
 } from "@/activity/entry";
 
@@ -46,13 +47,13 @@ export function EntryAvatar({ media }: { media: EntryMedia }) {
       </ItemMedia>
     );
 
-  if ("linkClaimer" in media)
+  if (isLinkClaimerMedia(media))
     return (
       <ItemMedia className="relative">
         <FlowerAvatar username={media.linkClaimer.username} />
         <span
           aria-hidden="true"
-          className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-accent text-icon-accent ring-2 ring-background"
+          className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-accent text-icon-accent ring-2 ring-background in-data-[slot=dialog-content]:ring-popover in-data-[slot=drawer-content]:ring-popover"
         >
           <LinkIcon absoluteStrokeWidth className="size-3" />
         </span>
@@ -107,7 +108,9 @@ export function ActivityRow({
         <EntryAvatar media={shown.media} />
         <ItemContent>
           <ItemTitle>{shown.title}</ItemTitle>
-          <ItemDescription>{shown.subtitle}</ItemDescription>
+          <ItemDescription wrap={isLinkClaimerMedia(shown.media)}>
+            {shown.subtitle}
+          </ItemDescription>
         </ItemContent>
         <ItemActions>
           <div className="flex flex-col items-end gap-1">
