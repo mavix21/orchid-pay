@@ -12,10 +12,10 @@ import {
   getCreateInstructionAsync,
   getReclaimInstruction as getGeneratedReclaimInstruction,
   getReclaimInstructionAsync,
-} from "./generated";
+} from "./generated/instructions";
 import { requireOrderId } from "./order-id";
 
-export { getCreateInstructionDataDecoder } from "./generated";
+export { getCreateInstructionDataDecoder } from "./generated/instructions";
 
 export type CreateUnclaimedFundsInput = {
   readonly sender: Address;

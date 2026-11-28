@@ -11,13 +11,12 @@ import {
 } from "@solana/kit";
 
 import {
-  findUnclaimedFundsPda,
-  findVaultPda,
   getUnclaimedFundsDecoder,
   getUnclaimedFundsSize,
   UNCLAIMED_FUNDS_DISCRIMINATOR,
   type UnclaimedFunds as UnclaimedFundsAccount,
-} from "./generated";
+} from "./generated/accounts";
+import { findUnclaimedFundsPda, findVaultPda } from "./generated/pdas";
 import { ORDER_ID_SIZE, requireOrderId } from "./order-id";
 
 export { ORDER_ID_SIZE } from "./order-id";
@@ -25,7 +24,7 @@ export { ORDER_ID_SIZE } from "./order-id";
 export {
   getUnclaimedFundsDecoder,
   UNCLAIMED_FUNDS_DISCRIMINATOR,
-} from "./generated";
+} from "./generated/accounts";
 
 export const UNCLAIMED_FUNDS_SENDER_OFFSET = 8;
 export const UNCLAIMED_FUNDS_LINK_OFFSET = 40;

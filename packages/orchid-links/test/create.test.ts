@@ -52,6 +52,17 @@ describe("create", () => {
         new Uint8Array(size),
       ),
     ).rejects.toThrow(RangeError);
+
+    await expect(
+      getCreateInstruction({
+        sender: harness.sender.address,
+        rentRecipient: harness.sponsor.address,
+        source: harness.sender.address,
+        link: link.address,
+        orderId: new Uint8Array(size),
+        amount: 1n,
+      }),
+    ).rejects.toThrow(RangeError);
   });
 
   it("rejects a zero amount", async () => {
