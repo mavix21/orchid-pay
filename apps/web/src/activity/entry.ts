@@ -37,6 +37,9 @@ export type Counterparty = {
 
 export type EntryMedia = "link" | Party | { readonly linkClaimer: Profile };
 
+export const isLinkClaimerMedia = (media: EntryMedia) =>
+  media !== "link" && "linkClaimer" in media;
+
 export type ShownEntry = {
   readonly title: string;
   readonly subtitle: string;

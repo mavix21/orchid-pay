@@ -28,6 +28,7 @@ import { activityPageSize } from "../policy";
 import { StoreFailure } from "./Directory.server";
 import {
   type Closers,
+  type ClosingOrder,
   type Profiles,
   depositEntry,
   linkClaimEntry,
@@ -297,10 +298,7 @@ export const activityFor = Effect.fn("Transfers.activity")(function* ({
 
   const closers = yield* Effect.try({
     try: (): Closers => {
-      const byUnclaimedFunds = new Map<
-        string,
-        NonNullable<ReturnType<Closers["get"]>>
-      >();
+      const byUnclaimedFunds = new Map<string, ClosingOrder>();
 
       for (const entry of closing)
         if (

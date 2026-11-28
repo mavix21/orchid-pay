@@ -3,6 +3,7 @@ import {
   type RegistrationJSON,
   server,
 } from "@passwordless-id/webauthn";
+import { eq } from "drizzle-orm";
 import * as Effect from "effect/Effect";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
@@ -32,10 +33,11 @@ import {
 } from "../contract";
 import { Backups, type StoredBackup } from "./Backups.server";
 import type { ChainUnreachable } from "./Chain.server";
-import { Directory, type StoreFailure } from "./Directory.server";
+import { Directory, StoreFailure } from "./Directory.server";
 import { Principal } from "./Principal.server";
 import { HumanCheck, type HumanCheckUnavailable } from "./HumanCheck.server";
 import { openingFlow } from "./wallet-opening.server";
+import { wallets } from "./tables.server";
 import { WalletSettings } from "./settings.server";
 import { type Binding, unavailability } from "./username-standing.server";
 
@@ -216,7 +218,23 @@ export const backupFlow = Effect.gen(function* () {
             iv: sealed.iv,
             ciphertext: sealed.ciphertext,
           })
-          .pipe(Effect.tap(() => Ref.set(consumedHere, true))),
+          .pipe(
+            Effect.tap(() =>
+              enrollment.receiveOrderId === undefined
+                ? Effect.void
+                : tx
+                    .update(wallets)
+                    .set({
+                      enrollmentReceiveOrderId: enrollment.receiveOrderId,
+                    })
+                    .where(eq(wallets.address, enrollment.address))
+                    .pipe(
+                      Effect.asVoid,
+                      Effect.mapError((cause) => new StoreFailure({ cause })),
+                    ),
+            ),
+            Effect.tap(() => Ref.set(consumedHere, true)),
+          ),
     };
 
     const step = yield* openWith(claim, Option.some(approvals), binding);

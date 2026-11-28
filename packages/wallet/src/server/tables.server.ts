@@ -20,6 +20,7 @@ export const wallets = pgTable("wallets", {
   network: text().notNull(),
   testnetEpoch: text().notNull(),
   contractId: text(),
+  enrollmentReceiveOrderId: uuid(),
   attemptEnvelope: text(),
   attemptHash: text(),
   attemptExpiresAt: timestamp({ withTimezone: true }),

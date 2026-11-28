@@ -140,12 +140,17 @@ function ItemTitle({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function ItemDescription({ className, ...props }: React.ComponentProps<"p">) {
+function ItemDescription({
+  className,
+  wrap = false,
+  ...props
+}: React.ComponentProps<"p"> & { wrap?: boolean }) {
   return (
     <p
       data-slot="item-description"
       className={cn(
-        "line-clamp-1 text-left text-caption text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-accent-foreground",
+        "text-left text-caption text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-accent-foreground",
+        !wrap && "line-clamp-1",
         className,
       )}
       {...props}
