@@ -90,7 +90,7 @@ export const inspectedOf = (
   row: PaymentRequestRow,
   external: ExternalPaymentRow | null,
 ): InspectedRequest => ({
-  step: stepOf(row),
+  step: stepOf(row, external?.hash ?? null),
   binding: Option.map(Option.fromNullishOr(row.payment), (payment) => ({
     payment,
     expiresAt: Option.map(

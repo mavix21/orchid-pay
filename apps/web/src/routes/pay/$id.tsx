@@ -119,7 +119,7 @@ export const Route = createFileRoute("/pay/$id")({
 function PaymentRequestPage() {
   const answer = decodeAnswer(Route.useLoaderData());
   const [paying, setPaying] = useState(false);
-  const [paidHere, setPaidHere] = useState(false);
+  const [paidHere, setPaidHere] = useState(Option.none<PaymentRequestId>());
 
   if (paying && Predicate.isTagged(answer, "PaymentRequestOpen"))
     return (
@@ -127,10 +127,7 @@ function PaymentRequestPage() {
         <PayRequest
           request={answer}
           onBack={() => setPaying(false)}
-          onPaid={() => {
-            setPaying(false);
-            setPaidHere(true);
-          }}
+          onPaid={() => setPaidHere(Option.some(answer.id))}
         />
       </PasskeyBrowserGate>
     );
@@ -170,11 +167,14 @@ function PaymentRequestPage() {
               <Badge variant="success">
                 {m.payment_request_status_paid()}
               </Badge>,
-              paidHere
+              Option.contains(paidHere, request.id)
                 ? m.pay_request_paid_title({ username: request.requester })
                 : undefined,
             )}
-            <PaidNextStep request={request} paidHere={paidHere} />
+            <PaidNextStep
+              request={request}
+              paidHere={Option.contains(paidHere, request.id)}
+            />
           </>
         ),
         PaymentRequestCancelled: (request) =>
@@ -234,8 +234,6 @@ function PaidNextStep({
 }) {
   const saved = useSavedUsername();
 
-  if (!saved.read) return null;
-
   const home = (
     <Button
       className="w-full"
@@ -260,6 +258,8 @@ function PaidNextStep({
         </Button>
       </ScreenActions>
     );
+
+  if (!saved.read) return null;
 
   if (Option.contains(saved.username, request.requester))
     return <ScreenActions>{home}</ScreenActions>;

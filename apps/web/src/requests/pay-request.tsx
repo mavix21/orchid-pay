@@ -94,14 +94,15 @@ export function PayRequest({
   const [step, setStep] = useState<PayStep>(PayStep.Preparing());
   const { asset } = request;
 
-  const reloadThen = (then: () => void) => {
+  const reload = () => {
     setStep(PayStep.Following());
-    void router.invalidate().finally(then);
+    void router.invalidate().finally(onBack);
   };
 
-  const reload = () => reloadThen(onBack);
-
-  const paid = () => reloadThen(onPaid);
+  const paid = () => {
+    onPaid();
+    reload();
+  };
 
   const refuse = (refusal: PayPaymentRequestRefusal) =>
     Match.valueTags(refusal, {
