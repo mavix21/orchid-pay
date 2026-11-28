@@ -15,7 +15,6 @@ const isCanonicalAddress = (text: string) =>
 export const solanaAddressRules: AddressRules = {
   isAccountAddress: isCanonicalAddress,
   isDestinationAddress: isCanonicalAddress,
-  forbidsMemo: () => false,
   isUnclaimedFundsId: (text) =>
     isAddress(text) && isOffCurveAddress(text) && isCanonicalAddress(text),
   hasValidChecksum: isCanonicalAddress,

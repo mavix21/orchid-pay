@@ -18,7 +18,6 @@ import {
   fundedWallet,
   linkAmount,
   payUsername,
-  payWithoutTrustline,
   receiveInto,
   useDisposableDatabase,
   username,
@@ -149,71 +148,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           ]);
           expect(claimEntry.from.username).toBe(username("linkowner"));
           expect(claimEntry.amount).toBe(linkAmount);
-        }),
-    );
-
-    it.effect(
-      "follows a payment that needs acceptance from waiting to received for its recipient and to returned for a payment its sender took back",
-      () =>
-        Effect.gen(function* () {
-          const wallet = yield* Wallet;
-          const sender = yield* fundedWallet("acceptsender");
-          const recipient = yield* fundedWallet("acceptrecipient");
-
-          const accepted = yield* payWithoutTrustline(
-            sender,
-            "acceptrecipient",
-          );
-
-          const waiting = yield* activityOf(wallet, addressOf(recipient));
-
-          assertTagged(
-            entryFor(waiting, accepted.order.id),
-            "AwaitingAcceptanceActivity",
-          );
-
-          const reserved = entryFor(
-            yield* activityOf(wallet, addressOf(sender)),
-            accepted.order.id,
-          );
-
-          assertTagged(reserved, "SentActivity");
-          assertTagged(reserved.receipt, "Reserved");
-
-          yield* claimBalance(wallet, recipient, accepted.unclaimedFunds);
-
-          const taken = yield* payWithoutTrustline(sender, "acceptrecipient");
-
-          yield* claimBalance(wallet, sender, taken.unclaimedFunds);
-
-          const asRecipient = yield* activityOf(wallet, addressOf(recipient));
-          const asSender = yield* activityOf(wallet, addressOf(sender));
-
-          const acceptedEntry = entryFor(asRecipient, accepted.order.id);
-
-          assertTagged(acceptedEntry, "ReceivedActivity");
-          expect(acceptedEntry.closedAt).toBeDefined();
-          assertTagged(
-            entryFor(asRecipient, taken.order.id),
-            "TakenBackActivity",
-          );
-
-          const acceptedSent = entryFor(asSender, accepted.order.id);
-
-          assertTagged(acceptedSent, "SentActivity");
-          assertTagged(acceptedSent.receipt, "Claimed");
-          expect(acceptedSent.receipt.openedWallet).toBeUndefined();
-          expect(acceptedSent.receipt.by).toEqual(
-            new Profile({
-              username: username("acceptrecipient"),
-              address: addressOf(recipient),
-            }),
-          );
-
-          const takenSent = entryFor(asSender, taken.order.id);
-
-          assertTagged(takenSent, "SentActivity");
-          assertTagged(takenSent.receipt, "Refunded");
         }),
     );
 

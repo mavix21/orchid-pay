@@ -146,14 +146,11 @@ const mapResult = (
       ),
     InvalidAddress: () =>
       fieldProblem("destination", m.common_address_invalid()),
-    ExternalMemoRequired: () =>
-      fieldProblem("memo", m.external_deposit_needs_memo()),
-    MemoNotAllowed: () => fieldProblem("memo", m.external_memo_not_allowed()),
     RecipientCannotReceive: ({ reason }) =>
       fieldProblem(
         "destination",
         Match.value(reason).pipe(
-          Match.whenOr("no_account", "no_trustline", () =>
+          Match.when("no_account", () =>
             m.common_account_cannot_receive({ asset: code }),
           ),
           Match.when("not_authorized", () =>
@@ -165,29 +162,8 @@ const mapResult = (
           Match.exhaustive,
         ),
       ),
-    LinkUnclaimable: ({ reason }) =>
-      Match.value(reason).pipe(
-        Match.when("destination_is_link", () =>
-          fieldProblem("destination", m.external_destination_is_link()),
-        ),
-        Match.when("destination_is_issuer", () =>
-          fieldProblem(
-            "destination",
-            m.external_destination_is_issuer({ asset: code }),
-          ),
-        ),
-        Match.when("link_account_unexpected", () =>
-          concluded(
-            outcome,
-            new LinkScreen<ExternalClaimAction>(
-              m.claim_failed_title(),
-              m.claim_still_available(),
-              "done",
-            ),
-          ),
-        ),
-        Match.exhaustive,
-      ),
+    LinkUnclaimable: () =>
+      fieldProblem("destination", m.external_destination_is_link()),
     NotClaimable: () =>
       concluded(outcome, notSent(thenStillInLink(m.link_try_again()))),
     DraftRejected: () =>

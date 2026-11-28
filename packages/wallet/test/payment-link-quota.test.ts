@@ -21,6 +21,7 @@ import {
   orderFor,
   send,
   settleHash,
+  settleSubmitted,
   sweep,
   useDisposableDatabase,
   walletTestLayer,
@@ -79,6 +80,49 @@ const linkSender = Effect.gen(function* () {
 layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
   (it) => {
     it.effect(
+      "a payment link drafted before the last slot fills is refused at approval",
+      () =>
+        Effect.gen(function* () {
+          const { sender, senderAddr, createLinkAt } = yield* linkSender;
+
+          yield* Effect.forEach(["2000", "2001", "2002", "2003"], createLinkAt);
+
+          const linkOrder = () =>
+            orderFor(
+              sender,
+              PaymentLinkRecipient.make({ value: randomAddress() }),
+            );
+
+          const fifth = linkOrder();
+          const late = linkOrder();
+
+          world.accounts.set(senderAddr, accountState({ sequence: "2004" }));
+
+          const fifthDraft = yield* send(fifth);
+          const lateDraft = yield* send(late);
+
+          assertTagged(fifthDraft, "TransferDraft");
+          assertTagged(lateDraft, "TransferDraft");
+          assertTagged(
+            yield* send(fifth, approve(fifthDraft.request, sender)),
+            "Pending",
+          );
+          yield* settleSubmitted();
+          yield* sweep;
+
+          expect(yield* send(late, approve(lateDraft.request, sender))).toEqual(
+            new UnclaimedFundsLimitReached({ limit: 5 }),
+          );
+
+          world.claimables.clear();
+          assertTagged(
+            yield* send(late, approve(lateDraft.request, sender)),
+            "Pending",
+          );
+        }),
+    );
+
+    it.effect(
       "the sweep closes one batch of gone payment link balances per run",
       () =>
         Effect.gen(function* () {
@@ -95,7 +139,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           world.claimables.clear();
 
           const open = Transfers.use((transfers) =>
-            transfers.openClaimables(senderAddr, "paymentLink"),
+            transfers.openClaimables(senderAddr),
           );
 
           yield* sweep;
@@ -178,7 +222,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           );
           expect(
             yield* Transfers.use((transfers) =>
-              transfers.openClaimables(senderAddr, "paymentLink"),
+              transfers.openClaimables(senderAddr),
             ),
           ).toBe(5);
           assertTagged(yield* send(sixth), "TransferDraft");

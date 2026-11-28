@@ -11,22 +11,14 @@ import {
   ExternalLinkOrder,
   ExternalLinkPending,
   type ExternalLinkStep,
-  MemoNotAllowed,
   type WalletPort,
   type WalletUnavailable,
-  forbidsMemo,
   sameAsset,
 } from "../contract";
 import type { ClaimIssue } from "./claim-reviews";
 import { type LinkCode, linkAddressOf, opensLink } from "./link-code";
 import { OpenedLink, openLink } from "./link-receive";
-import {
-  baseAccountOf,
-  creditedAccountOf,
-  isIssuedBy,
-  network,
-  readDraft,
-} from "../device-network";
+import { creditedAccountOf, network, readDraft } from "../device-network";
 import {
   DraftRejected,
   type ExternalLinkIntent,
@@ -63,7 +55,6 @@ export const externalReviewOf = (
     return Option.none();
 
   const receive = facts.value;
-  const baseDestination = baseAccountOf(order.destination);
 
   if (
     receive.link !== order.link ||
@@ -71,13 +62,10 @@ export const externalReviewOf = (
     receive.unclaimedFunds !== order.unclaimedFunds ||
     order.unclaimedFunds !== target.unclaimedFunds ||
     receive.destination !== creditedAccountOf(order.destination) ||
-    baseDestination === receive.link ||
+    order.destination === receive.link ||
     receive.reserveSponsor === receive.link ||
     !sameAsset(receive.asset, target.asset) ||
-    isIssuedBy(receive.asset, baseDestination) ||
-    (forbidsMemo(order.destination) && receive.memo !== undefined) ||
-    !sameMemo(receive.memo, order.memo) ||
-    (draft.memoRequired && receive.memo === undefined)
+    !sameMemo(receive.memo, order.memo)
   )
     return Option.none();
 
@@ -94,7 +82,6 @@ export const externalReviewOf = (
       asset: target.asset,
       amount: target.amount,
       memo: receive.memo,
-      memoRequired: draft.memoRequired,
       sender: target.sender,
     }),
   });
@@ -275,9 +262,6 @@ export function deviceExternalLinkClaim<
     intent: ExternalLinkIntent,
   ): Effect.fn.Return<Outcome, WalletUnavailable> {
     if (Option.isNone(linkAddressOf(code))) return new LinkCodeMismatch();
-
-    if (forbidsMemo(intent.destination) && intent.memo !== undefined)
-      return new MemoNotAllowed({ reason: "muxed" });
 
     const target = yield* openLink(port, code);
 

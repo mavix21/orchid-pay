@@ -16,8 +16,6 @@ import {
   withoutPrf,
 } from "./device";
 
-const stellarSecret = /S[A-Z2-7]{55}/;
-
 const sessionCookie = "orchid-session";
 
 const unfundedCode = "Bcru1zp9FViPqN8CJTvQuS2zg";
@@ -170,7 +168,6 @@ Object.defineProperty(navigator, "clipboard", { configurable: true, value: { wri
   expect(link.pathname).toBe("/r");
   expect(copied).toEqual([link.href]);
   expect(await page.content()).not.toContain(code);
-  expect(await page.content()).not.toMatch(stellarSecret);
 
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("link-share-drawer")).toBeHidden();
@@ -187,7 +184,6 @@ Object.defineProperty(navigator, "clipboard", { configurable: true, value: { wri
   const sent = requests.join("\n");
 
   expect(sent).not.toContain(code);
-  expect(sent).not.toMatch(stellarSecret);
   expect(sent).not.toContain(envelopes[0]);
 
   await withoutPrf(page, authenticator);
@@ -311,9 +307,7 @@ test("receives a link into a wallet created on the link page with two passkey pr
   const recipientStorage = `${await storedText(recipient)}\n${await recipient.evaluate(() => JSON.stringify(sessionStorage))}`;
 
   expect(requests.join("\n")).not.toContain(code);
-  expect(requests.join("\n")).not.toMatch(stellarSecret);
   expect(recipientStorage).not.toContain(code);
-  expect(recipientStorage).not.toMatch(stellarSecret);
 
   await page.goto("/links");
   await expect(

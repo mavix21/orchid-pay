@@ -1,8 +1,5 @@
 import { portfolioFlow } from "./wallet-portfolio.server";
-import {
-  deliveryFlow,
-  paymentLinkAssetRefusal,
-} from "./wallet-delivery.server";
+import { deliveryFlow } from "./wallet-delivery.server";
 import {
   Examined,
   type TransferEffects,
@@ -28,9 +25,7 @@ import {
   Approval,
   Holding,
   InvalidAddress,
-  LinkRecipient,
   MemoNotAllowed,
-  ExternalMemoRequired,
   NeedsReopening,
   NotOpened,
   Overview,
@@ -47,7 +42,6 @@ import {
   Chain,
   ChainUnreachable,
   DraftPurpose,
-  type MemoRule,
   type Sealed,
 } from "./Chain.server";
 import { chainLayer } from "../binding/chain.server";
@@ -112,7 +106,6 @@ export class Wallet extends Context.Service<
       const assetActions = yield* assetFlow;
       const { delivery, draft } = yield* deliveryFlow;
       const check = yield* transferCheckFlow;
-      const checkLinkAsset = yield* paymentLinkAssetRefusal;
       const { quotaFull } = yield* claimableQuotaFlow;
       const links = yield* paymentLinksFlow;
 
@@ -133,20 +126,14 @@ export class Wallet extends Context.Service<
 
       const proposedStep = (
         proposed: Proposed,
-        requirement: MemoRule,
-      ): TransferDraft | ExternalMemoRequired | MemoNotAllowed => {
-        const refusal = memoRefusal(
-          proposed.order,
-          proposed.recipient,
-          requirement,
-        );
+      ): TransferDraft | MemoNotAllowed => {
+        const refusal = memoRefusal(proposed.order, proposed.recipient);
 
         if (Option.isSome(refusal)) return refusal.value;
 
         return new TransferDraft({
           request: proposed.request,
           recipient: proposed.recipient,
-          memoRequired: Predicate.isTagged(requirement, "MemoRequired"),
           unclaimedFunds: proposed.unclaimedFunds,
         });
       };
@@ -159,16 +146,14 @@ export class Wallet extends Context.Service<
 
       const resumed = Effect.fn("Wallet.resumed")(function* (
         transfer: Transfer,
-        requirement: MemoRule,
       ): Effect.fn.Return<TransferStep, StoreFailure | ChainUnreachable> {
         return Predicate.isTagged(transfer, "Proposed")
-          ? proposedStep(transfer, requirement)
+          ? proposedStep(transfer)
           : yield* signedStep(transfer);
       });
 
       const redrafted = Effect.fn("Wallet.redrafted")(function* (
         stored: Proposed,
-        requirement: MemoRule,
       ) {
         const request = yield* delivery(stored.order, stored.recipient);
 
@@ -179,7 +164,6 @@ export class Wallet extends Context.Service<
                 request,
                 chain.unclaimedFundsCreatedBy(request),
               ),
-              requirement,
             )
           : request;
       });
@@ -196,15 +180,12 @@ export class Wallet extends Context.Service<
       const authorizing = Effect.fn("Wallet.authorizing")(function* (
         stored: Proposed,
         sealed: Sealed,
-        requirement: MemoRule,
         mayRetry: boolean,
       ): Effect.fn.Return<TransferStep, StoreFailure | ChainUnreachable> {
         const authorized = yield* transfers.authorize(stored, sealed);
 
         const retried = () =>
-          mayRetry
-            ? authorizing(stored, sealed, requirement, false)
-            : resumed(stored, requirement);
+          mayRetry ? authorizing(stored, sealed, false) : resumed(stored);
 
         return yield* Match.valueTags(authorized, {
           SlotTaken: ({ holder }) =>
@@ -214,15 +195,12 @@ export class Wallet extends Context.Service<
               return Predicate.isTagged(receipt, "Pending")
                 ? new SenderBusy({ inFlight: receipt })
                 : (yield* currentDraft(stored))
-                  ? yield* resumed(stored, requirement)
-                  : yield* redrafted(stored, requirement);
+                  ? yield* resumed(stored)
+                  : yield* redrafted(stored);
             }),
           ClaimablesFull: ({ limit }) =>
             Effect.gen(function* () {
-              const full = yield* quotaFull(
-                stored.order.from,
-                stored.claimableKind ?? "username",
-              );
+              const full = yield* quotaFull(stored.order.from);
 
               return full
                 ? new UnclaimedFundsLimitReached({ limit })
@@ -232,17 +210,17 @@ export class Wallet extends Context.Service<
             Effect.gen(function* () {
               const busy = yield* assets.inFlightFor(stored.order.from);
 
-              if (Option.isNone(busy)) return proposedStep(stored, requirement);
+              if (Option.isNone(busy)) return proposedStep(stored);
 
               if (yield* assetActions.reconcilePending(busy.value))
                 return new AssetBusy({ inFlight: assetPending(busy.value) });
 
               return (yield* currentDraft(stored))
                 ? yield* retried()
-                : yield* redrafted(stored, requirement);
+                : yield* redrafted(stored);
             }),
           WalletInactive: () => Effect.succeed(new NotOpened()),
-          Proposed: (proposed) => resumed(proposed, requirement),
+          Proposed: (proposed) => resumed(proposed),
           Authorized: reconcile,
           Concluded: signedStep,
         });
@@ -278,34 +256,24 @@ export class Wallet extends Context.Service<
           if (!Predicate.isTagged(stored, "Proposed"))
             return yield* signedStep(stored);
 
-          const requirement = yield* check.memoRequirement(stored.recipient);
-          const refusal = memoRefusal(order, stored.recipient, requirement);
+          const refusal = memoRefusal(order, stored.recipient);
 
           if (Option.isSome(refusal)) return refusal.value;
 
-          if (stored.recipient instanceof LinkRecipient) {
-            const linkRefusal = yield* checkLinkAsset(stored.order);
-
-            if (Option.isSome(linkRefusal)) return linkRefusal.value;
-          }
-
-          if (!(yield* currentDraft(stored)))
-            return yield* redrafted(stored, requirement);
+          if (!(yield* currentDraft(stored))) return yield* redrafted(stored);
 
           if (yield* live(stored.request)) {
-            if (Option.isNone(approval))
-              return proposedStep(stored, requirement);
+            if (Option.isNone(approval)) return proposedStep(stored);
 
             const sealed = yield* chain
               .seal(stored.request, approval.value, stored.order.from)
               .pipe(Effect.option);
 
-            if (Option.isNone(sealed)) return proposedStep(stored, requirement);
+            if (Option.isNone(sealed)) return proposedStep(stored);
 
-            if (!(yield* currentDraft(stored)))
-              return yield* redrafted(stored, requirement);
+            if (!(yield* currentDraft(stored))) return yield* redrafted(stored);
 
-            return yield* authorizing(stored, sealed.value, requirement, true);
+            return yield* authorizing(stored, sealed.value, true);
           }
         }
 
@@ -322,7 +290,7 @@ export class Wallet extends Context.Service<
           chain.unclaimedFundsCreatedBy(request),
         );
 
-        return yield* resumed(proposed, examined.requirement);
+        return yield* resumed(proposed);
       });
 
       const heldBack = Effect.fn("Wallet.heldBackOverview")(function* (
@@ -413,7 +381,6 @@ export class Wallet extends Context.Service<
           ),
         reconcileOpening,
         reconcileAsset: assetActions.reconcilePending,
-        cleanUpReceivedLink: assetActions.cleanUpReceivedLink,
       };
 
       const sweep = yield* sweepFlow({

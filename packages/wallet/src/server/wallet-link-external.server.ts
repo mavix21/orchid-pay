@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import {
-  type AccountAddress,
+  AccountAddress,
   type Approval,
   type UnclaimedFundsGone,
   type UnclaimedFundsId,
@@ -14,7 +14,6 @@ import {
   type ExternalLinkPending,
   type ExternalLinkSettled,
   type ExternalLinkStep,
-  ExternalRecipient,
   InvalidAddress,
   LinkUnclaimable,
   NotClaimable,
@@ -38,7 +37,6 @@ import {
   type LinkReceive,
 } from "./Chain.server";
 import { StoreFailure } from "./Directory.server";
-import { memoRefusal } from "./memo-refusal.server";
 import { type FundedLink, Transfers } from "./Transfers.server";
 import { live } from "./wallet-reads.server";
 
@@ -173,25 +171,13 @@ export const externalLinkClaimFlow = (shared: LinkReceiveShared) =>
           : yield* shared.unclaimedFundsGone(order.unclaimedFunds);
 
       const { asset, amount } = funded.value;
-      const receivingAccount = chain.receivingAccount(order.destination);
+
+      const receivingAccount = Schema.decodeSync(AccountAddress)(
+        order.destination,
+      );
 
       if (receivingAccount === order.link)
         return new LinkUnclaimable({ reason: "destination_is_link" });
-
-      if (chain.issuedBy(asset, receivingAccount))
-        return new LinkUnclaimable({ reason: "destination_is_issuer" });
-
-      const rule = yield* chain.memoRule(order.destination);
-
-      const refusal = memoRefusal(
-        order,
-        new ExternalRecipient({ address: order.destination }),
-        rule,
-      );
-
-      if (Option.isSome(refusal)) return refusal.value;
-
-      const memoRequired = Predicate.isTagged(rule, "MemoRequired");
 
       const blocker = yield* chain.receiveBlocker(
         receivingAccount,
@@ -214,14 +200,10 @@ export const externalLinkClaimFlow = (shared: LinkReceiveShared) =>
         memo: order.memo,
       };
 
-      const prepared = yield* chain.prepareLinkReceive(terms);
-
-      if (prepared instanceof LinkUnclaimable) return prepared;
-
       const current = (request: SigningRequest) =>
         chain.draftCurrent(
           request,
-          DraftPurpose.LinkReceive({ receive: prepared }),
+          DraftPurpose.LinkReceive({ receive: terms }),
         );
 
       const proposed = Option.filter(existing, (stored) =>
@@ -237,20 +219,14 @@ export const externalLinkClaimFlow = (shared: LinkReceiveShared) =>
         const stored = proposed.value;
 
         if (Option.isNone(approval))
-          return new ExternalLinkDraft({
-            request: stored.request,
-            memoRequired,
-          });
+          return new ExternalLinkDraft({ request: stored.request });
 
         const sealed = yield* chain
           .seal(stored.request, approval.value, order.link)
           .pipe(Effect.option);
 
         if (Option.isNone(sealed) || !(yield* current(stored.request)))
-          return new ExternalLinkDraft({
-            request: stored.request,
-            memoRequired,
-          });
+          return new ExternalLinkDraft({ request: stored.request });
 
         const authorized = yield* orders.authorizeExternal(
           stored,
@@ -262,27 +238,23 @@ export const externalLinkClaimFlow = (shared: LinkReceiveShared) =>
           AssetAuthorized: reconcileExternal,
           AssetConcluded: (concluded) => externalReceipt(concluded.receipt),
           AssetProposed: (next) =>
-            Effect.succeed(
-              new ExternalLinkDraft({ request: next.request, memoRequired }),
-            ),
+            Effect.succeed(new ExternalLinkDraft({ request: next.request })),
         });
       }
 
-      const request = yield* chain.draftLinkReceive(prepared);
+      const request = yield* chain.draftLinkReceive(terms);
 
       const stored =
         Option.isSome(proposed) &&
         Predicate.isTagged(proposed.value, "AssetProposed")
-          ? yield* orders.redraft(proposed.value, request, Option.none())
-          : yield* orders.propose(storedOrder, request, Option.none());
+          ? yield* orders.redraft(proposed.value, request)
+          : yield* orders.propose(storedOrder, request);
 
       return yield* Match.valueTags(stored, {
         AssetAuthorized: reconcileExternal,
         AssetConcluded: (concluded) => externalReceipt(concluded.receipt),
         AssetProposed: (next) =>
-          Effect.succeed(
-            new ExternalLinkDraft({ request: next.request, memoRequired }),
-          ),
+          Effect.succeed(new ExternalLinkDraft({ request: next.request })),
       });
     });
   });

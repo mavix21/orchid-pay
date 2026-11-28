@@ -1,12 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
 import {
-  AccountAddress,
-  ExternalMemoRequired,
-  TransferStep,
-} from "@workspace/wallet";
-import * as Schema from "effect/Schema";
-
-import {
   enrollWallet,
   freshUsername,
   openWallet,
@@ -26,7 +19,7 @@ const fill = async (page: Page, recipient: string, amount: string) => {
 
 const review = (page: Page) => page.getByTestId("review-payment").click();
 
-test("pays a username in USDC, resumes after a reload and refuses an unpayable amount or a missing exchange memo", async ({
+test("pays a username in USDC, resumes after a reload and refuses an unpayable amount", async ({
   page,
   browser,
 }) => {
@@ -95,42 +88,6 @@ test("pays a username in USDC, resumes after a reload and refuses an unpayable a
     { timeout: 30_000 },
   );
   await expect(page.getByRole("textbox")).toBeFocused();
-
-  const exchange = newWalletAddress();
-
-  await page.route(`**${serverFunction}**`, (route) =>
-    route.request().postData()?.includes(exchange)
-      ? route.fulfill({
-          json: {
-            result: Schema.encodeSync(TransferStep)(
-              new ExternalMemoRequired({
-                address: Schema.decodeSync(AccountAddress)(exchange),
-                exchange: "Exchange de prueba",
-                source: "https://example.com/deposits",
-              }),
-            ),
-          },
-        })
-      : route.continue(),
-  );
-
-  await page.getByTestId("change-recipient").click();
-  await page.getByTestId("change-destination").click();
-  await choose(page, "address");
-  await fill(page, exchange, "0.1");
-  await expect(page.getByTestId("edit-memo")).toBeVisible();
-  await expect(page.getByRole("dialog").getByRole("textbox")).toHaveCount(0);
-  await review(page);
-
-  await expect(page.getByRole("dialog").getByRole("textbox")).toHaveAttribute(
-    "aria-invalid",
-    "true",
-    { timeout: 30_000 },
-  );
-  await expect(page.getByRole("dialog").getByRole("textbox")).toBeFocused();
-  await page.getByRole("dialog").getByRole("textbox").fill("4521");
-  await page.getByTestId("save-memo").click();
-  await expect(page.getByTestId("edit-memo")).toBeVisible();
 
   await page.getByTestId("change-recipient").click();
   await page.getByTestId("change-destination").click();

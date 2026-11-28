@@ -9,7 +9,6 @@ import {
   backups,
   deposits,
   transfers,
-  trustlines,
   usernames,
   wallets,
 } from "./tables.server";
@@ -37,10 +36,6 @@ export const pruneAbandonedOpenings = Effect.fn(
       .select({ address: assetOrders.wallet })
       .from(assetOrders)
       .where(eq(assetOrders.wallet, wallets.address)),
-    db
-      .select({ address: trustlines.address })
-      .from(trustlines)
-      .where(eq(trustlines.address, wallets.address)),
     db
       .select({ address: deposits.wallet })
       .from(deposits)

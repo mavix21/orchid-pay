@@ -6,7 +6,6 @@ import {
   type DestinationAddress,
   ExternalLinkOrder,
   ReceiveLink,
-  TransferOrder,
   type UnclaimedFundsId,
   UsernameRecipient,
   type WalletPort,
@@ -20,9 +19,6 @@ import {
   advanceSequence,
   assetOrderId,
   draftTransfer,
-  euro,
-  euroLine,
-  holdingsFor,
   orderFor,
   send,
   username,
@@ -139,39 +135,10 @@ export const activityFlows = <Key extends TestKey, ChainFailure>({
     );
   });
 
-  const payWithoutTrustline = Effect.fn(function* (
-    sender: TestKey,
-    recipient: string,
-  ) {
-    const senderAddress = addressOf(sender);
-
-    world.holdings.set(
-      senderAddress,
-      holdingsFor(senderAddress, { lines: [euroLine("50000000")] }),
-    );
-
-    const order = new TransferOrder({
-      ...orderFor(
-        sender,
-        UsernameRecipient.make({ value: username(recipient) }),
-      ),
-      asset: euro,
-    });
-
-    const { settled } = yield* payUsername(sender, recipient, order);
-
-    const unclaimedFunds = Option.getOrThrow(
-      Option.fromNullishOr(settled.unclaimedFunds),
-    );
-
-    return { order, unclaimedFunds };
-  });
-
   return {
     payUsername,
     receiveInto,
     claimBalance,
     claimExternally,
-    payWithoutTrustline,
   };
 };

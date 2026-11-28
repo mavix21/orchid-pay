@@ -9,7 +9,7 @@ import * as Schema from "effect/Schema";
 import * as TestClock from "effect/testing/TestClock";
 import { approvalMargin } from "../src/policy";
 import {
-  ExternalMemoRequired,
+  MemoNotAllowed,
   ExternalRecipient,
   Pending,
   RateLimited,
@@ -116,11 +116,7 @@ it.live("releases an expired signed order the server never authorized", () =>
       from: actors.sender,
     });
 
-    const refusal = new ExternalMemoRequired({
-      address: actors.exchange,
-      exchange: "Synthetic exchange",
-      source: "https://example.com",
-    });
+    const refusal = new MemoNotAllowed({ reason: "orchid" });
 
     const { client, orderIds, store } = deviceWith(() => payment(), {
       answer: () => Option.some(refusal),

@@ -7,7 +7,6 @@ import {
   inArray,
   isNotNull,
   isNull,
-  or,
   sql,
 } from "drizzle-orm";
 import * as Option from "effect/Option";
@@ -29,12 +28,9 @@ import { StoreFailure } from "./Directory.server";
 import { StoredOrderJson } from "./AssetOrders.server";
 import { assetOrders, transfers, usernames } from "./tables.server";
 import {
-  type ClaimableKind,
   FundedLink,
-  OpenUnclaimedFunds,
   OpenLinkRecord,
   OrderJson,
-  RecipientJson,
 } from "./transfer-records.server";
 
 export const unclaimedAt = (now: number) =>
@@ -45,32 +41,23 @@ export const unclaimedAt = (now: number) =>
     isNull(transfers.balanceClosedAt),
   );
 
-export const openFromAt = (
-  sender: AccountAddress,
-  kind: ClaimableKind,
-  now: number,
-) =>
+export const openFromAt = (sender: AccountAddress, now: number) =>
   and(
     unclaimedAt(now),
     eq(transfers.sender, sender),
-    kind === "username"
-      ? or(
-          eq(transfers.claimableKind, "username"),
-          isNull(transfers.claimableKind),
-        )
-      : eq(transfers.claimableKind, "paymentLink"),
+    eq(transfers.claimableKind, "paymentLink"),
     inArray(transfers.status, ["authorized", "settled"]),
   );
 
 export const openClaimableCountFrom = Effect.fn("Transfers.openClaimables")(
-  function* (sender: AccountAddress, kind: ClaimableKind) {
+  function* (sender: AccountAddress) {
     const db = yield* Database;
     const now = yield* Clock.currentTimeMillis;
 
     const rows = yield* db
       .select({ total: count() })
       .from(transfers)
-      .where(openFromAt(sender, kind, now));
+      .where(openFromAt(sender, now));
 
     return rows[0]?.total ?? 0;
   },
@@ -78,14 +65,14 @@ export const openClaimableCountFrom = Effect.fn("Transfers.openClaimables")(
 
 export const settledOpenUnclaimedFundsFrom = Effect.fn(
   "Transfers.settledOpenUnclaimedFunds",
-)(function* (sender: AccountAddress, kind: ClaimableKind) {
+)(function* (sender: AccountAddress) {
   const db = yield* Database;
   const now = yield* Clock.currentTimeMillis;
 
   const rows = yield* db
     .select({ unclaimedFunds: transfers.balanceId })
     .from(transfers)
-    .where(and(openFromAt(sender, kind, now), eq(transfers.status, "settled")))
+    .where(and(openFromAt(sender, now), eq(transfers.status, "settled")))
     .limit(claimableReadLimit);
 
   return rows.flatMap((row) =>
@@ -94,59 +81,6 @@ export const settledOpenUnclaimedFundsFrom = Effect.fn(
       : [],
   );
 });
-
-export const openUnclaimedFundsFor = Effect.fn("Transfers.openUnclaimedFunds")(
-  function* (address: AccountAddress) {
-    const db = yield* Database;
-    const now = yield* Clock.currentTimeMillis;
-
-    const rows = yield* db
-      .select({
-        unclaimedFunds: transfers.balanceId,
-        sender: transfers.sender,
-        username: usernames.username,
-        resolvedRecipient: transfers.resolvedRecipient,
-      })
-      .from(transfers)
-      .innerJoin(usernames, eq(usernames.address, transfers.sender))
-      .where(
-        and(
-          unclaimedAt(now),
-          or(
-            eq(transfers.claimableKind, "username"),
-            isNull(transfers.claimableKind),
-          ),
-          eq(transfers.status, "settled"),
-          or(eq(transfers.sender, address), eq(transfers.recipient, address)),
-        ),
-      )
-      .orderBy(desc(transfers.createdAt))
-      .limit(claimableReadLimit);
-
-    return yield* Effect.try({
-      try: () =>
-        rows.flatMap((row) => {
-          const to = Schema.decodeSync(RecipientJson)(row.resolvedRecipient);
-
-          return to instanceof Profile
-            ? [
-                new OpenUnclaimedFunds({
-                  id: Schema.decodeUnknownSync(UnclaimedFundsId)(
-                    row.unclaimedFunds,
-                  ),
-                  from: new Profile({
-                    address: Schema.decodeSync(AccountAddress)(row.sender),
-                    username: Schema.decodeSync(Username)(row.username),
-                  }),
-                  to,
-                }),
-              ]
-            : [];
-        }),
-      catch: (cause) => new StoreFailure({ cause }),
-    });
-  },
-);
 
 export const openPaymentLinksFor = Effect.fn("Transfers.openPaymentLinks")(
   function* (sender: AccountAddress) {

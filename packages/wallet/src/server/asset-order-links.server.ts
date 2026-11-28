@@ -1,9 +1,9 @@
 import { Database } from "@workspace/db";
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
-import type { AssetOrderId, UnclaimedFundsId } from "../contract";
+import type { UnclaimedFundsId } from "../contract";
 import { approvalMargin, sweepBatchSize } from "../policy";
 import { epochAt, network } from "../record-network";
 import type { Sealed } from "./Chain.server";
@@ -41,24 +41,6 @@ export const ordersOnUnclaimedFunds = Effect.fn("AssetOrders.onUnclaimedFunds")(
     return yield* Effect.forEach(rows, decode);
   },
 );
-
-export const linkCleaned = Effect.fn("AssetOrders.linkCleaned")(function* (
-  id: AssetOrderId,
-) {
-  const db = yield* Database;
-  const now = yield* DateTime.now;
-
-  yield* db
-    .update(assetOrders)
-    .set({ linkCleanedAt: DateTime.toDateUtc(now) })
-    .where(
-      and(
-        scopeAt(DateTime.toEpochMillis(now)),
-        eq(assetOrders.id, id),
-        isNull(assetOrders.linkCleanedAt),
-      ),
-    );
-});
 
 export const authorizeExternalOrder = (
   proposed: AssetProposed,

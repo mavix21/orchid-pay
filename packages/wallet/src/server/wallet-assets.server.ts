@@ -11,21 +11,13 @@ import {
   AssetStep,
   AssetDraft,
   AssetBusy,
-  AssetUnsupported,
   InvalidAddress,
   NotClaimable,
   NotOpened,
   RecipientCannotReceive,
   SenderBusy,
-  TrustlineLimitReached,
-  TrustlineNotEmpty,
-  Unchanged,
-  baseAsset,
-  sameAsset,
-  isNativeAsset,
 } from "../contract";
 import { type AssetPlan, ClaimPlan } from "./asset-plan.server";
-import { maxSponsoredTrustlines } from "../policy";
 import {
   AssetOrders,
   AssetAuthorized,
@@ -80,13 +72,9 @@ export const assetFlow = Effect.gen(function* () {
 
   const links = yield* linkReceiveFlow(reconcileOrder);
 
-  const reconcile = (stored: AssetAuthorized) =>
-    Predicate.isTagged(stored.order.action, "ReceiveLink") ||
-    Predicate.isTagged(stored.order.action, "ReceiveLinkExternal")
-      ? links.settled(stored)
-      : reconcileOrder(stored);
-
-  const stillPending = (step: Effect.Success<ReturnType<typeof reconcile>>) =>
+  const stillPending = (
+    step: Effect.Success<ReturnType<typeof reconcileOrder>>,
+  ) =>
     Predicate.isTagged(step, "AssetPending") ||
     Predicate.isTagged(step, "ExternalLinkPending");
 
@@ -101,7 +89,7 @@ export const assetFlow = Effect.gen(function* () {
         );
 
   const reconcileWallet = (stored: AssetAuthorized) =>
-    reconcile(stored).pipe(
+    reconcileOrder(stored).pipe(
       Effect.flatMap((step) =>
         Predicate.isTagged(step, "AssetPending") ||
         Predicate.isTagged(step, "AssetSettled") ||
@@ -123,13 +111,6 @@ export const assetFlow = Effect.gen(function* () {
   ): Effect.fn.Return<AssetStep, StoreFailure | ChainUnreachable> {
     if (!chain.validAddress(order.wallet))
       return new InvalidAddress({ address: order.wallet });
-
-    if (
-      (Predicate.isTagged(order.action, "OpenTrustline") ||
-        Predicate.isTagged(order.action, "CloseTrustline")) &&
-      !chain.validAsset(order.action.asset)
-    )
-      return new AssetUnsupported({ reason: "issuer_missing" });
 
     const row = yield* directory.byAddress(order.wallet);
 
@@ -173,98 +154,46 @@ export const assetFlow = Effect.gen(function* () {
 
     const held = yield* orders.inFlightFor(order.wallet);
 
-    if (Option.isSome(held) && stillPending(yield* reconcile(held.value)))
+    if (Option.isSome(held) && stillPending(yield* reconcileOrder(held.value)))
       return new AssetBusy({ inFlight: assetPending(held.value) });
 
-    let plan: AssetPlan;
     const action = order.action;
 
     if (Predicate.isTagged(action, "ReceiveLink"))
       return yield* links.receive(order, action, approval, existing, opening);
 
-    if (Predicate.isTagged(action, "ClaimUnclaimedFunds")) {
-      const entries = yield* chain.unclaimedFunds([action.unclaimedFunds]);
-      const entry = entries[0];
+    const entries = yield* chain.unclaimedFunds([action.unclaimedFunds]);
+    const entry = entries[0];
 
-      if (!entry)
-        return yield* links.unclaimedFundsGone(
-          action.unclaimedFunds,
-          Option.some(order.wallet),
-        );
+    if (!entry)
+      return yield* links.unclaimedFundsGone(
+        action.unclaimedFunds,
+        Option.some(order.wallet),
+      );
 
-      const claim = entry.claimOf(order.wallet);
-      const now = yield* DateTime.now;
+    const claim = entry.claimOf(order.wallet);
+    const now = yield* DateTime.now;
 
-      if (!Option.exists(claim, (item) => item.claimableAt(now)))
-        return new NotClaimable({ claimableAt: Option.none() });
+    if (!Option.exists(claim, (item) => item.claimableAt(now)))
+      return new NotClaimable({ claimableAt: Option.none() });
 
-      plan = ClaimPlan.make({ unclaimedFunds: action.unclaimedFunds });
+    const plan: AssetPlan = ClaimPlan.make({
+      unclaimedFunds: action.unclaimedFunds,
+    });
 
-      if (!isNativeAsset(entry.asset)) {
-        const blocker = yield* chain.receiveBlocker(
-          order.wallet,
-          entry.asset,
-          entry.amount,
-        );
+    const blocker = yield* chain.receiveBlocker(
+      order.wallet,
+      entry.asset,
+      entry.amount,
+    );
 
-        if (Option.isSome(blocker)) {
-          if (blocker.value === "no_account") return new NotOpened();
-
-          if (blocker.value !== "no_trustline")
-            return new RecipientCannotReceive({
-              address: order.wallet,
-              reason: blocker.value,
-            });
-
-          plan = ClaimPlan.make({
-            unclaimedFunds: action.unclaimedFunds,
-            opens: entry.asset,
+    if (Option.isSome(blocker))
+      return blocker.value === "no_account"
+        ? new NotOpened()
+        : new RecipientCannotReceive({
+            address: order.wallet,
+            reason: blocker.value,
           });
-        }
-      }
-    } else {
-      plan = action;
-    }
-
-    const asset = Predicate.isTagged(plan, "ClaimPlan")
-      ? plan.opens
-      : plan.asset;
-
-    if (asset) {
-      if (chain.issuedBy(asset, order.wallet))
-        return new AssetUnsupported({ reason: "self_issued" });
-      const state = yield* chain.holdings(order.wallet, [asset]);
-
-      if (Option.isNone(state)) return new NotOpened();
-      const line = state.value.lines[0];
-
-      if (Predicate.isTagged(plan, "CloseTrustline")) {
-        if (sameAsset(asset, baseAsset))
-          return new AssetUnsupported({ reason: "base_asset" });
-
-        if (!line) return new Unchanged();
-
-        if (line.balance > 0n)
-          return new TrustlineNotEmpty({ balance: line.balance });
-      } else {
-        if (line && Predicate.isTagged(plan, "OpenTrustline"))
-          return new Unchanged();
-
-        if (!line) {
-          if (state.value.trustlineSlotsUsed >= maxSponsoredTrustlines)
-            return new TrustlineLimitReached({
-              limit: maxSponsoredTrustlines,
-            });
-          const issuer = yield* chain.issuer(asset);
-
-          if (Option.isNone(issuer))
-            return new AssetUnsupported({ reason: "issuer_missing" });
-
-          if (issuer.value.authRequired)
-            return new AssetUnsupported({ reason: "authorization_required" });
-        }
-      }
-    }
 
     if (
       Option.isSome(existing) &&
@@ -304,15 +233,11 @@ export const assetFlow = Effect.gen(function* () {
 
     const request = yield* chain.draftAsset(order.wallet, plan);
 
-    const opens = Predicate.isTagged(plan, "ClaimPlan")
-      ? Option.fromUndefinedOr(plan.opens)
-      : Option.none();
-
     const stored =
       Option.isSome(existing) &&
       Predicate.isTagged(existing.value, "AssetProposed")
-        ? yield* orders.redraft(existing.value, request, opens)
-        : yield* orders.propose(order, request, opens);
+        ? yield* orders.redraft(existing.value, request)
+        : yield* orders.propose(order, request);
 
     return yield* Match.valueTags(stored, {
       AssetAuthorized: reconcileWallet,
@@ -325,10 +250,9 @@ export const assetFlow = Effect.gen(function* () {
   return {
     manage,
     claimPaymentLink: links.claimExternal,
-    reconcile,
+    reconcile: reconcileOrder,
     reconcilePending: (stored: AssetAuthorized) =>
-      reconcile(stored).pipe(Effect.map(stillPending)),
+      reconcileOrder(stored).pipe(Effect.map(stillPending)),
     paymentLink: links.paymentLink,
-    cleanUpReceivedLink: links.cleanUpReceived,
   };
 });

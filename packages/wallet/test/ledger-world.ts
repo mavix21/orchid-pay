@@ -7,7 +7,6 @@ import {
   type AccountAddress,
   Amount,
   type Asset,
-  type AssetId,
   HumanCheckRefused,
   baseAsset,
   sameAsset,
@@ -30,8 +29,6 @@ export interface LedgerAccount {
   readonly ledger: number;
   readonly accountSponsored: boolean;
   readonly sponsored: boolean;
-  readonly untouched: boolean;
-  readonly nativeBalance: bigint;
   readonly balance: Option.Option<Amount>;
 }
 
@@ -42,7 +39,6 @@ export const world = {
   submitted: new Array<Sealed>(),
   queued: new Array<PendingWork>(),
   queueDown: false,
-  unmergeable: new Set<AccountAddress>(),
   failSubmit: false,
   ledgerDown: false,
   unreadable: new Set<string>(),
@@ -52,7 +48,6 @@ export const world = {
   closures: new Map<string, DateTime.Utc>(),
   deposits: new Map<AccountAddress, Array<ChainDeposit>>(),
   unreadableDeposits: new Set<string>(),
-  issuers: new Map<AssetId, { readonly authRequired: boolean }>(),
 };
 
 export const resetWorld = () => {
@@ -62,12 +57,10 @@ export const resetWorld = () => {
   world.closures.clear();
   world.deposits.clear();
   world.unreadableDeposits.clear();
-  world.issuers.clear();
   world.evidence.clear();
   world.submitted.length = 0;
   world.queued.length = 0;
   world.queueDown = false;
-  world.unmergeable.clear();
   world.failSubmit = false;
   world.humanCheckRefused = false;
   world.ledgerDown = false;
@@ -105,8 +98,6 @@ export const accountState = (
   ledger: 100,
   accountSponsored: true,
   sponsored: true,
-  untouched: true,
-  nativeBalance: 0n,
   balance: Option.some(amount("50000000")),
   ...overrides,
 });
@@ -115,12 +106,7 @@ export const holdingsFor = (
   address: AccountAddress,
   overrides: Partial<Holdings> = {},
 ): Holdings => ({
-  nativeTotal: amount(
-    (world.accounts.get(address) ?? accountState()).nativeBalance.toString(),
-  ),
   reserveSponsor: Option.none(),
-  native: amount("0"),
-  trustlineSlotsUsed: 2,
   lines: [],
   ...overrides,
 });
@@ -148,12 +134,9 @@ export const holdingsReader =
           Effect.map(
             Option.map((state) =>
               holdingsFor(address, {
-                nativeTotal: amount(state.nativeBalance.toString()),
                 reserveSponsor: state.accountSponsored
                   ? Option.some(reserveSponsor)
                   : Option.none(),
-                native: amount(state.nativeBalance.toString()),
-                trustlineSlotsUsed: 1,
                 lines: assets.flatMap((asset) =>
                   sameAsset(asset, baseAsset) && Option.isSome(state.balance)
                     ? [
@@ -163,7 +146,6 @@ export const holdingsReader =
                           spendable: state.balance.value,
                           capacity: amount("9223372036854775807"),
                           authorized: true,
-                          clawbackEnabled: false,
                           sponsored: true,
                         },
                       ]

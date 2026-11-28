@@ -8,7 +8,6 @@ import {
   RecipientCannotReceive,
   type WalletPort,
   baseAsset,
-  isNativeAsset,
   sameAsset,
 } from "../contract";
 import { type LinkCode } from "./link-code";
@@ -122,10 +121,10 @@ export const enrollmentReceive = (
 
     if (!(target instanceof OpenedLink)) return target;
 
-    if (!isNativeAsset(target.asset) && !sameAsset(target.asset, baseAsset))
+    if (!sameAsset(target.asset, baseAsset))
       return new RecipientCannotReceive({
         address: addressOf(current),
-        reason: "no_trustline",
+        reason: "no_account",
       });
 
     const order = Option.match(slot.review, {

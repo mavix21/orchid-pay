@@ -14,7 +14,6 @@ export interface DraftTimingTerms {
 export interface ChainProfile {
   readonly addressRules: AddressRules;
   readonly baseAsset: AssetTerms;
-  readonly nativeAsset?: AssetTerms;
   readonly precisionOf: (assetId: string) => AssetPrecision;
   readonly draftTiming: DraftTimingTerms;
 }

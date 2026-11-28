@@ -348,23 +348,6 @@ export const shownEntry = (
         badge: Option.none(),
         direction: "in",
       }),
-    AwaitingAcceptanceActivity: (awaiting) =>
-      receivedEntry(awaiting, {
-        subtitle: m.activity_awaiting_receipt({ asset: awaiting.asset.code }),
-        badge: Option.some(awaitingAcceptance()),
-        direction: "unchanged",
-        detail: m.activity_awaiting_receipt_detail(),
-      }),
-    TakenBackActivity: (takenBack) =>
-      receivedEntry(takenBack, {
-        subtitle: m.activity_sender_took_back(),
-        badge: Option.none(),
-        direction: "unchanged",
-        detail: m.activity_sender_took_back_detail({
-          name: partyName(takenBack.from),
-          date: closedOn(takenBack.closedAt),
-        }),
-      }),
     ClaimedLinkActivity: (claimed) =>
       receivedEntry(claimed, {
         subtitle: m.activity_you_claimed(),

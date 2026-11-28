@@ -259,16 +259,16 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
           units: bigint,
         ) =>
           Effect.gen(function* () {
-            const prepared = yield* drafts.prepareLinkReceive({
+            const terms = {
               link: created.link.account,
               destination: destination.account,
               unclaimedFunds: created.unclaimedFunds,
               asset: usdc,
               amount: amountOf(units),
-            });
+            };
 
             return yield* land(
-              yield* drafts.draftLinkReceive(prepared),
+              yield* drafts.draftLinkReceive(terms),
               created.link,
             );
           });

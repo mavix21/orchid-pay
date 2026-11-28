@@ -345,11 +345,6 @@ export function ExternalClaimFlow({
             <ReviewRow label={m.common_to()}>
               <span className="flex flex-col items-end">
                 <FullValue>{shown.destination}</FullValue>
-                {shown.memoRequired ? (
-                  <span className="text-caption text-muted-foreground">
-                    {m.external_memo_required()}
-                  </span>
-                ) : null}
               </span>
             </ReviewRow>
             {shown.memo === undefined ? null : (

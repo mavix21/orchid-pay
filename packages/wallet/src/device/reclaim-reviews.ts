@@ -1,7 +1,7 @@
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
-import { type AssetDraft, type AssetOrder, sameAsset } from "../contract";
+import type { AssetDraft, AssetOrder } from "../contract";
 import type { PublicDeviceWallet } from "./key-store";
 import { network, readDraft } from "../device-network";
 import { type PaymentLinkTarget, ReclaimReview } from "./outcomes";
@@ -32,18 +32,10 @@ export const reviewOf = (
 
   const claim = facts.value;
 
-  const opensExactly =
-    claim.opens === undefined
-      ? claim.reserveSponsor === undefined
-      : sameAsset(claim.opens, asset) &&
-        wallet.reserveSponsor !== undefined &&
-        claim.reserveSponsor === wallet.reserveSponsor;
-
   if (
     order.wallet !== wallet.address ||
     claim.address !== wallet.address ||
-    claim.unclaimedFunds !== order.action.unclaimedFunds ||
-    !opensExactly
+    claim.unclaimedFunds !== order.action.unclaimedFunds
   )
     return Option.none();
 
@@ -57,7 +49,6 @@ export const reviewOf = (
       unclaimedFunds: claim.unclaimedFunds,
       asset,
       amount,
-      opensTrustline: claim.opens,
     }),
   });
 };

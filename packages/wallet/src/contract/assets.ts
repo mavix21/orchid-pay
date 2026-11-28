@@ -20,20 +20,8 @@ export const baseAsset: Asset = Schema.decodeSync(Asset)(
   chainProfile.baseAsset,
 );
 
-export const nativeAsset: Option.Option<Asset> = Option.map(
-  Option.fromUndefinedOr(chainProfile.nativeAsset),
-  (terms) => Schema.decodeSync(Asset)(terms),
-);
-
 export const sameAsset = (left: Asset, right: Asset) =>
   left.id === right.id && left.code === right.code;
-
-export const isNativeAsset = (asset: Asset) =>
-  Option.exists(nativeAsset, (native) => native.id === asset.id);
-
-export const NonNativeAsset = Asset.check(
-  Schema.makeFilter((asset: Asset) => !isNativeAsset(asset)),
-);
 
 export interface AssetPrecision {
   readonly decimals: number;

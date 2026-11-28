@@ -1,8 +1,6 @@
 import { chainProfile } from "./binding/profile";
 
-export const maxSponsoredTrustlines = 6;
-
-export const claimableQuota = { username: 2, paymentLink: 5 } as const;
+export const paymentLinkQuota = 5;
 
 export const openPaymentRequestQuota = 5;
 

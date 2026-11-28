@@ -1,7 +1,6 @@
 import * as DateTime from "effect/DateTime";
 import * as Match from "effect/Match";
 import * as Option from "effect/Option";
-import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import {
   AccountAddress,
@@ -20,16 +19,11 @@ import {
 import { Sealed } from "./Chain.server";
 import type { transfers } from "./tables.server";
 
-export const ClaimableKind = Schema.Literals(["username", "paymentLink"]);
-
-export type ClaimableKind = typeof ClaimableKind.Type;
-
 export class Proposed extends Schema.TaggedClass<Proposed>()("Proposed", {
   order: TransferOrder,
   recipient: ResolvedRecipient,
   request: SigningRequest,
   unclaimedFunds: Schema.optional(UnclaimedFundsId),
-  claimableKind: Schema.optional(ClaimableKind),
   attemptUnclaimedFunds: Schema.Array(UnclaimedFundsId),
 }) {}
 
@@ -38,7 +32,6 @@ export class Authorized extends Schema.TaggedClass<Authorized>()("Authorized", {
   recipient: ResolvedRecipient,
   sealed: Sealed,
   unclaimedFunds: Schema.optional(UnclaimedFundsId),
-  claimableKind: Schema.optional(ClaimableKind),
   attemptUnclaimedFunds: Schema.Array(UnclaimedFundsId),
 }) {}
 
@@ -56,14 +49,6 @@ export class ClaimablesFull extends Schema.TaggedClass<ClaimablesFull>()(
   "ClaimablesFull",
   { limit: Schema.Number },
 ) {}
-
-export class OpenUnclaimedFunds extends Schema.Class<OpenUnclaimedFunds>(
-  "OpenUnclaimedFunds",
-)({
-  id: UnclaimedFundsId,
-  from: Profile,
-  to: Profile,
-}) {}
 
 export class OpenLinkRecord extends Schema.Class<OpenLinkRecord>(
   "OpenLinkRecord",
@@ -101,14 +86,9 @@ export const AttemptsJson = Schema.fromJsonString(
 );
 
 export const claimableKindOf = (
-  order: TransferOrder,
   unclaimedFunds: Option.Option<UnclaimedFundsId>,
-): ClaimableKind | null =>
-  Option.isNone(unclaimedFunds)
-    ? null
-    : Predicate.isTagged(order.to, "PaymentLink")
-      ? "paymentLink"
-      : "username";
+): "paymentLink" | null =>
+  Option.isNone(unclaimedFunds) ? null : "paymentLink";
 
 export const appendAttempt = (
   existing: ReadonlyArray<UnclaimedFundsId>,
@@ -138,15 +118,6 @@ export function readTransferRow(row: TransferRow): Transfer {
       ? undefined
       : Schema.decodeSync(UnclaimedFundsId)(row.balanceId);
 
-  const claimableKind =
-    row.claimableKind === null
-      ? unclaimedFunds === undefined
-        ? undefined
-        : Predicate.isTagged(order.to, "PaymentLink")
-          ? "paymentLink"
-          : "username"
-      : Schema.decodeSync(ClaimableKind)(row.claimableKind);
-
   const attemptUnclaimedFunds =
     row.attemptBalanceIds === null
       ? unclaimedFunds === undefined
@@ -158,7 +129,6 @@ export function readTransferRow(row: TransferRow): Transfer {
     order,
     recipient,
     unclaimedFunds,
-    claimableKind,
     attemptUnclaimedFunds,
   };
 

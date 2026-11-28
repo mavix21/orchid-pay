@@ -124,7 +124,6 @@ export const orderedFacts = (
   if (
     !(
       Predicate.isTagged(drafted, "PaymentFacts") ||
-      Predicate.isTagged(drafted, "ClaimableFacts") ||
       Predicate.isTagged(drafted, "PaymentLinkFacts")
     )
   )
@@ -149,17 +148,9 @@ export const orderedFacts = (
       drafted.reserveSponsor === wallet.reserveSponsor &&
       (draft.unclaimedFunds === undefined ||
         draft.unclaimedFunds === drafted.unclaimedFunds)
-    : Predicate.isTagged(order.to, "PaymentLink")
-      ? false
-      : Predicate.isTagged(drafted, "PaymentFacts")
-        ? moves && sameMemo(drafted.memo, order.memo)
-        : moves &&
-          order.memo === undefined &&
-          draft.recipient instanceof Profile &&
-          wallet.reserveSponsor !== undefined &&
-          drafted.reserveSponsor === wallet.reserveSponsor &&
-          (draft.unclaimedFunds === undefined ||
-            draft.unclaimedFunds === drafted.unclaimedFunds);
+    : !Predicate.isTagged(order.to, "PaymentLink") &&
+      moves &&
+      sameMemo(drafted.memo, order.memo);
 
   return matches ? Option.some(drafted) : Option.none();
 };

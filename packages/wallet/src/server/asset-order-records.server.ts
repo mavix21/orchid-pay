@@ -15,7 +15,6 @@ import {
   type ExternalLinkOrder,
   ExternalLinkPending,
   ExternalLinkSettled,
-  Asset,
   PaymentMemo,
   PayoutTerms,
   SigningRequest,
@@ -102,7 +101,6 @@ export interface ConclusionColumns {
 
 export const AssetOrderJson = Schema.fromJsonString(AssetOrder);
 export const StoredOrderJson = Schema.fromJsonString(StoredOrder);
-export const OpensJson = Schema.fromJsonString(Asset);
 
 export function assetPending(
   order: AssetAuthorized & { readonly order: AssetOrder },
@@ -199,6 +197,3 @@ export function readRow(row: AssetOrderRow): StoredAssetOrder {
     Match.exhaustive,
   );
 }
-
-export const opensColumn = (opens: Option.Option<Asset>) =>
-  Option.getOrNull(Option.map(opens, Schema.encodeSync(OpensJson)));

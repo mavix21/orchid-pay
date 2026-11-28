@@ -63,7 +63,7 @@ export const transfers = pgTable(
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 
     balanceId: text(),
-    claimableKind: text({ enum: ["username", "paymentLink"] }),
+    claimableKind: text({ enum: ["paymentLink"] }),
     attemptBalanceIds: text(),
     balanceClosedAt: timestamp({ withTimezone: true }),
   },
@@ -92,7 +92,6 @@ export const assetOrders = pgTable(
     wallet: text().references(() => wallets.address),
     order: text().notNull(),
 
-    opens: text(),
     enrollmentReceive: boolean().notNull().default(false),
     balanceId: text(),
     network: text().notNull(),
@@ -107,7 +106,6 @@ export const assetOrders = pgTable(
     concludedAt: timestamp({ withTimezone: true }),
     sweepCheckedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-    linkCleanedAt: timestamp({ withTimezone: true }),
   },
   (table) => [
     uniqueIndex("asset_orders_one_in_flight")
@@ -120,31 +118,6 @@ export const assetOrders = pgTable(
       "asset_orders_signed_has_hash",
       sql`${table.status} = 'proposed' or ${table.hash} is not null`,
     ),
-  ],
-);
-
-export const trustlines = pgTable(
-  "trustlines",
-  {
-    address: text()
-      .notNull()
-      .references(() => wallets.address),
-    network: text().notNull(),
-    testnetEpoch: text().notNull(),
-    code: text().notNull(),
-    issuer: text().notNull(),
-    openedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    primaryKey({
-      columns: [
-        table.address,
-        table.network,
-        table.testnetEpoch,
-        table.code,
-        table.issuer,
-      ],
-    }),
   ],
 );
 

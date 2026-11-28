@@ -29,9 +29,8 @@ import {
   UnknownRecipient,
   type UsernameRecipient,
   sameAsset,
-  isNativeAsset,
 } from "../contract";
-import { Chain, type ChainUnreachable, MemoRule } from "./Chain.server";
+import { Chain, type ChainUnreachable } from "./Chain.server";
 import { type QuotaCheck, claimableQuotaFlow } from "./claimable-quota.server";
 import {
   Directory,
@@ -45,12 +44,10 @@ import {
   type TransferTerms,
   deliveryFlow,
   isDeliveryRoute,
-  paymentLinkAssetRefusal,
 } from "./wallet-delivery.server";
 
 export class Examined extends Data.TaggedClass("Examined")<{
   readonly recipient: ResolvedRecipient;
-  readonly requirement: MemoRule;
   readonly delivery: DeliveryRoute;
 }> {}
 
@@ -68,7 +65,6 @@ export const transferCheckFlow = Effect.gen(function* () {
   const transfers = yield* Transfers;
   const { route } = yield* deliveryFlow;
   const { quotaReached } = yield* claimableQuotaFlow;
-  const checkLinkAsset = yield* paymentLinkAssetRefusal;
 
   const observing: TransferEffects = {
     settle: (held) => Effect.succeed(pending(held)),
@@ -109,25 +105,6 @@ export const transferCheckFlow = Effect.gen(function* () {
       Address: () => Option.none(),
       PaymentLink: () => Option.none(),
     });
-  };
-
-  const memoRequirement = Effect.fn("Wallet.memoRequirement")(function* (
-    recipient: ResolvedRecipient,
-  ) {
-    return recipient instanceof ExternalRecipient
-      ? yield* chain.memoRule(recipient.address)
-      : MemoRule.MemoForbidden();
-  });
-
-  const memoDemand = (rule: MemoRule) => {
-    const required = MemoRule.$is("MemoRequired")(rule)
-      ? Option.some(rule)
-      : Option.none();
-
-    return {
-      memoRequired: Option.isSome(required),
-      exchange: Option.map(required, ({ exchange }) => exchange),
-    };
   };
 
   const resolveContact = (
@@ -198,8 +175,7 @@ export const transferCheckFlow = Effect.gen(function* () {
 
     if (Predicate.isTagged(recipient, "UnknownRecipient")) return recipient;
 
-    const requirement = yield* memoRequirement(recipient);
-    const refusal = memoRefusal(terms, recipient, requirement);
+    const refusal = memoRefusal(terms, recipient);
 
     if (Option.isSome(refusal)) return refusal.value;
 
@@ -211,30 +187,19 @@ export const transferCheckFlow = Effect.gen(function* () {
       return new NotOpened();
     }
 
-    if (recipient instanceof LinkRecipient) {
-      const linkRefusal = yield* checkLinkAsset(terms, state.value);
-
-      if (Option.isSome(linkRefusal)) return linkRefusal.value;
-    }
-
-    const balance = isNativeAsset(terms.asset)
-      ? state.value.native
-      : (state.value.lines.find(
-          (line) => sameAsset(line.asset, terms.asset) && line.authorized,
-        )?.spendable ?? Schema.decodeSync(Amount)("0"));
+    const balance =
+      state.value.lines.find(
+        (line) => sameAsset(line.asset, terms.asset) && line.authorized,
+      )?.spendable ?? Schema.decodeSync(Amount)("0");
 
     if (balance < terms.amount)
       return new InsufficientBalance({ available: balance });
 
-    const delivery = yield* route(terms, recipient, effects.quota, state.value);
+    const delivery = yield* route(terms, recipient, effects.quota);
 
     if (!isDeliveryRoute(delivery)) return delivery;
 
-    return new Examined({
-      recipient,
-      requirement,
-      delivery,
-    });
+    return new Examined({ recipient, delivery });
   });
 
   const assess = Effect.fn("Wallet.assessTransfer")(function* (
@@ -247,10 +212,7 @@ export const transferCheckFlow = Effect.gen(function* () {
     const examined = yield* examine(terms, observing);
 
     return examined instanceof Examined
-      ? new TransferAssessment({
-          recipient: examined.recipient,
-          ...memoDemand(examined.requirement),
-        })
+      ? new TransferAssessment({ recipient: examined.recipient })
       : examined;
   });
 
@@ -266,10 +228,8 @@ export const transferCheckFlow = Effect.gen(function* () {
 
     if (Predicate.isTagged(recipient, "UnknownRecipient")) return recipient;
 
-    const requirement = yield* memoRequirement(recipient);
-
-    return new RecipientCheck({ recipient, ...memoDemand(requirement) });
+    return new RecipientCheck({ recipient });
   });
 
-  return { malformed, memoRequirement, examine, assess, checkRecipient };
+  return { malformed, examine, assess, checkRecipient };
 });

@@ -1,4 +1,4 @@
-# Rationale: wallet server on testnet
+# Rationale: wallet server on devnet
 
 Platform constraints are in [ground.md](ground.md).
 
@@ -12,16 +12,15 @@ The ledger is the truth for balances and for whether a payment happened. Postgre
 
 1. The server drafts every transaction and accepts back only a signature: `Approval` has no envelope field.
 2. One transfer id maps to one signed transaction, stored before it is first submitted.
-3. One sender has at most one signed, unfinished transfer, enforced by a partial unique index. That also removes sequence-number races.
+3. One sender has at most one signed, unfinished transfer, enforced by a partial unique index.
 4. A final state is written only from ledger evidence. `submit` returns `void`, and `conclude` rejects `Undecided`.
 5. `open` and `transfer` are replayable: retry, resume and status are the same call.
-6. Classic accounts; the reserve sponsor carries reserves and the fee payer pays fees through fee bumps.
 
 ## Synthesis decision
 
-**Base: a server ledger.** The server stores and finishes every transfer, so a payment completes after the caller is gone. Settlement and balances are read from the chain. Stellar types are private to `stellar/`, which implements the chain-neutral `Chain` service. Elsewhere in `src/`, only `binding/` imports from it, and selects the chain's address rules, assets, draft timing, device and record networks, `Chain` layer and payout sandbox.
+**Base: a server ledger.** The server stores and finishes every transfer, so a payment completes after the caller is gone. Settlement and balances are read from the chain. Solana types are private to `solana/`, which implements the `Chain` service. Elsewhere in `src/`, only `binding/` imports from it, and selects the chain's address rules, assets, draft timing, device and record networks, `Chain` layer and payout sandbox.
 
-**Rejected:** a device outbox, where the phone builds and submits and the server only co-signs, because transaction rules would live twice. Contract accounts as the base, because a contract call cannot carry a memo. A staged `prepare`/`submit`/`status` API, because the caller would own the order of three calls for one operation.
+**Rejected:** a device outbox, where the phone builds and submits and the server only co-signs, because transaction rules would live twice. A staged `prepare`/`submit`/`status` API, because the caller would own the order of three calls for one operation.
 
 **Package boundary.** `exports` has two entries, `"."` and `"./server"`, and every server file is named `*.server.ts`. The root build runs production builds that must reject a server, relative and private import from client code, and one client transport build that must pass. Add no `paths` alias for this package.
 
@@ -30,7 +29,7 @@ The ledger is the truth for balances and for whether a payment happened. Postgre
 - One in-flight payment per sender, in exchange for a no-double-send rule that is trivially true.
 - Up to two minutes of pending for a payment that never reaches the network, in exchange for never guessing an outcome.
 - The server could misdirect a payment by lying about a username, in exchange for usernames at all. It cannot change the amount.
-- Every created wallet keeps its sponsored reserves locked for good. Orchid never closes a wallet to take them back, so an address or username someone was given keeps receiving. The Turnstile check on creation and the rate limits are the only bound on what sign-ups cost the reserve sponsor.
+- Every opened wallet keeps the rent of its sponsored USDC account locked for good. Orchid never closes a wallet to take it back, so an address or username someone was given keeps receiving. The Turnstile check on creation and the rate limits are the only bound on what sign-ups cost the sponsor.
 
 ## Decisions
 
@@ -38,8 +37,8 @@ The ledger is the truth for balances and for whether a payment happened. Postgre
 - **Registration.** Open, with no invite or quota.
 - **Opening at creation.** The second passkey prompt of creation signs the wallet's opening with its backup, so a new wallet shows its deposit address with no further prompt. The server settles a sealed opening itself, of a new wallet or a recovered one: sealing it queues the work, and the sweep picks up what the queue left unfinished. Either activates the wallet once its account is open on the network, resubmits the transaction while it can still settle, and otherwise clears the attempt without drafting another. A wallet whose opening failed or expired opens again from the home or receive screen. An account already on the network activates without a signature only when its username is already bound to it; otherwise its key signs an opening first.
 - **Schema location.** Tables and migrations live in `packages/wallet`; `packages/db` is the driver.
-- **External memos.** Required for addresses in the known-exchange registry and for accounts that publish the SEP-29 `config.memo_required` data entry as `1`; other external sends accept an optional text or ID memo. Orchid sends carry none.
-- **Unauthenticated reads.** `overview` takes an address without authentication on testnet.
-- **Testnet reset.** Tables survive a reset; missing wallets are marked recovered and reopen under the same username, and transfers are scoped to the new epoch.
+- **External memos.** External sends accept an optional text or ID memo. Orchid sends carry none.
+- **Unauthenticated reads.** `overview` takes an address without authentication on devnet.
+- **Network reset.** Tables survive a reset; missing wallets are marked recovered and reopen under the same username, and transfers are scoped to the new epoch.
 - **Sponsor.** One sponsor key, `SPONSOR_SECRET`, pays every fee and the rent of each wallet's USDC account, and is the close authority an opening sets on it.
 - **Payouts.** A payout is an external link claim to the payout partner's deposit address whose stored order also carries the Yape number and the quoted soles, so drafts, settlement and the sweep are the external claim's. The server only accepts a claim to the partner's address at the partner's current quote, and answers the payout's status from the claim's ledger time and the partner. `PAYOUT_PARTNER` in `wrangler.jsonc` selects the partner; `sandbox` is the only one: its deposit address derives from the sponsor's key and holds a USDC account the sponsor opens with `devnet:open-partner`, it quotes 3.75 soles per USDC, and it completes a payout eight seconds after its claim settles without paying anyone.

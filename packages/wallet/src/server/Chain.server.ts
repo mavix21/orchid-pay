@@ -26,8 +26,6 @@ export { ChainUnreachable } from "./chain-errors.server";
 
 export type { AccountStanding } from "./chain-accounts.server";
 
-export { MemoRule } from "./chain-destinations.server";
-
 export { DraftPurpose } from "./chain-drafts.server";
 
 export type { LinkReceive } from "./chain-links.server";

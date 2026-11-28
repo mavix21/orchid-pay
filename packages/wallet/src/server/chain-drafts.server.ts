@@ -8,7 +8,7 @@ import type {
 } from "../contract";
 import type { AssetPlan } from "./asset-plan.server";
 import type { ChainUnreachable } from "./chain-errors.server";
-import type { PreparedLinkReceive } from "./chain-links.server";
+import type { LinkReceive } from "./chain-links.server";
 
 export type DraftPurpose = Data.TaggedEnum<{
   Transfer: { readonly from: AccountAddress };
@@ -16,7 +16,7 @@ export type DraftPurpose = Data.TaggedEnum<{
     readonly address: AccountAddress;
     readonly plan: AssetPlan;
   };
-  LinkReceive: { readonly receive: PreparedLinkReceive };
+  LinkReceive: { readonly receive: LinkReceive };
 }>;
 
 export const DraftPurpose = Data.taggedEnum<DraftPurpose>();

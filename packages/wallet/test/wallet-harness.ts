@@ -22,7 +22,7 @@ import {
 
 export * from "./wallet-scenarios";
 
-export { draftedReceive, exchanges, memoryChain } from "./memory-chain";
+export { draftedReceive, memoryChain } from "./memory-chain";
 
 export const partnerAddress = randomAddress();
 
@@ -67,13 +67,8 @@ export const {
   useDisposableDatabase,
 } = scenarios;
 
-export const {
-  payUsername,
-  receiveInto,
-  claimBalance,
-  claimExternally,
-  payWithoutTrustline,
-} = activityFlows(scenarios);
+export const { payUsername, receiveInto, claimBalance, claimExternally } =
+  activityFlows(scenarios);
 
 export const { fundLinkFrom } = linkFlows(scenarios);
 

@@ -20,7 +20,6 @@ import {
   assess,
   authorizeTransfer,
   checkRecipient,
-  exchanges,
   draftTransfer,
   findWallet,
   fundedWallet,
@@ -51,7 +50,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
         const draft = yield* draftTransfer(order);
 
         expect(draft.recipient).toEqual(assessment.recipient);
-        expect(draft.memoRequired).toBe(assessment.memoRequired);
       }),
     );
 
@@ -100,13 +98,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
 
         const address = randomAddress();
 
-        const exchange = {
-          exchange: "Synthetic exchange fixture",
-          source: "https://example.com/fixtures/memo-required",
-        };
-
-        exchanges.set(address, exchange);
-
         expect(
           yield* checkRecipient(
             UsernameRecipient.make({ value: username("pedro") }),
@@ -117,8 +108,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
               username: username("pedro"),
               address: addressOf(target),
             }),
-            memoRequired: false,
-            exchange: Option.none(),
           }),
         );
         expect(
@@ -126,8 +115,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
         ).toEqual(
           new RecipientCheck({
             recipient: new ExternalRecipient({ address }),
-            memoRequired: true,
-            exchange: Option.some(exchange.exchange),
           }),
         );
       }),

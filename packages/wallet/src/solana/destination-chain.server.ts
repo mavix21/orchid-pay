@@ -1,16 +1,9 @@
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import * as Schema from "effect/Schema";
-import {
-  AccountAddress,
-  type Asset,
-  type PositiveAmount,
-  sameAsset,
-} from "../contract";
+import { type Asset, type PositiveAmount, sameAsset } from "../contract";
 import type { AssetChain } from "../server/chain-assets.server";
 import {
   type DestinationChain,
-  MemoRule,
   type ReceiveBlocker,
 } from "../server/chain-destinations.server";
 import type { Holdings } from "../server/holdings.server";
@@ -36,10 +29,6 @@ const blockerFor = (
 export const solanaDestinationChain = ({
   holdings,
 }: Pick<AssetChain, "holdings">): DestinationChain => ({
-  receivingAccount: (destination) =>
-    Schema.decodeSync(AccountAddress)(destination),
-  destinationPrefixesPayingInto: () => [],
-  memoRule: () => Effect.succeed(MemoRule.MemoOptional()),
   receiveBlocker: (account, asset, amount) =>
     holdings(account, [asset]).pipe(
       Effect.map((found) => blockerFor(found, asset, amount)),

@@ -252,8 +252,6 @@ export class PaymentReview extends Schema.TaggedClass<PaymentReview>()(
     asset: Asset,
     amount: PositiveAmount,
     memo: Schema.optional(PaymentMemo),
-    claimable: Schema.Boolean,
-    memoRequired: Schema.Boolean,
     expiresAt: Schema.DateTimeUtcFromString,
   },
 ) {}
@@ -395,7 +393,6 @@ export class ReclaimReview extends Schema.TaggedClass<ReclaimReview>()(
     unclaimedFunds: UnclaimedFundsId,
     asset: Asset,
     amount: PositiveAmount,
-    opensTrustline: Schema.optional(Asset),
   },
 ) {}
 
@@ -517,7 +514,6 @@ export class ExternalLinkReview extends Schema.TaggedClass<ExternalLinkReview>()
     asset: Asset,
     amount: PositiveAmount,
     memo: Schema.optional(PaymentMemo),
-    memoRequired: Schema.Boolean,
     sender: Profile,
   },
 ) {}

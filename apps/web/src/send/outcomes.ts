@@ -88,20 +88,13 @@ export const sendResult = (
       new FieldProblem("recipient", m.send_unknown_recipient({ username })),
     InvalidAddress: () =>
       new FieldProblem("recipient", m.common_address_invalid()),
-    ExternalMemoRequired: () =>
-      new FieldProblem("memo", m.send_destination_needs_memo()),
-    MemoNotAllowed: ({ reason }) =>
-      new FieldProblem(
-        "memo",
-        reason === "muxed"
-          ? m.send_memo_not_allowed_address()
-          : m.send_memo_not_allowed_orchid(),
-      ),
+    MemoNotAllowed: () =>
+      new FieldProblem("memo", m.send_memo_not_allowed_orchid()),
     RecipientCannotReceive: ({ reason }) =>
       new FieldProblem(
         "recipient",
         Match.value(reason).pipe(
-          Match.whenOr("no_account", "no_trustline", () =>
+          Match.when("no_account", () =>
             m.common_account_cannot_receive({ asset: asset.code }),
           ),
           Match.when("not_authorized", () =>

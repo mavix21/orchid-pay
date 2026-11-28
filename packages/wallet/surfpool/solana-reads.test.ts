@@ -289,7 +289,6 @@ layer(surfnetLayer, { excludeTestServices: true, timeout: "30 seconds" })(
                 ...expected,
                 asset: usdc,
                 balance: 7_000_000n,
-                clawbackEnabled: false,
               },
             ]),
           );

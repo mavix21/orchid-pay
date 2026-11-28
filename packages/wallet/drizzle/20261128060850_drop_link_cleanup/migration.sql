@@ -1,0 +1,1 @@
+ALTER TABLE "asset_orders" DROP COLUMN "linkCleanedAt";

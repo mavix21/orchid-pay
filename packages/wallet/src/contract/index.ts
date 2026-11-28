@@ -14,9 +14,6 @@ import {
   UnclaimedFundsGone,
   LinkUnclaimable,
   NotClaimable,
-  TrustlineLimitReached,
-  TrustlineNotEmpty,
-  Unchanged,
 } from "./asset-orders";
 import { Amount, Asset, PositiveAmount, withinAssetMaximum } from "./assets";
 import {
@@ -67,7 +64,7 @@ import {
   PayoutUnavailable,
   LocalAmount,
 } from "./payouts";
-import { NeedsReopening, NotOpened, UnclaimedFunds } from "./standing";
+import { NeedsReopening, NotOpened } from "./standing";
 
 export * from "./approval";
 
@@ -105,15 +102,6 @@ export class InvalidAddress extends Schema.TaggedClass<InvalidAddress>()(
 export class NotSponsored extends Schema.TaggedClass<NotSponsored>()(
   "NotSponsored",
   {},
-) {}
-
-export class ExternalMemoRequired extends Schema.TaggedClass<ExternalMemoRequired>()(
-  "ExternalMemoRequired",
-  {
-    address: AccountAddress,
-    exchange: Schema.NonEmptyString,
-    source: Schema.String,
-  },
 ) {}
 
 export class WalletClaim extends Schema.Class<WalletClaim>(
@@ -220,7 +208,7 @@ export type PaymentMemo = typeof PaymentMemo.Type;
 
 export class MemoNotAllowed extends Schema.TaggedClass<MemoNotAllowed>()(
   "MemoNotAllowed",
-  { reason: Schema.Literals(["orchid", "muxed", "payment_link"]) },
+  { reason: Schema.Literals(["orchid", "payment_link"]) },
 ) {}
 
 export const UsernameRecipient = Schema.TaggedStruct("Username", {
@@ -347,7 +335,6 @@ export class TransferDraft extends Schema.TaggedClass<TransferDraft>()(
   {
     request: SigningRequest,
     recipient: ResolvedRecipient,
-    memoRequired: Schema.Boolean,
 
     unclaimedFunds: Schema.optional(UnclaimedFundsId),
   },
@@ -380,23 +367,7 @@ const receivedActivityFields = {
 
 export class ReceivedActivity extends Schema.TaggedClass<ReceivedActivity>()(
   "ReceivedActivity",
-  {
-    ...receivedActivityFields,
-    closedAt: Schema.optional(Schema.DateTimeUtcFromString),
-  },
-) {}
-
-export class AwaitingAcceptanceActivity extends Schema.TaggedClass<AwaitingAcceptanceActivity>()(
-  "AwaitingAcceptanceActivity",
-  { ...receivedActivityFields, unclaimedFunds: UnclaimedFundsId },
-) {}
-
-export class TakenBackActivity extends Schema.TaggedClass<TakenBackActivity>()(
-  "TakenBackActivity",
-  {
-    ...receivedActivityFields,
-    closedAt: Schema.DateTimeUtcFromString,
-  },
+  receivedActivityFields,
 ) {}
 
 export class ClaimedLinkActivity extends Schema.TaggedClass<ClaimedLinkActivity>()(
@@ -430,8 +401,6 @@ export class DepositActivity extends Schema.TaggedClass<DepositActivity>()(
 export const ActivityEntry = Schema.Union([
   SentActivity,
   ReceivedActivity,
-  AwaitingAcceptanceActivity,
-  TakenBackActivity,
   ClaimedLinkActivity,
   DepositActivity,
 ]);
@@ -467,12 +436,7 @@ export class RecipientCannotReceive extends Schema.TaggedClass<RecipientCannotRe
   "RecipientCannotReceive",
   {
     address: AccountAddress,
-    reason: Schema.Literals([
-      "no_account",
-      "no_trustline",
-      "not_authorized",
-      "no_capacity",
-    ]),
+    reason: Schema.Literals(["no_account", "not_authorized", "no_capacity"]),
     linkable: Schema.optional(Schema.Boolean),
   },
 ) {}
@@ -497,7 +461,6 @@ export const TransferStep = Schema.Union([
   InsufficientBalance,
   SenderBusy,
   InvalidAddress,
-  ExternalMemoRequired,
   MemoNotAllowed,
   RecipientCannotReceive,
   UnclaimedFundsLimitReached,
@@ -514,21 +477,15 @@ export const PayPaymentRequestStep = Schema.Union([
 
 export type PayPaymentRequestStep = typeof PayPaymentRequestStep.Type;
 
-const memoRequirementFields = {
-  memoRequired: Schema.Boolean,
-  exchange: Schema.OptionFromNullOr(Schema.String),
-};
-
 export class TransferAssessment extends Schema.TaggedClass<TransferAssessment>()(
   "TransferAssessment",
-  { recipient: ResolvedRecipient, ...memoRequirementFields },
+  { recipient: ResolvedRecipient },
 ) {}
 
 export class RecipientCheck extends Schema.TaggedClass<RecipientCheck>()(
   "RecipientCheck",
   {
     recipient: Schema.Union([Profile, ExternalRecipient]),
-    ...memoRequirementFields,
   },
 ) {}
 
@@ -557,7 +514,6 @@ export const AssessmentStep = Schema.Union([
   InsufficientBalance,
   SenderBusy,
   InvalidAddress,
-  ExternalMemoRequired,
   MemoNotAllowed,
   RecipientCannotReceive,
   UnclaimedFundsLimitReached,
@@ -575,10 +531,6 @@ export const AssetStep = Schema.Union([
   InvalidAddress,
   SenderBusy,
   AssetBusy,
-  Unchanged,
-  TrustlineLimitReached,
-  TrustlineNotEmpty,
-  AssetUnsupported,
   RecipientCannotReceive,
   NotClaimable,
   UnclaimedFundsGone,
@@ -658,7 +610,6 @@ export class ExternalLinkDraft extends Schema.TaggedClass<ExternalLinkDraft>()(
   "ExternalLinkDraft",
   {
     request: SigningRequest,
-    memoRequired: Schema.Boolean,
   },
 ) {}
 
@@ -692,8 +643,6 @@ export const ExternalLinkStep = Schema.Union([
   ExternalLinkSettled,
   ExternalLinkFailed,
   InvalidAddress,
-  ExternalMemoRequired,
-  MemoNotAllowed,
   RecipientCannotReceive,
   NotClaimable,
   UnclaimedFundsGone,
@@ -742,7 +691,6 @@ export class Holding extends Schema.TaggedClass<Holding>()("Holding", {
   ),
 
   balances: Schema.Array(Balance),
-  unclaimedFunds: Schema.Array(UnclaimedFunds),
   latest: Schema.OptionFromNullOr(Receipt),
 }) {}
 

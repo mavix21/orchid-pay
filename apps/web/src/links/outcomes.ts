@@ -35,8 +35,7 @@ export type CreateAction =
   | "check"
   | "home"
   | "links"
-  | "assets"
-  | "elsewhere";
+  | "assets";
 
 export type CheckAction = "check" | "home" | "links";
 
@@ -73,25 +72,14 @@ const unavailable = (failure: WalletUnavailable, next: string) =>
 const creationDeviceFailure = () =>
   new LinkScreen(m.common_device_failed_title(), m.link_check_first(), "check");
 
-const unsupportedScreen = (
-  reason:
-    | "issuer_missing"
-    | "self_issued"
-    | "base_asset"
-    | "authorization_required"
-    | "clawback_enabled",
-  code: string,
-) => {
-  const elsewhere = reason === "clawback_enabled";
-
-  return new LinkScreen<CreateAction>(
+const unsupportedScreen = (code: string) =>
+  new LinkScreen<CreateAction>(
     m.link_unsupported_title({ asset: code }),
     thenUntouched(
-      `${m.link_unsupported_currency()} ${elsewhere ? m.link_unsupported_elsewhere() : m.link_unsupported_choose()}`,
+      `${m.link_unsupported_currency()} ${m.link_unsupported_choose()}`,
     ),
-    elsewhere ? "elsewhere" : "assets",
+    "assets",
   );
-};
 
 const stillCreating = () =>
   new LinkScreen(
@@ -198,7 +186,7 @@ export const createLinkResult = (
         thenUntouched(m.link_limit({ limit })),
         "links",
       ),
-    AssetUnsupported: ({ reason }) => unsupportedScreen(reason, asset.code),
+    AssetUnsupported: () => unsupportedScreen(asset.code),
     SenderBusy: busyCreating,
     AssetBusy: busyCreating,
     NotOpened: () =>
@@ -210,7 +198,6 @@ export const createLinkResult = (
     InvalidAddress: notCreated,
     UnknownRecipient: notCreated,
     PhoneNotSupported: notCreated,
-    ExternalMemoRequired: notCreated,
     MemoNotAllowed: notCreated,
     RecipientCannotReceive: notCreated,
     NoWallet: () =>
@@ -382,15 +369,6 @@ export const reclaimResult = (
             ),
         ),
         Match.when(
-          "clawed_back",
-          () =>
-            new LinkScreen(
-              m.link_clawed_back_title(),
-              m.link_clawed_back({ asset: code, amount }),
-              "done",
-            ),
-        ),
-        Match.when(
           "unresolved",
           () =>
             new LinkScreen(
@@ -405,9 +383,6 @@ export const reclaimResult = (
       cannotRecover(
         Match.value(reason).pipe(
           Match.when("no_account", () => m.link_own_inactive()),
-          Match.when("no_trustline", () =>
-            m.link_own_cannot_receive({ asset: code }),
-          ),
           Match.when("not_authorized", () => m.link_own_not_authorized()),
           Match.when("no_capacity", () =>
             m.link_own_no_capacity({ asset: code }),
@@ -415,10 +390,6 @@ export const reclaimResult = (
           Match.exhaustive,
         ),
       ),
-    TrustlineLimitReached: ({ limit }) =>
-      cannotRecover(m.link_asset_limit({ limit, asset: code })),
-    AssetUnsupported: () =>
-      cannotRecover(m.link_own_cannot_receive({ asset: code })),
     NotClaimable: ({ claimableAt }) =>
       Option.match(claimableAt, {
         onNone: recoverAgain,
@@ -439,8 +410,6 @@ export const reclaimResult = (
     SenderBusy: busyRecovering,
     AssetBusy: busyRecovering,
     LinkUnclaimable: recoverAgain,
-    Unchanged: recoverAgain,
-    TrustlineNotEmpty: recoverAgain,
     DraftRejected: () =>
       new LinkScreen(
         m.link_operation_unconfirmed_title(),

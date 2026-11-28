@@ -1,0 +1,73 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "df9666f4-57fd-495e-bd71-d1b67c81f8f1",
+  "prevIds": ["e06b4da8-3aa7-43b7-938a-7cc2d68c6a42"],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "trustlines"],
+      "writes": [
+        "s|tbl|public.trustlines",
+        "n|tbl|public.trustlines",
+        "e|tbl|public.trustlines",
+        "n|rel|public.trustlines",
+        "n|type|public.trustlines"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "asset_orders", "opens"],
+      "writes": [
+        "s|col|public.asset_orders.opens",
+        "n|col|public.asset_orders.opens",
+        "e|col|public.asset_orders.opens"
+      ],
+      "reads": ["n|tbl|public.asset_orders", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"trustlines\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"asset_orders\",\"opens\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"trustlines\",\"address\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"trustlines\",\"network\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"trustlines\",\"testnetEpoch\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"trustlines\",\"code\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"trustlines\",\"issuer\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"trustlines\",\"openedAt\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"trustlines\",\"trustlines_address_wallets_address_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"trustlines\",\"trustlines_pkey\"]"
+    }
+  ]
+}

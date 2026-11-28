@@ -162,7 +162,6 @@ it.live("reviews the envelope's facts without approving the draft", () =>
       asset: baseAsset,
       amount,
       memo,
-      claimable: false,
     });
     expect(approvals.filter(Option.isSome)).toHaveLength(0);
   }),
@@ -261,7 +260,6 @@ it.live(
               profile: actors.pedroProfile,
               reserveSponsor: Option.some(actors.sponsor),
               balances: [],
-              unclaimedFunds: [],
               latest: Option.none(),
             }),
           ),
@@ -313,7 +311,6 @@ it.live(
                   profile: actors.pedroProfile,
                   reserveSponsor: Option.some(actors.sponsor),
                   balances: [],
-                  unclaimedFunds: [],
                   latest: settled,
                 }),
               ),
@@ -370,7 +367,6 @@ it.live(
               profile: actors.pedroProfile,
               reserveSponsor: Option.some(actors.sponsor),
               balances: [],
-              unclaimedFunds: [],
               latest: Option.none(),
             }),
           ),

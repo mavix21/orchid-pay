@@ -5,11 +5,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import { workSettlementGrace } from "../policy";
 import type { AccountAddress, AssetOrderId, TransferId } from "../contract";
-import {
-  type AssetAuthorized,
-  type AssetConcluded,
-  AssetOrders,
-} from "./AssetOrders.server";
+import { type AssetAuthorized, AssetOrders } from "./AssetOrders.server";
 import type { ChainUnreachable } from "./Chain.server";
 import { Directory, type StoreFailure } from "./Directory.server";
 import { type SealedOpening, sealedOpening } from "./opening-attempt.server";
@@ -30,9 +26,6 @@ export const workFlow = (actions: {
   ) => Effect.Effect<boolean, StoreFailure | ChainUnreachable>;
   readonly reconcileAsset: (
     entry: AssetAuthorized,
-  ) => Effect.Effect<boolean, StoreFailure | ChainUnreachable>;
-  readonly cleanUpReceivedLink: (
-    concluded: AssetConcluded,
   ) => Effect.Effect<boolean, StoreFailure | ChainUnreachable>;
 }) =>
   Effect.gen(function* () {
@@ -103,28 +96,10 @@ export const workFlow = (actions: {
         : new WorkFinished();
     });
 
-    const attendLinkCleanup = Effect.fn("Wallet.attendLinkCleanup")(function* (
-      id: AssetOrderId,
-      attempt: number,
-    ) {
-      const found = yield* orders.find(id);
-
-      if (
-        Option.isNone(found) ||
-        !Predicate.isTagged(found.value, "AssetConcluded")
-      )
-        return new WorkFinished();
-
-      return (yield* actions.cleanUpReceivedLink(found.value))
-        ? new WorkFinished()
-        : new WorkRetry({ delaySeconds: retryDelaySeconds(attempt) });
-    });
-
     return (work: PendingWork, attempt: number) =>
       Match.valueTags(work, {
         ReconcileTransfer: ({ id }) => attendTransfer(id, attempt),
         ReconcileOpening: ({ address }) => attendOpening(address, attempt),
         ReconcileAssetOrder: ({ id }) => attendAssetOrder(id, attempt),
-        CleanUpReceivedLink: ({ id }) => attendLinkCleanup(id, attempt),
       });
   });
