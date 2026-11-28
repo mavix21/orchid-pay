@@ -16,11 +16,6 @@ export class ReconcileAssetOrder extends Schema.TaggedClass<ReconcileAssetOrder>
   { id: AssetOrderId },
 ) {}
 
-export class CleanUpReceivedLink extends Schema.TaggedClass<CleanUpReceivedLink>()(
-  "CleanUpReceivedLink",
-  { id: AssetOrderId },
-) {}
-
 export class ReconcileOpening extends Schema.TaggedClass<ReconcileOpening>()(
   "ReconcileOpening",
   { address: AccountAddress },
@@ -30,7 +25,6 @@ export const PendingWork = Schema.Union([
   ReconcileTransfer,
   ReconcileOpening,
   ReconcileAssetOrder,
-  CleanUpReceivedLink,
 ]);
 
 export type PendingWork = typeof PendingWork.Type;

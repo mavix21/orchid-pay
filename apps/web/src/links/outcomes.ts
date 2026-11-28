@@ -369,15 +369,6 @@ export const reclaimResult = (
             ),
         ),
         Match.when(
-          "clawed_back",
-          () =>
-            new LinkScreen(
-              m.link_clawed_back_title(),
-              m.link_clawed_back({ asset: code, amount }),
-              "done",
-            ),
-        ),
-        Match.when(
           "unresolved",
           () =>
             new LinkScreen(

@@ -200,14 +200,10 @@ export const externalLinkClaimFlow = (shared: LinkReceiveShared) =>
         memo: order.memo,
       };
 
-      const prepared = yield* chain.prepareLinkReceive(terms);
-
-      if (prepared instanceof LinkUnclaimable) return prepared;
-
       const current = (request: SigningRequest) =>
         chain.draftCurrent(
           request,
-          DraftPurpose.LinkReceive({ receive: prepared }),
+          DraftPurpose.LinkReceive({ receive: terms }),
         );
 
       const proposed = Option.filter(existing, (stored) =>
@@ -246,7 +242,7 @@ export const externalLinkClaimFlow = (shared: LinkReceiveShared) =>
         });
       }
 
-      const request = yield* chain.draftLinkReceive(prepared);
+      const request = yield* chain.draftLinkReceive(terms);
 
       const stored =
         Option.isSome(proposed) &&

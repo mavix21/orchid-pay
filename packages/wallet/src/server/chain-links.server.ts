@@ -3,7 +3,6 @@ import type {
   AccountAddress,
   Asset,
   DestinationAddress,
-  LinkUnclaimable,
   PaymentMemo,
   PositiveAmount,
   SigningRequest,
@@ -21,16 +20,8 @@ export interface LinkReceive {
   readonly memo?: PaymentMemo;
 }
 
-export interface PreparedLinkReceive extends LinkReceive {
-  readonly createsLinkAccount: boolean;
-}
-
 export interface LinkChain {
-  prepareLinkReceive(
-    receive: LinkReceive,
-  ): Effect.Effect<PreparedLinkReceive | LinkUnclaimable, ChainUnreachable>;
   draftLinkReceive(
-    receive: PreparedLinkReceive,
+    receive: LinkReceive,
   ): Effect.Effect<SigningRequest, ChainUnreachable | StoreFailure>;
-  cleanUpLink(link: AccountAddress): Effect.Effect<boolean, ChainUnreachable>;
 }

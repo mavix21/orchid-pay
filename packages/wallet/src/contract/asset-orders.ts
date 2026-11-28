@@ -82,14 +82,13 @@ export class NotClaimable extends Schema.TaggedClass<NotClaimable>()(
 export class LinkUnclaimable extends Schema.TaggedClass<LinkUnclaimable>()(
   "LinkUnclaimable",
   {
-    reason: Schema.Literals(["link_account_unexpected", "destination_is_link"]),
+    reason: Schema.Literals(["destination_is_link"]),
   },
 ) {}
 
 export const UnclaimedFundsGoneStatus = Schema.Literals([
   "reclaimed",
   "claimed",
-  "clawed_back",
   "unresolved",
 ]);
 

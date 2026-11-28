@@ -20,10 +20,7 @@ import {
 import type { AssetPlan } from "../server/asset-plan.server";
 import { DraftPurpose } from "../server/chain-drafts.server";
 import { rpcReadConcurrency } from "../server/settings.server";
-import type {
-  LinkReceive,
-  PreparedLinkReceive,
-} from "../server/chain-links.server";
+import type { LinkReceive } from "../server/chain-links.server";
 import type { Sealed } from "../server/chain-settlement.server";
 import { decodeSealedEnvelope } from "./envelope-codec";
 import {
@@ -71,7 +68,7 @@ const usdcOnly = (asset: Asset) => {
     throw new RangeError("A Solana draft moves only USDC");
 };
 
-const sameLinkReceive = (facts: EnvelopeFacts, receive: PreparedLinkReceive) =>
+const sameLinkReceive = (facts: EnvelopeFacts, receive: LinkReceive) =>
   Predicate.isTagged(facts, "LinkReceiveFacts") &&
   facts.link === address(receive.link) &&
   facts.unclaimedFunds === address(receive.unclaimedFunds) &&
@@ -226,13 +223,8 @@ export const solanaDraftChain = (rpc: SolanaRpc, sponsor: Address) => {
         }),
       );
     }),
-    prepareLinkReceive: (receive: LinkReceive) =>
-      Effect.succeed<PreparedLinkReceive>({
-        ...receive,
-        createsLinkAccount: false,
-      }),
     draftLinkReceive: Effect.fn("Chain.draftLinkReceive")(function* (
-      receive: PreparedLinkReceive,
+      receive: LinkReceive,
     ) {
       usdcOnly(receive.asset);
 
@@ -248,7 +240,6 @@ export const solanaDraftChain = (rpc: SolanaRpc, sponsor: Address) => {
         }),
       );
     }),
-    cleanUpLink: () => Effect.succeed(true),
     draftCurrent: (request: SigningRequest, purpose: DraftPurpose) => {
       const facts = readEnvelope(request.envelope, sponsor);
 

@@ -1,0 +1,25 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "719076b6-f4b8-49a2-ae60-b9485f9f2d49",
+  "prevIds": ["df9666f4-57fd-495e-bd71-d1b67c81f8f1"],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "asset_orders", "linkCleanedAt"],
+      "writes": [
+        "s|col|public.asset_orders.linkCleanedAt",
+        "n|col|public.asset_orders.linkCleanedAt",
+        "e|col|public.asset_orders.linkCleanedAt"
+      ],
+      "reads": ["n|tbl|public.asset_orders", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"asset_orders\",\"linkCleanedAt\"]"
+    }
+  ]
+}

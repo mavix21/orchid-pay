@@ -36,7 +36,6 @@ import {
 } from "../contract";
 import {
   type AssetAuthorized,
-  type AssetConcluded,
   AssetOrders,
   type ConcludedReceipt,
   type StoredAssetOrder,
@@ -125,48 +124,6 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
       return { matched, present: entries.length > 0 };
     });
 
-    const cleanUp = Effect.fn("Wallet.cleanUpReceivedLink")(function* (
-      concluded: AssetConcluded,
-    ) {
-      const { action } = concluded.order;
-
-      if (
-        (!Predicate.isTagged(action, "ReceiveLink") &&
-          !Predicate.isTagged(action, "ReceiveLinkExternal")) ||
-        (!Predicate.isTagged(concluded.receipt, "AssetSettled") &&
-          !Predicate.isTagged(concluded.receipt, "ExternalLinkSettled"))
-      )
-        return true;
-
-      const gone = yield* chain.cleanUpLink(action.link);
-
-      if (gone) yield* orders.linkCleaned(concluded.order.id);
-
-      return gone;
-    });
-
-    const settled = (
-      stored: AssetAuthorized,
-    ): Effect.Effect<ReconciledStep, StoreFailure | ChainUnreachable> =>
-      reconcile(stored).pipe(
-        Effect.tap((receipt) =>
-          (Predicate.isTagged(receipt, "AssetSettled") ||
-            Predicate.isTagged(receipt, "ExternalLinkSettled")) &&
-          receiving(stored)
-            ? orders
-                .find(stored.order.id)
-                .pipe(
-                  Effect.flatMap((found) =>
-                    Option.isSome(found) &&
-                    Predicate.isTagged(found.value, "AssetConcluded")
-                      ? cleanUp(found.value).pipe(Effect.ignore)
-                      : Effect.void,
-                  ),
-                )
-            : Effect.void,
-        ),
-      );
-
     const goneStatus = (
       stored: ReadonlyArray<StoredAssetOrder>,
       claimer: Option.Option<AccountAddress>,
@@ -201,7 +158,7 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
 
         const receivePending = yield* Effect.forEach(authorized, (stored) =>
           Effect.map(
-            settled(stored),
+            reconcile(stored),
             (receipt) =>
               receiving(stored) &&
               (Predicate.isTagged(receipt, "AssetPending") ||
@@ -256,17 +213,6 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
         });
 
       if (present) return new PaymentLinkUnrecognized();
-
-      yield* Effect.forEach(
-        current.filter(
-          (stored): stored is AssetConcluded =>
-            Predicate.isTagged(stored, "AssetConcluded") &&
-            receiving(stored) &&
-            settledHere(stored),
-        ),
-        (stored) => cleanUp(stored).pipe(Effect.ignore),
-        { discard: true },
-      );
 
       return goneStatus(current, Option.none()) === "unresolved"
         ? new PaymentLinkUnresolved()
@@ -325,14 +271,10 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
         amount,
       };
 
-      const prepared = yield* chain.prepareLinkReceive(terms);
-
-      if (prepared instanceof LinkUnclaimable) return prepared;
-
       const current = (request: SigningRequest) =>
         chain.draftCurrent(
           request,
-          DraftPurpose.LinkReceive({ receive: prepared }),
+          DraftPurpose.LinkReceive({ receive: terms }),
         );
 
       const proposed = Option.filter(existing, (stored) =>
@@ -364,14 +306,14 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
             Effect.succeed(new AssetDraft({ request: stored.request })),
           WalletInactive: () => Effect.succeed(new NotOpened()),
           AssetAuthorized: (entry) =>
-            settled(entry).pipe(Effect.flatMap(walletStep)),
+            reconcile(entry).pipe(Effect.flatMap(walletStep)),
           AssetConcluded: (concluded) => walletReceipt(concluded.receipt),
           AssetProposed: (next) =>
             Effect.succeed(new AssetDraft({ request: next.request })),
         });
       }
 
-      const request = yield* chain.draftLinkReceive(prepared);
+      const request = yield* chain.draftLinkReceive(terms);
 
       const stored =
         Option.isSome(proposed) &&
@@ -381,7 +323,7 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
 
       return yield* Match.valueTags(stored, {
         AssetAuthorized: (entry) =>
-          settled(entry).pipe(Effect.flatMap(walletStep)),
+          reconcile(entry).pipe(Effect.flatMap(walletStep)),
         AssetConcluded: (concluded) => walletReceipt(concluded.receipt),
         AssetProposed: (next) =>
           Effect.succeed(new AssetDraft({ request: next.request })),
@@ -392,15 +334,14 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
       liveLink,
       settleOnUnclaimedFunds,
       unclaimedFundsGone,
-      settled,
+      settled: reconcile,
     });
 
     return {
       receive,
       claimExternal,
       paymentLink,
-      settled,
+      settled: reconcile,
       unclaimedFundsGone,
-      cleanUpReceived: cleanUp,
     };
   });

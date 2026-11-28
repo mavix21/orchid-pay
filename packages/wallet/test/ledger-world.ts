@@ -29,7 +29,6 @@ export interface LedgerAccount {
   readonly ledger: number;
   readonly accountSponsored: boolean;
   readonly sponsored: boolean;
-  readonly untouched: boolean;
   readonly balance: Option.Option<Amount>;
 }
 
@@ -40,7 +39,6 @@ export const world = {
   submitted: new Array<Sealed>(),
   queued: new Array<PendingWork>(),
   queueDown: false,
-  unmergeable: new Set<AccountAddress>(),
   failSubmit: false,
   ledgerDown: false,
   unreadable: new Set<string>(),
@@ -63,7 +61,6 @@ export const resetWorld = () => {
   world.submitted.length = 0;
   world.queued.length = 0;
   world.queueDown = false;
-  world.unmergeable.clear();
   world.failSubmit = false;
   world.humanCheckRefused = false;
   world.ledgerDown = false;
@@ -101,7 +98,6 @@ export const accountState = (
   ledger: 100,
   accountSponsored: true,
   sponsored: true,
-  untouched: true,
   balance: Option.some(amount("50000000")),
   ...overrides,
 });

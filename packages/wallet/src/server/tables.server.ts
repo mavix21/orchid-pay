@@ -106,7 +106,6 @@ export const assetOrders = pgTable(
     concludedAt: timestamp({ withTimezone: true }),
     sweepCheckedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-    linkCleanedAt: timestamp({ withTimezone: true }),
   },
   (table) => [
     uniqueIndex("asset_orders_one_in_flight")

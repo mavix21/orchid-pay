@@ -3,11 +3,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import type { UnclaimedFundsId } from "../contract";
-import {
-  type AssetAuthorized,
-  type AssetConcluded,
-  AssetOrders,
-} from "./AssetOrders.server";
+import { type AssetAuthorized, AssetOrders } from "./AssetOrders.server";
 import { Chain, type ChainUnreachable } from "./Chain.server";
 import { Directory, type StoreFailure } from "./Directory.server";
 import type { SealedOpening } from "./opening-attempt.server";
@@ -28,9 +24,6 @@ export const sweepFlow = (actions: {
   readonly closeGoneUnclaimedFunds: (
     id: UnclaimedFundsId,
   ) => Effect.Effect<void, StoreFailure | ChainUnreachable>;
-  readonly cleanUpReceivedLink: (
-    concluded: AssetConcluded,
-  ) => Effect.Effect<boolean, StoreFailure | ChainUnreachable>;
 }) =>
   Effect.gen(function* () {
     const chain = yield* Chain;
@@ -51,7 +44,6 @@ export const sweepFlow = (actions: {
       Effect.gen(function* () {
         const inFlight = yield* transfers.inFlight(runStartedAt);
         const assetOrders = yield* assets.inFlight(runStartedAt);
-        const receivedLinks = yield* assets.receivedLinksToClean(runStartedAt);
         const openings = yield* directory.stuckOpenings(runStartedAt);
 
         const records = yield* Effect.forEach(
@@ -64,9 +56,6 @@ export const sweepFlow = (actions: {
             ),
             ...openings.map((opening) =>
               actions.reconcileOpening(opening).pipe(Effect.asVoid),
-            ),
-            ...receivedLinks.map((entry) =>
-              actions.cleanUpReceivedLink(entry).pipe(Effect.asVoid),
             ),
           ],
           (program) => program.pipe(Effect.exit),

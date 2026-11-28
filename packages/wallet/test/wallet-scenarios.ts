@@ -119,9 +119,6 @@ export const ageSignedWork = Database.use((db) =>
     db.execute(
       sql`update asset_orders set "expiresAt" = "expiresAt" - interval '1 hour' where status = 'authorized'`,
     ),
-    db.execute(
-      sql`update asset_orders set "concludedAt" = "concludedAt" - interval '1 hour' where status = 'settled' and "linkCleanedAt" is null`,
-    ),
   ]),
 );
 

@@ -13,7 +13,6 @@ import { addressRules } from "../src/address-rules";
 import {
   AccountAddress,
   type Asset,
-  LinkUnclaimable,
   OpeningDraft,
   type PositiveAmount,
   SigningRequest,
@@ -39,8 +38,6 @@ import { approvalMargin, draftLifetime } from "../src/policy";
 import { accountState, amount, holdingsReader, world } from "./ledger-world";
 import { randomAddress, randomUnclaimedFundsId, signedBy } from "./test-keys";
 
-type PreparedReceive = LinkReceive & { readonly createsLinkAccount: boolean };
-
 type DraftedChange = Data.TaggedEnum<{
   Opened: {};
   Paid: { readonly sequence: string };
@@ -54,7 +51,7 @@ type DraftedChange = Data.TaggedEnum<{
     readonly paymentLink: boolean;
   };
   AssetChanged: { readonly sequence: string; readonly plan: AssetPlan };
-  LinkReceived: { readonly receive: PreparedReceive };
+  LinkReceived: { readonly receive: LinkReceive };
 }>;
 
 const DraftedChange = Data.taggedEnum<DraftedChange>();
@@ -131,7 +128,7 @@ const createsAccount = DraftedChange.$match({
   Paid: () => false,
   Held: () => false,
   AssetChanged: () => false,
-  LinkReceived: ({ receive }) => receive.createsLinkAccount,
+  LinkReceived: () => false,
 });
 
 const ledgerDown = () =>
@@ -195,8 +192,7 @@ const heldDraft = (
     }),
   );
 
-const sameReceive = (left: PreparedReceive, right: PreparedReceive) =>
-  left.createsLinkAccount === right.createsLinkAccount &&
+const sameReceive = (left: LinkReceive, right: LinkReceive) =>
   left.link === right.link &&
   left.unclaimedFunds === right.unclaimedFunds &&
   left.destination === right.destination &&
@@ -329,20 +325,8 @@ export const memoryChain = Layer.succeed(
         ? Option.some(change.unclaimedFunds)
         : Option.none();
     },
-    prepareLinkReceive: (receive) =>
-      account(receive.link).pipe(
-        Effect.map((state) =>
-          Option.exists(state, ({ untouched }) => !untouched)
-            ? new LinkUnclaimable({ reason: "link_account_unexpected" })
-            : { ...receive, createsLinkAccount: Option.isNone(state) },
-        ),
-      ),
     draftLinkReceive: (receive) =>
       recordedDraft(receive.link, DraftedChange.LinkReceived({ receive })),
-    cleanUpLink: (link) =>
-      Effect.sync(
-        () => !world.unmergeable.has(link) && !world.accounts.delete(link),
-      ),
     depositsInto: (wallet, after) =>
       Stream.unwrap(
         Effect.suspend(() => {

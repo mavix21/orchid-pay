@@ -163,23 +163,8 @@ const mapResult = (
           Match.exhaustive,
         ),
       ),
-    LinkUnclaimable: ({ reason }) =>
-      Match.value(reason).pipe(
-        Match.when("destination_is_link", () =>
-          fieldProblem("destination", m.external_destination_is_link()),
-        ),
-        Match.when("link_account_unexpected", () =>
-          concluded(
-            outcome,
-            new LinkScreen<ExternalClaimAction>(
-              m.claim_failed_title(),
-              m.claim_still_available(),
-              "done",
-            ),
-          ),
-        ),
-        Match.exhaustive,
-      ),
+    LinkUnclaimable: () =>
+      fieldProblem("destination", m.external_destination_is_link()),
     NotClaimable: () =>
       concluded(outcome, notSent(thenStillInLink(m.link_try_again()))),
     DraftRejected: () =>

@@ -22,7 +22,6 @@ import { Applied, Expired, Rejected, Sealed } from "./Chain.server";
 import { StoreFailure } from "./Directory.server";
 import {
   authorizeExternalOrder,
-  linkCleaned,
   ordersOnUnclaimedFunds,
   scopeAt,
 } from "./asset-order-links.server";
@@ -41,16 +40,10 @@ import { SlotOccupied, WalletInactive, walletLock } from "./slot.server";
 import {
   pruneExpiredAssetOrderDrafts,
   stuckAssetOrders,
-  receivedLinksToClean,
 } from "./asset-order-sweep.server";
 import { assetOrders, transfers, wallets } from "./tables.server";
 import type { Transaction } from "./transaction.server";
-import {
-  CleanUpReceivedLink,
-  ReconcileAssetOrder,
-  WorkQueue,
-  announcer,
-} from "./work-queue.server";
+import { ReconcileAssetOrder, WorkQueue, announcer } from "./work-queue.server";
 
 export {
   AssetAuthorized,
@@ -114,12 +107,6 @@ export class AssetOrders extends Context.Service<
     onUnclaimedFunds(
       unclaimedFunds: UnclaimedFundsId,
     ): Effect.Effect<ReadonlyArray<StoredAssetOrder>, StoreFailure>;
-
-    receivedLinksToClean(
-      runStartedAt: DateTime.Utc,
-    ): Effect.Effect<ReadonlyArray<AssetConcluded>, StoreFailure>;
-
-    linkCleaned(id: AssetOrderId): Effect.Effect<void, StoreFailure>;
   }
 >()("@workspace/wallet/server/AssetOrders") {
   static readonly layer = Layer.effect(
@@ -465,14 +452,6 @@ export class AssetOrders extends Context.Service<
           ? announce(new ReconcileAssetOrder({ id: outcome.order.id }))
           : Effect.void;
 
-      const announceConcluded = (concluded: AssetConcluded) =>
-        (Predicate.isTagged(concluded.order.action, "ReceiveLink") ||
-          Predicate.isTagged(concluded.order.action, "ReceiveLinkExternal")) &&
-        (Predicate.isTagged(concluded.receipt, "AssetSettled") ||
-          Predicate.isTagged(concluded.receipt, "ExternalLinkSettled"))
-          ? announce(new CleanUpReceivedLink({ id: concluded.order.id }))
-          : Effect.void;
-
       return AssetOrders.of({
         find: (id) => wrap(find(id)),
         inFlightFor: (wallet) => wrap(inFlightFor(wallet)),
@@ -489,8 +468,7 @@ export class AssetOrders extends Context.Service<
               Effect.tap(announceAuthorized),
             ),
           ),
-        conclude: (id, settlement) =>
-          wrap(conclude(id, settlement).pipe(Effect.tap(announceConcluded))),
+        conclude: (id, settlement) => wrap(conclude(id, settlement)),
         inFlight: (runStartedAt) =>
           wrap(
             stuckAssetOrders(runStartedAt, signed).pipe(
@@ -508,14 +486,6 @@ export class AssetOrders extends Context.Service<
               Effect.provideService(Database, db),
             ),
           ),
-        receivedLinksToClean: (runStartedAt) =>
-          wrap(
-            receivedLinksToClean(runStartedAt, decode).pipe(
-              Effect.provideService(Database, db),
-            ),
-          ),
-        linkCleaned: (id) =>
-          wrap(linkCleaned(id).pipe(Effect.provideService(Database, db))),
       });
     }),
   );

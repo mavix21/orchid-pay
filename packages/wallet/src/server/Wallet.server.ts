@@ -381,7 +381,6 @@ export class Wallet extends Context.Service<
           ),
         reconcileOpening,
         reconcileAsset: assetActions.reconcilePending,
-        cleanUpReceivedLink: assetActions.cleanUpReceivedLink,
       };
 
       const sweep = yield* sweepFlow({

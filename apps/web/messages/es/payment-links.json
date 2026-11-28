@@ -81,8 +81,6 @@
   "link_already_recovered_title": "Ya recuperaste este dinero",
   "link_claimed_title": "Alguien ya usó este link",
   "link_claimed": "Quien tenía el link ya recibió {amount}.",
-  "link_clawed_back_title": "Este dinero ya no está en el link",
-  "link_clawed_back": "La empresa que emite {asset} retiró {amount} de este link. No volverá a tu cuenta.",
   "link_unresolved_title": "No pudimos confirmar qué pasó",
   "link_unresolved": "Este link ya no tiene dinero, pero no podemos saber si alguien lo recibió o si volvió a ti. Revisa tu saldo.",
   "link_own_inactive": "Tu cuenta no está activa.",

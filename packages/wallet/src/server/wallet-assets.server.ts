@@ -72,11 +72,7 @@ export const assetFlow = Effect.gen(function* () {
 
   const links = yield* linkReceiveFlow(reconcileOrder);
 
-  const reconcile = (stored: AssetAuthorized) =>
-    Predicate.isTagged(stored.order.action, "ReceiveLink") ||
-    Predicate.isTagged(stored.order.action, "ReceiveLinkExternal")
-      ? links.settled(stored)
-      : reconcileOrder(stored);
+  const reconcile = reconcileOrder;
 
   const stillPending = (step: Effect.Success<ReturnType<typeof reconcile>>) =>
     Predicate.isTagged(step, "AssetPending") ||
@@ -258,6 +254,5 @@ export const assetFlow = Effect.gen(function* () {
     reconcilePending: (stored: AssetAuthorized) =>
       reconcile(stored).pipe(Effect.map(stillPending)),
     paymentLink: links.paymentLink,
-    cleanUpReceivedLink: links.cleanUpReceived,
   };
 });
