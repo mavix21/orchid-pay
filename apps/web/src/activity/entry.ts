@@ -35,10 +35,18 @@ export type Counterparty = {
   readonly party: Party;
 };
 
-export type EntryMedia = "link" | Party | { readonly linkClaimer: Profile };
+export type EntryMedia =
+  | "link"
+  | Party
+  | { readonly linkClaimer: Profile; readonly openedWallet: boolean };
 
 export const isLinkClaimerMedia = (media: EntryMedia) =>
   media !== "link" && "linkClaimer" in media;
+
+export const walletOpenedBy = (media: EntryMedia): Option.Option<Profile> =>
+  isLinkClaimerMedia(media) && media.openedWallet
+    ? Option.some(media.linkClaimer)
+    : Option.none();
 
 export type ShownEntry = {
   readonly title: string;
@@ -113,6 +121,7 @@ type Outcome = {
 const linkOutcome = (
   outcome: Pick<Outcome, "subtitle" | "badge" | "direction" | "detail"> & {
     readonly claimer?: Party;
+    readonly openedWallet?: boolean;
     readonly open?: boolean;
   },
 ): Outcome => ({
@@ -123,7 +132,10 @@ const linkOutcome = (
   detail: outcome.detail,
   media:
     outcome.claimer instanceof Profile
-      ? { linkClaimer: outcome.claimer }
+      ? {
+          linkClaimer: outcome.claimer,
+          openedWallet: outcome.openedWallet ?? false,
+        }
       : "link",
   counterparty: Option.map(
     Option.fromUndefinedOr(outcome.claimer),
@@ -157,15 +169,13 @@ const claimedLinkOutcome = (
           badge: Option.none(),
           direction: "out",
           detail: openedWallet
-            ? m.activity_link_joined_detail({
-                name: partyName(claimer),
-                date: closedOn(closedAt),
-              })
+            ? m.activity_joined_welcome()
             : m.activity_link_claimed_by_detail({
                 name: partyName(claimer),
                 date: closedOn(closedAt),
               }),
           claimer,
+          openedWallet,
         })
       : linkOutcome({
           subtitle: m.activity_link_claimed_at({ name: partyName(claimer) }),

@@ -19,6 +19,7 @@ import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 
 import { FlowerAvatar } from "@/components/flower-avatar";
+import { OrchidBloom } from "@/components/orchid-bloom";
 import {
   type Direction,
   type EntryMedia,
@@ -26,6 +27,7 @@ import {
   createdWhen,
   isLinkClaimerMedia,
   shownEntry,
+  walletOpenedBy,
 } from "@/activity/entry";
 
 const partyKey = (party: Party) =>
@@ -44,6 +46,20 @@ export function EntryAvatar({ media }: { media: EntryMedia }) {
     return (
       <ItemMedia variant="icon">
         <LinkIcon absoluteStrokeWidth />
+      </ItemMedia>
+    );
+
+  const newcomer = walletOpenedBy(media);
+
+  if (Option.isSome(newcomer))
+    return (
+      <ItemMedia className="relative w-fit">
+        <FlowerAvatar username={newcomer.value.username} />
+        <span className="absolute inset-1 rounded-full ring-2 ring-background" />
+        <span className="absolute inset-0 rounded-full joined-ring" />
+        <span className="absolute -right-1 -bottom-1 grid size-5 place-items-center rounded-full bg-background">
+          <OrchidBloom motion="rest" className="size-5" />
+        </span>
       </ItemMedia>
     );
 
@@ -109,7 +125,11 @@ export function ActivityRow({
         <ItemContent>
           <ItemTitle>{shown.title}</ItemTitle>
           <ItemDescription wrap={isLinkClaimerMedia(shown.media)}>
-            {shown.subtitle}
+            {Option.isSome(walletOpenedBy(shown.media)) ? (
+              <span className="text-accent-foreground">{shown.subtitle}</span>
+            ) : (
+              shown.subtitle
+            )}
           </ItemDescription>
         </ItemContent>
         <ItemActions>
