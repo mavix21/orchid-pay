@@ -17,12 +17,9 @@ import type {
   RevealPaymentLinkOutcome,
   WalletUnavailable,
 } from "@workspace/wallet";
-import * as DateTime from "effect/DateTime";
 import * as Match from "effect/Match";
-import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 
-import { formattingLocale } from "@/locale/format";
 import { amountLabel } from "@/send/money";
 import type { DeviceFailure } from "@/send/use-wallet-task";
 import { unavailableMessage } from "@/wallet/unavailable";
@@ -390,23 +387,7 @@ export const reclaimResult = (
           Match.exhaustive,
         ),
       ),
-    NotClaimable: ({ claimableAt }) =>
-      Option.match(claimableAt, {
-        onNone: recoverAgain,
-        onSome: (at) =>
-          new LinkScreen(
-            m.link_not_yet_recoverable_title(),
-            thenStillInLink(
-              m.link_recoverable_from({
-                date: DateTime.toDate(at).toLocaleString(formattingLocale(), {
-                  dateStyle: "long",
-                  timeStyle: "short",
-                }),
-              }),
-            ),
-            "done",
-          ),
-      }),
+    NotClaimable: recoverAgain,
     SenderBusy: busyRecovering,
     AssetBusy: busyRecovering,
     LinkUnclaimable: recoverAgain,

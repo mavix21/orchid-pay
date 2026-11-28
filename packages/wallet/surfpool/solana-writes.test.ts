@@ -10,7 +10,6 @@ import {
 } from "@solana/kit";
 import { Database } from "@workspace/db";
 import { USDC_MINT_ADDRESS } from "@workspace/orchid-links";
-import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -328,52 +327,23 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
       }),
   );
 
-  it.effect(
-    "lets the sender reclaim a link only once the chain clock reaches its reclaim time",
-    () =>
-      Effect.gen(function* () {
-        const { accounts, drafts, unclaimed, land, open, createLink } =
-          yield* writer;
+  it.effect("lets the sender reclaim a link right after creating it", () =>
+    Effect.gen(function* () {
+      const { accounts, drafts, unclaimed, land, open, createLink } =
+        yield* writer;
 
-        const sender = yield* open(5_000_000);
-        const { unclaimedFunds } = yield* createLink(sender, 2_000_000n);
+      const sender = yield* open(5_000_000);
+      const { unclaimedFunds } = yield* createLink(sender, 2_000_000n);
 
-        const reclaimAt = Effect.gen(function* () {
-          const [entry] = yield* unclaimed.unclaimedFunds([unclaimedFunds]);
-          const claim = Option.getOrThrow(entry.claimOf(sender.account));
+      const reclaim = yield* drafts.draftAsset(
+        sender.account,
+        SolanaClaimPlan.make({ unclaimedFunds }),
+      );
 
-          return {
-            opensAt: Option.getOrThrow(claim.opensAt),
-            claimable: claim.claimableAt(Option.getOrThrow(claim.opensAt)),
-          };
-        });
-
-        const before = yield* reclaimAt;
-
-        expect(before.claimable).toBe(false);
-
-        yield* cheat("surfnet_timeTravel", [
-          {
-            absoluteTimestamp: DateTime.toEpochMillis(before.opensAt) + 60_000,
-          },
-        ]);
-
-        yield* reclaimAt.pipe(
-          Effect.repeat({
-            until: ({ claimable }) => claimable,
-            schedule: Schedule.spaced("100 millis"),
-          }),
-        );
-
-        const reclaim = yield* drafts.draftAsset(
-          sender.account,
-          SolanaClaimPlan.make({ unclaimedFunds }),
-        );
-
-        expect((yield* land(reclaim, sender))._tag).toBe("Applied");
-        expect(yield* balances(accounts, [sender])).toEqual([5_000_000n]);
-        expect(yield* unclaimed.unclaimedFunds([unclaimedFunds])).toEqual([]);
-      }),
+      expect((yield* land(reclaim, sender))._tag).toBe("Applied");
+      expect(yield* balances(accounts, [sender])).toEqual([5_000_000n]);
+      expect(yield* unclaimed.unclaimedFunds([unclaimedFunds])).toEqual([]);
+    }),
   );
 
   it.effect(

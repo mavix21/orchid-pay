@@ -6,7 +6,7 @@ use anchor_spl::token::{
 declare_id!("GAgsxe3vwNSSFcsaMViggfk37wBaj7yioYaXFYa7Cv6M");
 
 pub const USDC_MINT: Pubkey = pubkey!("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
-pub const RECLAIM_DELAY_SECONDS: i64 = 7 * 24 * 60 * 60;
+pub const RECLAIM_DELAY_SECONDS: i64 = 0;
 pub const UNCLAIMED_FUNDS_SEED: &[u8] = b"link";
 pub const VAULT_SEED: &[u8] = b"vault";
 

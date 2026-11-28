@@ -18,7 +18,7 @@
 
 ## Why Orchid
 
-- **Every payment link is a new-user channel.** Send USDC in a chat message. The `orchid-links` Anchor program holds the unclaimed funds on Solana while the claim key stays in the URL `#fragment` (never sent to the server). A recipient with no wallet opens the link and claims straight into a new passkey-backed wallet in two taps, with fees and token-account rent sponsored. Unclaimed funds can be reclaimed by the sender after 7 days.
+- **Every payment link is a new-user channel.** Send USDC in a chat message. The `orchid-links` Anchor program holds the unclaimed funds on Solana while the claim key stays in the URL `#fragment` (never sent to the server). A recipient with no wallet opens the link and claims straight into a new passkey-backed wallet in two taps, with fees and token-account rent sponsored. The sender can reclaim unclaimed funds at any time; whichever of claim or reclaim lands first wins.
 - **Local cash-out from the same link.** Recipients who want local currency instead of a wallet tap **Yape** on the exact same payment link, enter a Peruvian mobile number, review the soles quote, and track settlement. _(On devnet this uses a simulated payout partner — no real soles are transferred; live payouts require a licensed partner.)_
 - **Request links payable from any Solana wallet.** Share a public `/pay/<id>` link for an exact USDC amount and optional note. Payers settle in Orchid or from an external Solana wallet such as Phantom or Solflare via Solana Pay and Blinks (the external payer covers the network fee).
 

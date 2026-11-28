@@ -12,8 +12,6 @@ import {
   withAccount,
 } from "./link-harness";
 
-const sevenDays = 7n * 24n * 60n * 60n;
-
 const releases = {
   claim: getClaimInstruction,
   reclaim: getReclaimInstruction,
@@ -110,10 +108,11 @@ describe("claim", () => {
 });
 
 describe("reclaim", () => {
-  it("refuses before the reclaim time and pays the sender back once it arrives", async () => {
+  it("refuses before the stored reclaim time, pays the sender back from creation and leaves nothing to claim", async () => {
     const harness = await createLinkHarness();
     const createdAt = harness.now();
     const created = await harness.createLink(1_000_000n);
+    const destination = await harness.tokenAccount(created.link.address, 0n);
 
     const reclaim = await getReclaimInstruction({
       signer: harness.sender.address,
@@ -122,7 +121,7 @@ describe("reclaim", () => {
       rentRecipient: harness.sponsor.address,
     });
 
-    harness.setNow(createdAt + sevenDays - 1n);
+    harness.setNow(createdAt - 1n);
 
     const early = await harness.send(
       harness.sponsor,
@@ -130,19 +129,37 @@ describe("reclaim", () => {
       [harness.sender],
     );
 
-    harness.setNow(createdAt + sevenDays);
+    harness.setNow(createdAt);
 
-    const due = await harness.send(
+    const reclaimed = await harness.send(
       harness.sponsor,
       [reclaim],
       [harness.sender],
+    );
+
+    const claimed = await harness.send(
+      harness.sponsor,
+      [
+        await getClaimInstruction({
+          signer: created.link.address,
+          unclaimedFunds: created.address,
+          destination,
+          rentRecipient: harness.sponsor.address,
+        }),
+      ],
+      [created.link],
     );
 
     expect(early).toEqual({
       kind: "failed",
       code: orchidLinksErrorCode.notYetReclaimable,
     });
-    expect(due).toEqual({ kind: "succeeded" });
+    expect(reclaimed).toEqual({ kind: "succeeded" });
+    expect(claimed).toEqual({
+      kind: "failed",
+      code: anchorErrorCode.accountNotInitialized,
+    });
+    expect(harness.tokenBalance(destination)).toBe(0n);
     expect(harness.tokenBalance(created.source)).toBe(1_000_000n);
     expect(harness.unclaimedFunds(created.address)).toBeNull();
   });
@@ -155,7 +172,6 @@ describe.each([
   it("rejects a signer that does not control the link", async () => {
     const harness = await createLinkHarness();
     const created = await harness.createLink();
-    harness.setNow(harness.now() + sevenDays);
     const stranger = await harness.unfundedSigner();
     const destination = await harness.tokenAccount(stranger.address, 0n);
 
@@ -181,7 +197,6 @@ describe.each([
   it("rejects closing to anyone but the stored rent recipient", async () => {
     const harness = await createLinkHarness();
     const created = await harness.createLink();
-    harness.setNow(harness.now() + sevenDays);
     const signers = { claim: created.link, reclaim: harness.sender };
     const thief = await harness.fundedSigner();
     const destination = await harness.tokenAccount(thief.address, 0n);

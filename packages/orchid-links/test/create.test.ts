@@ -14,10 +14,8 @@ import {
   withAccount,
 } from "./link-harness";
 
-const sevenDays = 7n * 24n * 60n * 60n;
-
 describe("create", () => {
-  it("moves the amount into the vault and records the link with a seven-day reclaim time", async () => {
+  it("moves the amount into the vault and records the link as reclaimable from creation", async () => {
     const harness = await createLinkHarness();
     const createdAt = harness.now();
 
@@ -33,7 +31,7 @@ describe("create", () => {
       mint: USDC_MINT_ADDRESS,
       rentRecipient: harness.sponsor.address,
       amount: 2_500_000n,
-      reclaimableAt: createdAt + sevenDays,
+      reclaimableAt: createdAt,
       bump: created.bump,
     });
   });

@@ -4,8 +4,6 @@ export const paymentLinkQuota = 5;
 
 export const openPaymentRequestQuota = 5;
 
-export const reclaimDelay = 7 * 24 * 60 * 60;
-
 export const { lifetime: draftLifetime, approvalMargin } =
   chainProfile.draftTiming;
 

@@ -24,7 +24,7 @@ export const SYSTEM_PROGRAM_ADDRESS = address(
   "11111111111111111111111111111111",
 );
 
-export const RECLAIM_DELAY_SECONDS = 7n * 24n * 60n * 60n;
+export const RECLAIM_DELAY_SECONDS = 0n;
 
 export const orchidLinksErrorCode = {
   zeroAmount: 6000,
