@@ -7,6 +7,12 @@ const generatedFiles = new Set([
   "apps/web/worker-configuration.d.ts",
 ]);
 
+const generatedFolders = ["packages/orchid-links/src/generated/"];
+
+const isGenerated = (filename) =>
+  generatedFiles.has(filename) ||
+  generatedFolders.some((folder) => filename.startsWith(folder));
+
 const filenames = execFileSync(
   "git",
   ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
@@ -14,8 +20,7 @@ const filenames = execFileSync(
 ).split("\0");
 
 for (const filename of new Set(filenames)) {
-  if (!/\.[cm]?[jt]sx?$/.test(filename) || generatedFiles.has(filename))
-    continue;
+  if (!/\.[cm]?[jt]sx?$/.test(filename) || isGenerated(filename)) continue;
 
   const source = await readFile(filename, "utf8");
   const parsed = parseSync(filename, source);

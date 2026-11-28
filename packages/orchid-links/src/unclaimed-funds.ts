@@ -1,15 +1,8 @@
 import {
-  fixDecoderSize,
+  containsBytes,
   fixEncoderSize,
-  getAddressDecoder,
   getAddressEncoder,
-  getBytesDecoder,
   getBytesEncoder,
-  getI64Decoder,
-  getProgramDerivedAddress,
-  getStructDecoder,
-  getU64Decoder,
-  getU8Decoder,
   getUtf8Encoder,
   transformEncoder,
   type Address,
@@ -17,67 +10,51 @@ import {
   type ReadonlyUint8Array,
 } from "@solana/kit";
 
-import { ORCHID_LINKS_PROGRAM_ADDRESS } from "./program";
+import {
+  findUnclaimedFundsPda,
+  findVaultPda,
+  getUnclaimedFundsDecoder,
+  getUnclaimedFundsSize,
+  UNCLAIMED_FUNDS_DISCRIMINATOR,
+  type UnclaimedFunds as UnclaimedFundsAccount,
+} from "./generated";
+import { ORDER_ID_SIZE, requireOrderId } from "./order-id";
 
-export const UNCLAIMED_FUNDS_DISCRIMINATOR = new Uint8Array([
-  34, 12, 96, 75, 126, 67, 184, 60,
-]);
+export { ORDER_ID_SIZE } from "./order-id";
+
+export {
+  getUnclaimedFundsDecoder,
+  UNCLAIMED_FUNDS_DISCRIMINATOR,
+} from "./generated";
 
 export const UNCLAIMED_FUNDS_SENDER_OFFSET = 8;
 export const UNCLAIMED_FUNDS_LINK_OFFSET = 40;
-export const UNCLAIMED_FUNDS_SIZE = 153;
+export const UNCLAIMED_FUNDS_SIZE = getUnclaimedFundsSize();
 
-export const ORDER_ID_SIZE = 16;
-
-export type UnclaimedFunds = {
-  readonly sender: Address;
-  readonly link: Address;
-  readonly mint: Address;
-  readonly rentRecipient: Address;
-  readonly amount: bigint;
-  readonly reclaimableAt: bigint;
-  readonly bump: number;
-};
-
-export const getUnclaimedFundsDecoder = () =>
-  getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["sender", getAddressDecoder()],
-    ["link", getAddressDecoder()],
-    ["mint", getAddressDecoder()],
-    ["rentRecipient", getAddressDecoder()],
-    ["amount", getU64Decoder()],
-    ["reclaimableAt", getI64Decoder()],
-    ["bump", getU8Decoder()],
-  ]);
+export type UnclaimedFunds = Readonly<
+  Omit<UnclaimedFundsAccount, "discriminator">
+>;
 
 export const decodeUnclaimedFunds = (
   data: ReadonlyUint8Array,
 ): UnclaimedFunds | null => {
-  if (data.length !== UNCLAIMED_FUNDS_SIZE) return null;
+  if (
+    data.length !== UNCLAIMED_FUNDS_SIZE ||
+    !containsBytes(data, UNCLAIMED_FUNDS_DISCRIMINATOR, 0)
+  ) {
+    return null;
+  }
 
-  const { discriminator, ...unclaimedFunds } =
+  const { discriminator: _discriminator, ...unclaimedFunds } =
     getUnclaimedFundsDecoder().decode(data);
 
-  return discriminator.every(
-    (byte, index) => byte === UNCLAIMED_FUNDS_DISCRIMINATOR[index],
-  )
-    ? unclaimedFunds
-    : null;
+  return unclaimedFunds;
 };
 
 export const getOrderIdEncoder = () =>
   transformEncoder(
     fixEncoderSize(getBytesEncoder(), ORDER_ID_SIZE),
-    (orderId: ReadonlyUint8Array) => {
-      if (orderId.length !== ORDER_ID_SIZE) {
-        throw new RangeError(
-          `An order id has ${ORDER_ID_SIZE} bytes, not ${orderId.length}`,
-        );
-      }
-
-      return orderId;
-    },
+    requireOrderId,
   );
 
 export const getUnclaimedFundsSeeds = (
@@ -103,15 +80,8 @@ export const findUnclaimedFundsAddress = async (
   link: Address,
   orderId: ReadonlyUint8Array,
 ): Promise<ProgramDerivedAddress> =>
-  getProgramDerivedAddress({
-    programAddress: ORCHID_LINKS_PROGRAM_ADDRESS,
-    seeds: getUnclaimedFundsSeeds(sender, link, orderId),
-  });
+  findUnclaimedFundsPda({ sender, link, orderId: requireOrderId(orderId) });
 
 export const findVaultAddress = (
   unclaimedFunds: Address,
-): Promise<ProgramDerivedAddress> =>
-  getProgramDerivedAddress({
-    programAddress: ORCHID_LINKS_PROGRAM_ADDRESS,
-    seeds: getVaultSeeds(unclaimedFunds),
-  });
+): Promise<ProgramDerivedAddress> => findVaultPda({ unclaimedFunds });

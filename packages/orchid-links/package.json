@@ -8,14 +8,18 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "generate": "cd ../.. && mkdir -p target/idl && anchor idl build -p orchid_links -o target/idl/orchid_links.json && cd packages/orchid-links && bun scripts/generate-client.ts",
     "test": "anchor build --no-idl --ignore-keys && vitest run"
   },
   "dependencies": {
     "@solana/kit": "8.6.0"
   },
   "devDependencies": {
+    "@codama/nodes-from-anchor": "1.5.6",
+    "@codama/renderers-js": "2.9.1",
     "@solana-program/token": "0.18.0",
     "@types/bun": "1.4.4",
+    "codama": "1.11.0",
     "litesvm": "1.6.2",
     "typescript": "7.0.2",
     "vitest": "5.1.1"
