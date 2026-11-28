@@ -19,7 +19,11 @@ import {
   ModalHeader,
   ModalTitle,
 } from "@/components/modal";
-import { ActivityRow, amountTone } from "@/components/activity-row";
+import {
+  ActivityRow,
+  EntryAvatar,
+  amountTone,
+} from "@/components/activity-row";
 import { explorerAddressUrl } from "@/components/explorer";
 
 import {
@@ -93,6 +97,11 @@ function EntryDetail({
   return (
     <>
       <ModalHeader>
+        {shown.media !== "link" && "linkClaimer" in shown.media ? (
+          <div className="mx-auto w-fit">
+            <EntryAvatar media={shown.media} />
+          </div>
+        ) : null}
         <ModalTitle>{shown.title}</ModalTitle>
         <p
           className={cn(

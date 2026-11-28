@@ -47,6 +47,8 @@ import {
 import { memoryKeyStore, signingKey } from "./device-fixtures";
 import { linkFixture } from "./solana-device-fixtures";
 import {
+  activityOf,
+  entryFor,
   approve,
   checkRecipient,
   dbLayer,
@@ -523,6 +525,16 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             receivedLink: link,
             received: "AssetSettled",
             unclaimed: false,
+          });
+
+          const activity = yield* activityOf(wallet, sender.address);
+          const sent = entryFor(activity, funding.id);
+
+          assertTagged(sent, "SentActivity");
+          assertTagged(sent.receipt, "Claimed");
+          expect(sent.receipt).toMatchObject({
+            openedWallet: true,
+            by: completed.profile,
           });
         }),
     );

@@ -92,6 +92,7 @@ export class AssetOrders extends Context.Service<
       order: StoredOrder,
       request: SigningRequest,
       opens: Option.Option<Asset>,
+      enrollmentReceive?: boolean,
     ): Effect.Effect<StoredAssetOrder, StoreFailure>;
     redraft(
       proposed: AssetProposed,
@@ -227,6 +228,7 @@ export class AssetOrders extends Context.Service<
         order: StoredOrder,
         request: SigningRequest,
         opens: Option.Option<Asset>,
+        enrollmentReceive = false,
       ) {
         const now = yield* Clock.currentTimeMillis;
 
@@ -235,6 +237,7 @@ export class AssetOrders extends Context.Service<
           wallet: order instanceof AssetOrder ? order.wallet : null,
           order: Schema.encodeSync(StoredOrderJson)(order),
           opens: opensColumn(opens),
+          enrollmentReceive,
           balanceId:
             Predicate.isTagged(order.action, "ClaimUnclaimedFunds") ||
             Predicate.isTagged(order.action, "ReceiveLink") ||
@@ -590,8 +593,8 @@ export class AssetOrders extends Context.Service<
       return AssetOrders.of({
         find: (id) => wrap(find(id)),
         inFlightFor: (wallet) => wrap(inFlightFor(wallet)),
-        propose: (order, request, opens) =>
-          wrap(propose(order, request, opens)),
+        propose: (order, request, opens, enrollmentReceive) =>
+          wrap(propose(order, request, opens, enrollmentReceive)),
         redraft: (proposed, request, opens) =>
           wrap(redraft(proposed, request, opens)),
         authorize: (proposed, sealed) =>

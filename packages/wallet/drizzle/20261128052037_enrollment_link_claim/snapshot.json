@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "e5830af6-c39c-4ff6-ae4d-dfe2cab6c8de",
+  "prevIds": ["0564437c-4527-47f9-9de5-ff21784fe673"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "asset_orders",
+        "enrollmentReceive"
+      ],
+      "writes": [
+        "s|col|public.asset_orders.enrollmentReceive",
+        "n|col|public.asset_orders.enrollmentReceive",
+        "e|col|public.asset_orders.enrollmentReceive"
+      ],
+      "reads": ["n|tbl|public.asset_orders", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "asset_orders",
+        "name": "enrollmentReceive",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

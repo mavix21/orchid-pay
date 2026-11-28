@@ -35,7 +35,7 @@ export type Counterparty = {
   readonly party: Party;
 };
 
-export type EntryMedia = "link" | Party;
+export type EntryMedia = "link" | Party | { readonly linkClaimer: Profile };
 
 export type ShownEntry = {
   readonly title: string;
@@ -118,7 +118,10 @@ const linkOutcome = (
   badge: outcome.badge,
   direction: outcome.direction,
   detail: outcome.detail,
-  media: "link",
+  media:
+    outcome.claimer instanceof Profile
+      ? { linkClaimer: outcome.claimer }
+      : "link",
   counterparty: Option.map(
     Option.fromUndefinedOr(outcome.claimer),
     (party) => ({
@@ -132,6 +135,7 @@ const linkOutcome = (
 const claimedLinkOutcome = (
   claimer: Party | undefined,
   closedAt: DateTime.Utc,
+  openedWallet: true | undefined,
 ) =>
   claimer === undefined
     ? linkOutcome({
@@ -144,13 +148,20 @@ const claimedLinkOutcome = (
       })
     : claimer instanceof Profile
       ? linkOutcome({
-          subtitle: m.activity_link_claimed_by({ name: partyName(claimer) }),
+          subtitle: openedWallet
+            ? m.activity_link_joined({ name: partyName(claimer) })
+            : m.activity_link_claimed_by({ name: partyName(claimer) }),
           badge: Option.none(),
           direction: "out",
-          detail: m.activity_link_claimed_by_detail({
-            name: partyName(claimer),
-            date: closedOn(closedAt),
-          }),
+          detail: openedWallet
+            ? m.activity_link_joined_detail({
+                name: partyName(claimer),
+                date: closedOn(closedAt),
+              })
+            : m.activity_link_claimed_by_detail({
+                name: partyName(claimer),
+                date: closedOn(closedAt),
+              }),
           claimer,
         })
       : linkOutcome({
@@ -191,7 +202,8 @@ const linkReceiptOutcome = (receipt: Receipt) =>
       }),
     Settled: openLinkOutcome,
     Reserved: openLinkOutcome,
-    Claimed: ({ by, closedAt }) => claimedLinkOutcome(by, closedAt),
+    Claimed: ({ by, closedAt, openedWallet }) =>
+      claimedLinkOutcome(by, closedAt, openedWallet),
     Refunded: ({ closedAt }) =>
       linkOutcome({
         subtitle: m.activity_link_taken_back(),
