@@ -153,7 +153,7 @@ const mapResult = (
       fieldProblem(
         "destination",
         Match.value(reason).pipe(
-          Match.whenOr("no_account", "no_trustline", () =>
+          Match.when("no_account", () =>
             m.common_account_cannot_receive({ asset: code }),
           ),
           Match.when("not_authorized", () =>

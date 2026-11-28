@@ -28,12 +28,6 @@ export interface AssetChain {
   unclaimedFundsClosedAt(
     id: UnclaimedFundsId,
   ): Effect.Effect<Option.Option<DateTime.Utc>, ChainUnreachable>;
-  draftClaimable(
-    from: AccountAddress,
-    to: AccountAddress,
-    asset: Asset,
-    amount: PositiveAmount,
-  ): Effect.Effect<SigningRequest, ChainUnreachable>;
   draftPaymentLink(
     from: AccountAddress,
     to: AccountAddress,

@@ -120,7 +120,6 @@ export const holdingsFor = (
   ),
   reserveSponsor: Option.none(),
   native: amount("0"),
-  trustlineSlotsUsed: 2,
   lines: [],
   ...overrides,
 });
@@ -153,7 +152,6 @@ export const holdingsReader =
                   ? Option.some(reserveSponsor)
                   : Option.none(),
                 native: amount(state.nativeBalance.toString()),
-                trustlineSlotsUsed: 1,
                 lines: assets.flatMap((asset) =>
                   sameAsset(asset, baseAsset) && Option.isSome(state.balance)
                     ? [

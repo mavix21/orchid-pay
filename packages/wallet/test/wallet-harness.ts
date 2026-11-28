@@ -67,13 +67,8 @@ export const {
   useDisposableDatabase,
 } = scenarios;
 
-export const {
-  payUsername,
-  receiveInto,
-  claimBalance,
-  claimExternally,
-  payWithoutTrustline,
-} = activityFlows(scenarios);
+export const { payUsername, receiveInto, claimBalance, claimExternally } =
+  activityFlows(scenarios);
 
 export const { fundLinkFrom } = linkFlows(scenarios);
 

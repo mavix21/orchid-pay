@@ -273,8 +273,8 @@ export const externalLinkClaimFlow = (shared: LinkReceiveShared) =>
       const stored =
         Option.isSome(proposed) &&
         Predicate.isTagged(proposed.value, "AssetProposed")
-          ? yield* orders.redraft(proposed.value, request, Option.none())
-          : yield* orders.propose(storedOrder, request, Option.none());
+          ? yield* orders.redraft(proposed.value, request)
+          : yield* orders.propose(storedOrder, request);
 
       return yield* Match.valueTags(stored, {
         AssetAuthorized: reconcileExternal,

@@ -405,9 +405,6 @@ export const reclaimResult = (
       cannotRecover(
         Match.value(reason).pipe(
           Match.when("no_account", () => m.link_own_inactive()),
-          Match.when("no_trustline", () =>
-            m.link_own_cannot_receive({ asset: code }),
-          ),
           Match.when("not_authorized", () => m.link_own_not_authorized()),
           Match.when("no_capacity", () =>
             m.link_own_no_capacity({ asset: code }),
@@ -415,8 +412,6 @@ export const reclaimResult = (
           Match.exhaustive,
         ),
       ),
-    TrustlineLimitReached: ({ limit }) =>
-      cannotRecover(m.link_asset_limit({ limit, asset: code })),
     AssetUnsupported: () =>
       cannotRecover(m.link_own_cannot_receive({ asset: code })),
     NotClaimable: ({ claimableAt }) =>
@@ -439,8 +434,6 @@ export const reclaimResult = (
     SenderBusy: busyRecovering,
     AssetBusy: busyRecovering,
     LinkUnclaimable: recoverAgain,
-    Unchanged: recoverAgain,
-    TrustlineNotEmpty: recoverAgain,
     DraftRejected: () =>
       new LinkScreen(
         m.link_operation_unconfirmed_title(),

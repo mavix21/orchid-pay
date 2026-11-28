@@ -96,15 +96,11 @@ export const receiveScreen = (
       notReceived(thenStillInLink(m.claim_currency_unsupported()), "done"),
     AssetUnsupported: () =>
       notReceived(thenStillInLink(m.claim_currency_unsupported()), "done"),
-    TrustlineLimitReached: () =>
-      notReceived(thenStillInLink(m.claim_currency_unsupported()), "done"),
     NotOpened: () =>
       notReceived(thenStillInLink(m.common_account_activating())),
     SenderBusy: () => notReceived(thenStillInLink(m.common_other_operation())),
     AssetBusy: () => notReceived(thenStillInLink(m.common_other_operation())),
     NotClaimable: () => notReceived(thenStillInLink(m.link_try_again())),
-    Unchanged: () => notReceived(thenStillInLink(m.link_try_again())),
-    TrustlineNotEmpty: () => notReceived(thenStillInLink(m.link_try_again())),
     DraftRejected: () =>
       notReceived(thenStillInLink(m.claim_request_changed())),
     NoWallet: () => notReceived(thenStillInLink(m.session_no_wallet())),

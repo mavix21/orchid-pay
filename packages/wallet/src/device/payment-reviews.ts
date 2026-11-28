@@ -12,7 +12,6 @@ import type {
 import { approvalMargin, draftLifetime } from "../policy";
 import type { PublicDeviceWallet } from "./key-store";
 import {
-  type ClaimableFacts,
   type PaymentFacts,
   type PaymentLinkFacts,
   network,
@@ -56,7 +55,7 @@ const reviewFrom = (
   order: TransferOrder,
   draft: TransferDraft,
   redrafted: boolean,
-  facts: PaymentFacts | ClaimableFacts | PaymentLinkFacts,
+  facts: PaymentFacts | PaymentLinkFacts,
   to: DestinationAddress,
 ) =>
   new PaymentReview({

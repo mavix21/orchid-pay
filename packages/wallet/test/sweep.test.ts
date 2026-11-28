@@ -7,8 +7,9 @@ import * as Schema from "effect/Schema";
 import {
   AssetOrder,
   AssetOrderId,
-  OpenTrustline,
+  ClaimUnclaimedFunds,
   type AccountAddress,
+  type UnclaimedFundsId,
 } from "../src/contract";
 import { AssetOrders } from "../src/server/AssetOrders.server";
 import { Rejected } from "../src/server/Chain.server";
@@ -24,10 +25,10 @@ import {
   claimFor,
   create,
   draftTransfer,
-  euro,
   expireAttempt,
   findTransfer,
   findWallet,
+  fundLink,
   fundedWallet,
   opening,
   sealLostOpening,
@@ -51,11 +52,14 @@ const expire = (table: "transfers" | "asset_orders", id: string) =>
     ),
   );
 
-const assetDraft = Effect.fn(function* (wallet: AccountAddress) {
+const assetDraft = Effect.fn(function* (
+  wallet: AccountAddress,
+  unclaimedFunds: UnclaimedFundsId,
+) {
   const order = new AssetOrder({
     id: Schema.decodeSync(AssetOrderId)(crypto.randomUUID()),
     wallet,
-    action: OpenTrustline.make({ asset: euro }),
+    action: ClaimUnclaimedFunds.make({ unclaimedFunds }),
   });
 
   assertTagged(
@@ -231,13 +235,17 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "the sweep prunes expired drafts and keeps live drafts and signed work",
       () =>
         Effect.gen(function* () {
-          const key = yield* fundedWallet();
+          const { sender: key, unclaimedFunds } = yield* fundLink("sweeper");
           const expiredTransfer = selfOrder(key);
           const liveTransfer = selfOrder(key);
           const signedTransfer = selfOrder(key);
 
-          const expiredAsset = yield* assetDraft(addressOf(key));
-          const liveAsset = yield* assetDraft(addressOf(key));
+          const expiredAsset = yield* assetDraft(
+            addressOf(key),
+            unclaimedFunds,
+          );
+
+          const liveAsset = yield* assetDraft(addressOf(key), unclaimedFunds);
 
           yield* draftTransfer(expiredTransfer);
           yield* draftTransfer(liveTransfer);

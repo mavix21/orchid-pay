@@ -10,11 +10,7 @@ import {
   type SealedKeyStore,
 } from "./key-store";
 import type { SealedLinkCode } from "./link-seal";
-import type {
-  ClaimableFacts,
-  PaymentFacts,
-  PaymentLinkFacts,
-} from "../device-network";
+import type { PaymentFacts, PaymentLinkFacts } from "../device-network";
 import { ApprovalOutstanding, DraftRejected, NoWallet } from "./outcomes";
 import { Reserved } from "./reviewed-approval";
 import { restoredLinkSlot, savedLinkFor, withSavedLink } from "./saved-links";
@@ -42,7 +38,7 @@ export const reserveApproval = Effect.fn("Device.reserveApproval")(function* (
   store: SealedKeyStore,
   reviewed: PublicDeviceWallet,
   order: TransferOrder,
-  facts: PaymentFacts | ClaimableFacts | PaymentLinkFacts,
+  facts: PaymentFacts | PaymentLinkFacts,
   sealed: Option.Option<SealedLinkCode> = Option.none(),
 ): Effect.fn.Return<
   Reserved<FundingReservation> | ApprovalOutstanding | DraftRejected | NoWallet,

@@ -8,7 +8,6 @@ import {
   type Holding,
   type SavedBackup,
   type SavedOutcome,
-  type UnclaimedFunds,
   type WalletUnavailable,
   baseAsset,
 } from "@workspace/wallet";
@@ -20,7 +19,6 @@ import { RecentActivity } from "@/activity/recent-activity";
 import { BalanceHeader } from "@/components/balance-header";
 import { HomeSkeleton } from "@/components/home-skeleton";
 import { Screen, ScreenNote, ScreenStatus } from "@/components/screen";
-import { arrivalOf } from "@/wallet/arrival";
 import { OpeningFlow } from "@/wallet/opening-flow";
 import { paymentRequestEffects } from "@/wallet/payment-requests";
 import { shownOverview } from "@/wallet/shown-overview";
@@ -29,7 +27,6 @@ import {
   unavailableMessage,
   unavailableNotice,
 } from "@/wallet/unavailable";
-import { WaitingPayment } from "@/wallet/waiting-payment";
 import { m } from "@/paraglide/messages";
 
 export const Route = createFileRoute("/_wallet/_app/home")({
@@ -45,7 +42,6 @@ export const Route = createFileRoute("/_wallet/_app/home")({
 
     return {
       overview: shownOverview(overview),
-      arrival: arrivalOf(overview),
       backup: savedBackup(saved),
       activity,
     };
@@ -88,16 +84,11 @@ const backUpRefusal = (
   });
 
 function HomeScreen() {
-  const { overview, arrival, backup, activity } = Route.useLoaderData();
+  const { overview, backup, activity } = Route.useLoaderData();
 
   return Match.valueTags(overview, {
     Holding: (holding) => (
-      <Home
-        holding={holding}
-        arrival={arrival}
-        backup={backup}
-        activity={activity}
-      />
+      <Home holding={holding} backup={backup} activity={activity} />
     ),
     NeedsReopening: ({ profile }) => <Reopening username={profile.username} />,
     InvalidAddress: () => <Problem message={m.common_stored_key_invalid()} />,
@@ -114,17 +105,13 @@ function HomeScreen() {
 
 function Home({
   holding,
-  arrival,
   backup,
   activity,
 }: {
   holding: Holding;
-  arrival: Option.Option<UnclaimedFunds>;
   backup: Option.Option<SavedBackup>;
   activity: ActivityOutcome;
 }) {
-  const router = useRouter();
-
   const dollars =
     holding.balances.find((balance) => balance.asset.id === baseAsset.id)
       ?.amount ?? Amount.make(0n);
@@ -133,13 +120,6 @@ function Home({
     <Screen>
       <main className="flex flex-1 flex-col gap-10 px-5 pt-2 pb-30 md:pb-16">
         <BalanceHeader username={holding.profile.username} dollars={dollars} />
-        {Option.isSome(arrival) ? (
-          <WaitingPayment
-            key={arrival.value.id}
-            payment={arrival.value}
-            onReceived={() => router.invalidate()}
-          />
-        ) : null}
         {Option.isSome(backup) && backup.value !== "stored" ? (
           <BackupNotice />
         ) : null}

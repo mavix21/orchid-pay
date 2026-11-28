@@ -86,8 +86,6 @@ const plannedReclaim = (
   owner: AccountAddress,
   plan: AssetPlan,
 ) =>
-  Predicate.isTagged(plan, "ClaimPlan") &&
-  plan.opens === undefined &&
   Predicate.isTagged(facts, "ReclaimFacts") &&
   facts.address === address(owner) &&
   facts.unclaimedFunds === address(plan.unclaimedFunds);
@@ -218,11 +216,6 @@ export const solanaDraftChain = (rpc: SolanaRpc, sponsor: Address) => {
       owner: AccountAddress,
       plan: AssetPlan,
     ) {
-      if (!Predicate.isTagged(plan, "ClaimPlan") || plan.opens !== undefined)
-        return yield* Effect.die(
-          new RangeError("A Solana wallet changes no assets but a reclaim"),
-        );
-
       const current = yield* drafting(computeUnitLimits.reclaim);
 
       return yield* requestFor(

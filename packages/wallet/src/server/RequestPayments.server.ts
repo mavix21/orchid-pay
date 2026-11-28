@@ -78,7 +78,6 @@ const meetsTerms = (request: PaymentRequestOpen, order: TransferOrder) =>
 
 const paidDirectly = (request: PaymentRequestOpen, concluded: Concluded) =>
   Predicate.isTagged(concluded.receipt, "Settled") &&
-  concluded.receipt.unclaimedFunds === undefined &&
   meetsTerms(request, concluded.order) &&
   concluded.recipient instanceof Profile &&
   concluded.recipient.username === request.requester &&
@@ -91,11 +90,6 @@ const isReceipt = (step: TransferStep): step is Pending | Settled | Failed =>
   Predicate.isTagged(step, "Pending") ||
   Predicate.isTagged(step, "Settled") ||
   Predicate.isTagged(step, "Failed");
-
-const needsUnclaimedFunds = (step: TransferStep) =>
-  Predicate.isTagged(step, "UnclaimedFundsLimitReached") ||
-  (Predicate.isTagged(step, "TransferDraft") &&
-    step.unclaimedFunds !== undefined);
 
 const termsOf = (request: PaymentRequestOpen, binding: ExternalBinding) => ({
   payer: binding.payer,
@@ -264,8 +258,6 @@ export class RequestPayments extends Context.Service<
       ) {
         const step = yield* wallet.transfer(order, Option.none());
 
-        if (needsUnclaimedFunds(step)) return yield* refuseRequester(id, order);
-
         return isReceipt(step) ? yield* heldAnswer(id, step) : step;
       });
 
@@ -275,8 +267,6 @@ export class RequestPayments extends Context.Service<
         approval: Option.Option<Approval>,
       ) {
         const step = yield* wallet.transfer(order, approval);
-
-        if (needsUnclaimedFunds(step)) return yield* refuseRequester(id, order);
 
         if (isReceipt(step)) {
           yield* converge(id, false);
@@ -381,9 +371,6 @@ export class RequestPayments extends Context.Service<
           return yield* drafted(id, order);
 
         const proposed = found.value;
-
-        if (proposed.unclaimedFunds !== undefined)
-          return yield* refuseRequester(id, order);
 
         if (!(yield* live(proposed.request))) {
           const left = own ? yield* withdraw(id, order) : Option.none();

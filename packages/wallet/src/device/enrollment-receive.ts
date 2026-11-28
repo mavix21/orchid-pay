@@ -125,7 +125,7 @@ export const enrollmentReceive = (
     if (!isNativeAsset(target.asset) && !sameAsset(target.asset, baseAsset))
       return new RecipientCannotReceive({
         address: addressOf(current),
-        reason: "no_trustline",
+        reason: "no_account",
       });
 
     const order = Option.match(slot.review, {

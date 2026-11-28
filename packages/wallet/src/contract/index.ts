@@ -14,9 +14,6 @@ import {
   UnclaimedFundsGone,
   LinkUnclaimable,
   NotClaimable,
-  TrustlineLimitReached,
-  TrustlineNotEmpty,
-  Unchanged,
 } from "./asset-orders";
 import { Amount, Asset, PositiveAmount, withinAssetMaximum } from "./assets";
 import {
@@ -67,7 +64,7 @@ import {
   PayoutUnavailable,
   LocalAmount,
 } from "./payouts";
-import { NeedsReopening, NotOpened, UnclaimedFunds } from "./standing";
+import { NeedsReopening, NotOpened } from "./standing";
 
 export * from "./approval";
 
@@ -380,23 +377,7 @@ const receivedActivityFields = {
 
 export class ReceivedActivity extends Schema.TaggedClass<ReceivedActivity>()(
   "ReceivedActivity",
-  {
-    ...receivedActivityFields,
-    closedAt: Schema.optional(Schema.DateTimeUtcFromString),
-  },
-) {}
-
-export class AwaitingAcceptanceActivity extends Schema.TaggedClass<AwaitingAcceptanceActivity>()(
-  "AwaitingAcceptanceActivity",
-  { ...receivedActivityFields, unclaimedFunds: UnclaimedFundsId },
-) {}
-
-export class TakenBackActivity extends Schema.TaggedClass<TakenBackActivity>()(
-  "TakenBackActivity",
-  {
-    ...receivedActivityFields,
-    closedAt: Schema.DateTimeUtcFromString,
-  },
+  receivedActivityFields,
 ) {}
 
 export class ClaimedLinkActivity extends Schema.TaggedClass<ClaimedLinkActivity>()(
@@ -430,8 +411,6 @@ export class DepositActivity extends Schema.TaggedClass<DepositActivity>()(
 export const ActivityEntry = Schema.Union([
   SentActivity,
   ReceivedActivity,
-  AwaitingAcceptanceActivity,
-  TakenBackActivity,
   ClaimedLinkActivity,
   DepositActivity,
 ]);
@@ -467,12 +446,7 @@ export class RecipientCannotReceive extends Schema.TaggedClass<RecipientCannotRe
   "RecipientCannotReceive",
   {
     address: AccountAddress,
-    reason: Schema.Literals([
-      "no_account",
-      "no_trustline",
-      "not_authorized",
-      "no_capacity",
-    ]),
+    reason: Schema.Literals(["no_account", "not_authorized", "no_capacity"]),
     linkable: Schema.optional(Schema.Boolean),
   },
 ) {}
@@ -575,9 +549,6 @@ export const AssetStep = Schema.Union([
   InvalidAddress,
   SenderBusy,
   AssetBusy,
-  Unchanged,
-  TrustlineLimitReached,
-  TrustlineNotEmpty,
   AssetUnsupported,
   RecipientCannotReceive,
   NotClaimable,
@@ -742,7 +713,6 @@ export class Holding extends Schema.TaggedClass<Holding>()("Holding", {
   ),
 
   balances: Schema.Array(Balance),
-  unclaimedFunds: Schema.Array(UnclaimedFunds),
   latest: Schema.OptionFromNullOr(Receipt),
 }) {}
 

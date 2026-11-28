@@ -1,6 +1,5 @@
 import * as Schema from "effect/Schema";
 import { SigningRequest } from "./approval";
-import { Amount, NonNativeAsset } from "./assets";
 import { UnclaimedFundsId } from "./unclaimed-funds";
 import { AccountAddress } from "./identity";
 
@@ -9,14 +8,6 @@ export const AssetOrderId = Schema.String.check(Schema.isUUID(4)).pipe(
 );
 
 export type AssetOrderId = typeof AssetOrderId.Type;
-
-export const OpenTrustline = Schema.TaggedStruct("OpenTrustline", {
-  asset: NonNativeAsset,
-});
-
-export const CloseTrustline = Schema.TaggedStruct("CloseTrustline", {
-  asset: NonNativeAsset,
-});
 
 export const ClaimUnclaimedFunds = Schema.TaggedStruct("ClaimUnclaimedFunds", {
   unclaimedFunds: UnclaimedFundsId,
@@ -27,12 +18,7 @@ export const ReceiveLink = Schema.TaggedStruct("ReceiveLink", {
   unclaimedFunds: UnclaimedFundsId,
 });
 
-export const AssetAction = Schema.Union([
-  OpenTrustline,
-  CloseTrustline,
-  ClaimUnclaimedFunds,
-  ReceiveLink,
-]);
+export const AssetAction = Schema.Union([ClaimUnclaimedFunds, ReceiveLink]);
 
 export type AssetAction = typeof AssetAction.Type;
 
@@ -80,21 +66,6 @@ export class AssetFailed extends Schema.TaggedClass<AssetFailed>()(
 export class AssetBusy extends Schema.TaggedClass<AssetBusy>()("AssetBusy", {
   inFlight: AssetPending,
 }) {}
-
-export class Unchanged extends Schema.TaggedClass<Unchanged>()(
-  "Unchanged",
-  {},
-) {}
-
-export class TrustlineLimitReached extends Schema.TaggedClass<TrustlineLimitReached>()(
-  "TrustlineLimitReached",
-  { limit: Schema.Number },
-) {}
-
-export class TrustlineNotEmpty extends Schema.TaggedClass<TrustlineNotEmpty>()(
-  "TrustlineNotEmpty",
-  { balance: Amount },
-) {}
 
 export class AssetUnsupported extends Schema.TaggedClass<AssetUnsupported>()(
   "AssetUnsupported",

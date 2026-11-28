@@ -1,14 +1,13 @@
 import * as Effect from "effect/Effect";
 import type { AccountAddress, UnclaimedFundsId } from "../contract";
-import { claimableQuota } from "../policy";
+import { paymentLinkQuota } from "../policy";
 import { Chain, type ChainUnreachable } from "./Chain.server";
 import type { StoreFailure } from "./Directory.server";
 import { rpcReadConcurrency } from "./settings.server";
-import { type ClaimableKind, Transfers } from "./Transfers.server";
+import { Transfers } from "./Transfers.server";
 
 export type QuotaCheck = (
   sender: AccountAddress,
-  kind: ClaimableKind,
 ) => Effect.Effect<boolean, StoreFailure | ChainUnreachable>;
 
 export const claimableQuotaFlow = Effect.gen(function* () {
@@ -34,26 +33,22 @@ export const claimableQuotaFlow = Effect.gen(function* () {
 
   const quotaReached = Effect.fn("Wallet.claimableQuotaReached")(function* (
     sender: AccountAddress,
-    kind: ClaimableKind,
   ) {
-    return (
-      (yield* transfers.openClaimables(sender, kind)) >= claimableQuota[kind]
-    );
+    return (yield* transfers.openClaimables(sender)) >= paymentLinkQuota;
   });
 
   const quotaFull = Effect.fn("Wallet.claimableQuotaFull")(function* (
     sender: AccountAddress,
-    kind: ClaimableKind,
   ) {
-    if (!(yield* quotaReached(sender, kind))) return false;
+    if (!(yield* quotaReached(sender))) return false;
 
     yield* Effect.forEach(
-      yield* transfers.settledOpenUnclaimedFunds(sender, kind),
+      yield* transfers.settledOpenUnclaimedFunds(sender),
       closeGoneUnclaimedFunds,
       { concurrency: rpcReadConcurrency, discard: true },
     );
 
-    return yield* quotaReached(sender, kind);
+    return yield* quotaReached(sender);
   });
 
   return { closeGoneUnclaimedFunds, quotaFull, quotaReached };

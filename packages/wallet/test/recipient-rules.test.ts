@@ -113,16 +113,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
         recipient: () => undefined,
       },
       {
-        name: "a missing trustline",
-        reason: "no_trustline",
-        linkable: true,
-        authRequired: false,
-        clawback: false,
-        recipient: (address: AccountAddress) =>
-          holdingsFor(address, { lines: [] }),
-      },
-      {
-        name: "an unauthorized trustline",
+        name: "a frozen token account",
         reason: "not_authorized",
         linkable: false,
         authRequired: false,
@@ -133,16 +124,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           }),
       },
       {
-        name: "a missing trustline for an AUTH_REQUIRED issuer",
-        reason: "no_trustline",
-        linkable: false,
-        authRequired: true,
-        clawback: false,
-        recipient: (address: AccountAddress) =>
-          holdingsFor(address, { lines: [] }),
-      },
-      {
-        name: "an absent account with clawback on the sender's trustline",
+        name: "an absent account with clawback on the sender's holding",
         reason: "no_account",
         linkable: false,
         authRequired: false,

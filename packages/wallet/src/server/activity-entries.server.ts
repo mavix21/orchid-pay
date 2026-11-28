@@ -6,8 +6,6 @@ import {
   AccountAddress,
   AssetOrder,
   AssetOrderId,
-  AwaitingAcceptanceActivity,
-  UnclaimedFundsId,
   Claimed,
   ClaimedLinkActivity,
   DepositActivity,
@@ -22,7 +20,6 @@ import {
   type Receipt,
   SentActivity,
   type Settled,
-  TakenBackActivity,
   TransferId,
   Username,
 } from "../contract";
@@ -142,10 +139,7 @@ export const sentEntry = (
     catch: (cause) => new StoreFailure({ cause }),
   });
 
-export const receivedEntry = (
-  { row, username }: ReceivedRow,
-  closers: Closers,
-) =>
+export const receivedEntry = ({ row, username }: ReceivedRow) =>
   Effect.try({
     try: () => {
       const order = Schema.decodeSync(OrderJson)(row.order);
@@ -161,19 +155,7 @@ export const receivedEntry = (
         amount: order.amount,
       };
 
-      if (row.balanceId === null) return new ReceivedActivity(fields);
-
-      const closed = closedAt(row);
-
-      if (closed === undefined)
-        return new AwaitingAcceptanceActivity({
-          ...fields,
-          unclaimedFunds: Schema.decodeSync(UnclaimedFundsId)(row.balanceId),
-        });
-
-      return isReclaimBy(closerOf(row, closers)?.order, row.sender)
-        ? new TakenBackActivity({ ...fields, closedAt: closed })
-        : new ReceivedActivity({ ...fields, closedAt: closed });
+      return new ReceivedActivity(fields);
     },
     catch: (cause) => new StoreFailure({ cause }),
   });

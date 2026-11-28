@@ -33,13 +33,10 @@ export type DraftFacts = Data.TaggedEnum<{
     readonly to: DestinationAddress;
     readonly memo?: PaymentMemo | undefined;
   };
-  ClaimableFacts: UnclaimedMovement;
   PaymentLinkFacts: UnclaimedMovement;
   ClaimFacts: Expiring & {
     readonly address: AccountAddress;
     readonly unclaimedFunds: UnclaimedFundsId;
-    readonly opens?: Asset | undefined;
-    readonly reserveSponsor?: AccountAddress | undefined;
   };
   LinkReceiveFacts: Expiring & {
     readonly link: AccountAddress;
@@ -52,11 +49,6 @@ export type DraftFacts = Data.TaggedEnum<{
 }>;
 
 export type PaymentFacts = Data.TaggedEnum.Value<DraftFacts, "PaymentFacts">;
-
-export type ClaimableFacts = Data.TaggedEnum.Value<
-  DraftFacts,
-  "ClaimableFacts"
->;
 
 export type PaymentLinkFacts = Data.TaggedEnum.Value<
   DraftFacts,

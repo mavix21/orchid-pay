@@ -18,7 +18,6 @@ export interface Holdings {
   readonly reserveSponsor: Option.Option<AccountAddress>;
 
   readonly native: Amount;
-  readonly trustlineSlotsUsed: number;
 
   readonly lines: ReadonlyArray<Line>;
 }

@@ -2,7 +2,7 @@ import { expect, layer } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
-import { CloseTrustline, OpenTrustline } from "../src/contract";
+import { ClaimUnclaimedFunds, type UnclaimedFundsId } from "../src/contract";
 import { AssetOrders } from "../src/server/AssetOrders.server";
 import { Sealed } from "../src/server/Chain.server";
 import { Directory } from "../src/server/Directory.server";
@@ -15,10 +15,8 @@ import {
   attend,
   authorizeTransfer,
   draftTransfer,
-  euro,
-  euroLine,
-  fundedWallet,
-  holdingsFor,
+  fundLink,
+  fundLinkFrom,
   selfOrder,
   send,
   settleHash,
@@ -32,8 +30,14 @@ import { type TestKey } from "./test-keys";
 
 useDisposableDatabase();
 
-const holdTrustline = Effect.fn(function* (key: TestKey) {
-  const opening = assetOrder(key, OpenTrustline.make({ asset: euro }));
+const reclaim = (key: TestKey, unclaimedFunds: UnclaimedFundsId) =>
+  assetOrder(key, ClaimUnclaimedFunds.make({ unclaimedFunds }));
+
+const holdReclaim = Effect.fn(function* (
+  key: TestKey,
+  unclaimedFunds: UnclaimedFundsId,
+) {
+  const opening = reclaim(key, unclaimedFunds);
   const draft = yield* manage(opening);
 
   assertTagged(draft, "AssetDraft");
@@ -53,10 +57,11 @@ const holdTrustline = Effect.fn(function* (key: TestKey) {
   return { opening, hash: held.sealed.hash };
 });
 
-const heldTrustline = Effect.gen(function* () {
-  const key = yield* fundedWallet("assetowner");
+const heldReclaim = Effect.gen(function* () {
+  const { sender, unclaimedFunds } = yield* fundLink("assetowner");
+  const held = yield* holdReclaim(sender, unclaimedFunds);
 
-  return { key, ...(yield* holdTrustline(key)) };
+  return { key: sender, ...held };
 });
 
 layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
@@ -65,7 +70,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "a queue message resubmits a lost asset order submission and concludes it",
       () =>
         Effect.gen(function* () {
-          const { opening, hash } = yield* heldTrustline;
+          const { opening, hash } = yield* heldReclaim;
           const message = new ReconcileAssetOrder({ id: opening.id });
 
           expect(world.queued).toContainEqual(message);
@@ -82,11 +87,18 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "a stuck asset order is concluded by the next manage instead of returning AssetBusy",
       () =>
         Effect.gen(function* () {
-          const { key, hash } = yield* heldTrustline;
+          const {
+            wallet,
+            sender: key,
+            unclaimedFunds,
+          } = yield* fundLink("assetowner");
+
+          const next = yield* fundLinkFrom(wallet, key);
+          const { hash } = yield* holdReclaim(key, unclaimedFunds);
 
           settleHash(hash);
           assertTagged(
-            yield* manage(assetOrder(key, OpenTrustline.make({ asset: euro }))),
+            yield* manage(reclaim(key, next.unclaimedFunds)),
             "AssetDraft",
           );
         }),
@@ -96,11 +108,13 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "a stuck asset order is concluded by the next transfer instead of returning AssetBusy",
       () =>
         Effect.gen(function* () {
-          const key = yield* fundedWallet("assetsender");
+          const { sender: key, unclaimedFunds } =
+            yield* fundLink("assetsender");
+
           const order = selfOrder(key);
           const draft = yield* draftTransfer(order);
 
-          const held = yield* holdTrustline(key);
+          const held = yield* holdReclaim(key, unclaimedFunds);
 
           expect((yield* send(order, approve(draft.request, key)))._tag).toBe(
             "AssetBusy",
@@ -118,20 +132,20 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "a held transfer is concluded by manage instead of returning SenderBusy",
       () =>
         Effect.gen(function* () {
-          const key = yield* fundedWallet("assetowner");
+          const { sender: key, unclaimedFunds } = yield* fundLink("assetowner");
 
           const { authorized } = yield* authorizeTransfer(key, selfOrder(key), {
             failSubmit: true,
           });
 
           assertTagged(
-            yield* manage(assetOrder(key, OpenTrustline.make({ asset: euro }))),
+            yield* manage(reclaim(key, unclaimedFunds)),
             "SenderBusy",
           );
 
           settleHash(authorized.sealed.hash);
           assertTagged(
-            yield* manage(assetOrder(key, OpenTrustline.make({ asset: euro }))),
+            yield* manage(reclaim(key, unclaimedFunds)),
             "AssetDraft",
           );
         }),
@@ -141,8 +155,8 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "an asset order is not authorized once its wallet stopped being active",
       () =>
         Effect.gen(function* () {
-          const key = yield* fundedWallet("assetowner");
-          const opening = assetOrder(key, OpenTrustline.make({ asset: euro }));
+          const { sender: key, unclaimedFunds } = yield* fundLink("assetowner");
+          const opening = reclaim(key, unclaimedFunds);
 
           assertTagged(yield* manage(opening), "AssetDraft");
 
@@ -174,37 +188,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
             ),
             "AssetProposed",
           );
-        }),
-    );
-
-    it.effect(
-      "ledger reserve cap and nonzero trustline prevent new sponsored entries and removal",
-      () =>
-        Effect.gen(function* () {
-          const key = yield* fundedWallet("limitowner");
-          const addr = addressOf(key);
-
-          world.holdings.set(
-            addr,
-            holdingsFor(addr, {
-              trustlineSlotsUsed: 6,
-            }),
-          );
-          expect(
-            (yield* manage(
-              assetOrder(key, OpenTrustline.make({ asset: euro })),
-            ))._tag,
-          ).toBe("TrustlineLimitReached");
-
-          world.holdings.set(
-            addr,
-            holdingsFor(addr, { lines: [euroLine("1")] }),
-          );
-          expect(
-            (yield* manage(
-              assetOrder(key, CloseTrustline.make({ asset: euro })),
-            ))._tag,
-          ).toBe("TrustlineNotEmpty");
         }),
     );
   },

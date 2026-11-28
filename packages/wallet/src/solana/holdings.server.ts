@@ -41,7 +41,6 @@ const holdingsOf = (
     nativeTotal: amountOf(0n),
     reserveSponsor: sponsored ? Option.some(sponsor) : Option.none(),
     native: amountOf(0n),
-    trustlineSlotsUsed: 0,
     lines: assets.flatMap((asset) =>
       asset.id === solanaProfile.baseAsset.id
         ? [lineOf(asset, held, sponsored)]

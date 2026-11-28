@@ -346,8 +346,7 @@ export const activityFor = Effect.fn("Transfers.activity")(function* ({
     (candidate): Effect.Effect<ActivityEntry, StoreFailure> =>
       Candidate.$match(candidate, {
         Sent: (sentCandidate) => sentEntry(sentCandidate, closers, profiles),
-        Received: (receivedCandidate) =>
-          receivedEntry(receivedCandidate, closers),
+        Received: (receivedCandidate) => receivedEntry(receivedCandidate),
         LinkClaim: linkClaimEntry,
         Deposited: ({ row }) => depositEntry(row),
       }),

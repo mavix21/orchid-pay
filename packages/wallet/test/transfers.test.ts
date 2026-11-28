@@ -1,15 +1,5 @@
-import {
-  type SigningRequest,
-  UnclaimedFundsLimitReached,
-  Username,
-  UsernameRecipient,
-} from "../src/contract";
-import {
-  accountState,
-  euro,
-  euroLine,
-  settleSubmitted,
-} from "./wallet-harness";
+import {} from "../src/contract";
+import {} from "./wallet-harness";
 import { expect, layer } from "@effect/vitest";
 import { Database } from "@workspace/db";
 import { sql } from "drizzle-orm";
@@ -39,7 +29,6 @@ import {
   draftTransfer,
   findTransfer,
   fundHolder,
-  holdingsFor,
   orderFor,
   fundedWallet,
   memoryChain,
@@ -424,79 +413,6 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           );
           world.ledgerDown = true;
           expect((yield* send(order))._tag).toBe("Pending");
-        }),
-    );
-
-    it.effect(
-      "a claimable drafted before the second slot fills is refused at approval",
-      () =>
-        Effect.gen(function* () {
-          const sender = yield* fundedWallet("quotasender");
-          const senderAddr = addressOf(sender);
-
-          yield* fundedWallet("quotarecipient");
-
-          world.holdings.set(
-            senderAddr,
-            holdingsFor(senderAddr, { lines: [euroLine("50000000")] }),
-          );
-
-          const claimable = () =>
-            new TransferOrder({
-              ...orderFor(
-                sender,
-                UsernameRecipient.make({
-                  value: Schema.decodeSync(Username)("quotarecipient"),
-                }),
-              ),
-              asset: euro,
-            });
-
-          const draftAt = Effect.fn(function* (
-            order: TransferOrder,
-            sequence: string,
-          ) {
-            world.accounts.set(senderAddr, accountState({ sequence }));
-
-            return yield* send(order);
-          });
-
-          const settle = Effect.fn(function* (
-            order: TransferOrder,
-            draft: SigningRequest,
-          ) {
-            expect((yield* send(order, approve(draft, sender)))._tag).toBe(
-              "Pending",
-            );
-
-            yield* settleSubmitted();
-            yield* sweep;
-          });
-
-          const first = claimable();
-          const firstDraft = yield* draftAt(first, "2000");
-
-          assertTagged(firstDraft, "TransferDraft");
-          yield* settle(first, firstDraft.request);
-
-          const second = claimable();
-          const third = claimable();
-          const secondDraft = yield* draftAt(second, "3000");
-          const thirdDraft = yield* send(third);
-
-          assertTagged(secondDraft, "TransferDraft");
-          assertTagged(thirdDraft, "TransferDraft");
-          yield* settle(second, secondDraft.request);
-
-          expect(
-            yield* send(third, approve(thirdDraft.request, sender)),
-          ).toEqual(new UnclaimedFundsLimitReached({ limit: 2 }));
-
-          world.claimables.clear();
-          assertTagged(
-            yield* send(third, approve(thirdDraft.request, sender)),
-            "Pending",
-          );
         }),
     );
   },

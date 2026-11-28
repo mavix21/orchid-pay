@@ -11,19 +11,13 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import {
   type AccountAddress,
-  type Asset,
   AssetOrder,
   AssetOrderId,
   type UnclaimedFundsId,
   type SigningRequest,
 } from "../contract";
-import { approvalMargin, maxSponsoredTrustlines } from "../policy";
-import {
-  assetColumns,
-  assetFromColumns,
-  epochAt,
-  network,
-} from "../record-network";
+import { approvalMargin } from "../policy";
+import { epochAt, network } from "../record-network";
 import { Applied, Expired, Rejected, Sealed } from "./Chain.server";
 import { StoreFailure } from "./Directory.server";
 import {
@@ -38,11 +32,9 @@ import {
   type AssetOrderRow,
   type AssetProposed,
   type ConclusionColumns,
-  OpensJson,
   type StoredAssetOrder,
   type StoredOrder,
   StoredOrderJson,
-  opensColumn,
   readRow,
 } from "./asset-order-records.server";
 import { SlotOccupied, WalletInactive, walletLock } from "./slot.server";
@@ -51,7 +43,7 @@ import {
   stuckAssetOrders,
   receivedLinksToClean,
 } from "./asset-order-sweep.server";
-import { assetOrders, transfers, trustlines, wallets } from "./tables.server";
+import { assetOrders, transfers, wallets } from "./tables.server";
 import type { Transaction } from "./transaction.server";
 import {
   CleanUpReceivedLink,
@@ -93,12 +85,10 @@ export class AssetOrders extends Context.Service<
     propose(
       order: StoredOrder,
       request: SigningRequest,
-      opens: Option.Option<Asset>,
     ): Effect.Effect<StoredAssetOrder, StoreFailure>;
     redraft(
       proposed: AssetProposed,
       request: SigningRequest,
-      opens: Option.Option<Asset>,
     ): Effect.Effect<StoredAssetOrder, StoreFailure>;
     authorize(
       proposed: AssetProposed,
@@ -120,15 +110,6 @@ export class AssetOrders extends Context.Service<
       runStartedAt: DateTime.Utc,
     ): Effect.Effect<ReadonlyArray<AssetAuthorized>, StoreFailure>;
     readonly pruneExpiredDrafts: Effect.Effect<void, StoreFailure>;
-
-    tracked(
-      wallet: AccountAddress,
-    ): Effect.Effect<ReadonlyArray<Asset>, StoreFailure>;
-
-    forget(
-      wallet: AccountAddress,
-      asset: Asset,
-    ): Effect.Effect<void, StoreFailure>;
 
     onUnclaimedFunds(
       unclaimedFunds: UnclaimedFundsId,
@@ -220,7 +201,6 @@ export class AssetOrders extends Context.Service<
       const propose = Effect.fn("AssetOrders.propose")(function* (
         order: StoredOrder,
         request: SigningRequest,
-        opens: Option.Option<Asset>,
       ) {
         const now = yield* Clock.currentTimeMillis;
 
@@ -228,13 +208,7 @@ export class AssetOrders extends Context.Service<
           id: order.id,
           wallet: order instanceof AssetOrder ? order.wallet : null,
           order: Schema.encodeSync(StoredOrderJson)(order),
-          opens: opensColumn(opens),
-          balanceId:
-            Predicate.isTagged(order.action, "ClaimUnclaimedFunds") ||
-            Predicate.isTagged(order.action, "ReceiveLink") ||
-            Predicate.isTagged(order.action, "ReceiveLinkExternal")
-              ? order.action.unclaimedFunds
-              : null,
+          balanceId: order.action.unclaimedFunds,
           network,
           testnetEpoch: epochAt(now),
           envelope: request.envelope,
@@ -249,7 +223,6 @@ export class AssetOrders extends Context.Service<
             set: {
               envelope: value.envelope,
               expiresAt: value.expiresAt,
-              opens: value.opens,
             },
             setWhere: and(
               scopeAt(now),
@@ -271,7 +244,6 @@ export class AssetOrders extends Context.Service<
       const redraft = Effect.fn("AssetOrders.redraft")(function* (
         proposed: AssetProposed,
         request: SigningRequest,
-        opens: Option.Option<Asset>,
       ) {
         const now = yield* Clock.currentTimeMillis;
 
@@ -280,7 +252,6 @@ export class AssetOrders extends Context.Service<
           .set({
             envelope: request.envelope,
             expiresAt: DateTime.toDateUtc(request.expiresAt),
-            opens: opensColumn(opens),
           })
           .where(
             and(
@@ -396,45 +367,6 @@ export class AssetOrders extends Context.Service<
           }),
         );
 
-      const line = (wallet: AccountAddress, asset: Asset, now: number) => ({
-        address: wallet,
-        network,
-        testnetEpoch: epochAt(now),
-        ...assetColumns(asset),
-      });
-
-      const track = (
-        tx: Transaction,
-        wallet: AccountAddress,
-        asset: Asset,
-        now: number,
-      ) =>
-        tx
-          .insert(trustlines)
-          .values(line(wallet, asset, now))
-          .onConflictDoNothing();
-
-      const untrack = (
-        executor: typeof db | Transaction,
-        wallet: AccountAddress,
-        asset: Asset,
-        now: number,
-      ) => {
-        const { code, issuer } = assetColumns(asset);
-
-        return executor
-          .delete(trustlines)
-          .where(
-            and(
-              eq(trustlines.address, wallet),
-              eq(trustlines.network, network),
-              eq(trustlines.testnetEpoch, epochAt(now)),
-              eq(trustlines.code, code),
-              eq(trustlines.issuer, issuer),
-            ),
-          );
-      };
-
       const closeUnclaimedFunds = (
         tx: Transaction,
         unclaimedFunds: UnclaimedFundsId,
@@ -451,41 +383,16 @@ export class AssetOrders extends Context.Service<
           )
           .pipe(Effect.asVoid);
 
-      const applied = Effect.fn("AssetOrders.applied")(function* (
+      const applied = (
         tx: Transaction,
         row: AssetOrderRow,
         now: DateTime.Utc,
-      ) {
-        const stored = Schema.decodeSync(StoredOrderJson)(row.order);
-        const nowMillis = DateTime.toEpochMillis(now);
-
-        if (!(stored instanceof AssetOrder)) {
-          yield* closeUnclaimedFunds(tx, stored.action.unclaimedFunds, now);
-
-          return;
-        }
-
-        const { wallet, action } = stored;
-
-        yield* Match.valueTags(action, {
-          OpenTrustline: ({ asset }) =>
-            track(tx, wallet, asset, nowMillis).pipe(Effect.asVoid),
-          CloseTrustline: ({ asset }) =>
-            untrack(tx, wallet, asset, nowMillis).pipe(Effect.asVoid),
-          ClaimUnclaimedFunds: ({ unclaimedFunds }) =>
-            closeUnclaimedFunds(tx, unclaimedFunds, now),
-          ReceiveLink: ({ unclaimedFunds }) =>
-            closeUnclaimedFunds(tx, unclaimedFunds, now),
-        });
-
-        if (row.opens)
-          yield* track(
-            tx,
-            wallet,
-            Schema.decodeSync(OpensJson)(row.opens),
-            nowMillis,
-          );
-      });
+      ) =>
+        closeUnclaimedFunds(
+          tx,
+          Schema.decodeSync(StoredOrderJson)(row.order).action.unclaimedFunds,
+          now,
+        );
 
       const conclude = Effect.fn("AssetOrders.conclude")(function* (
         id: AssetOrderId,
@@ -546,27 +453,6 @@ export class AssetOrders extends Context.Service<
         return current;
       });
 
-      const tracked = Effect.fn("AssetOrders.tracked")(function* (
-        wallet: AccountAddress,
-      ) {
-        const now = yield* Clock.currentTimeMillis;
-
-        const rows = yield* db
-          .select({ code: trustlines.code, issuer: trustlines.issuer })
-          .from(trustlines)
-          .where(
-            and(
-              eq(trustlines.address, wallet),
-              eq(trustlines.network, network),
-              eq(trustlines.testnetEpoch, epochAt(now)),
-            ),
-          )
-          .orderBy(trustlines.openedAt, trustlines.code, trustlines.issuer)
-          .limit(maxSponsoredTrustlines * 4);
-
-        return rows.map(assetFromColumns);
-      });
-
       const wrap = <A, E>(program: Effect.Effect<A, E>) =>
         program.pipe(Effect.mapError((cause) => new StoreFailure({ cause })));
 
@@ -590,10 +476,8 @@ export class AssetOrders extends Context.Service<
       return AssetOrders.of({
         find: (id) => wrap(find(id)),
         inFlightFor: (wallet) => wrap(inFlightFor(wallet)),
-        propose: (order, request, opens) =>
-          wrap(propose(order, request, opens)),
-        redraft: (proposed, request, opens) =>
-          wrap(redraft(proposed, request, opens)),
+        propose: (order, request) => wrap(propose(order, request)),
+        redraft: (proposed, request) => wrap(redraft(proposed, request)),
         authorize: (proposed, sealed) =>
           wrap(
             authorize(proposed, sealed).pipe(Effect.tap(announceAuthorized)),
@@ -618,7 +502,6 @@ export class AssetOrders extends Context.Service<
             Effect.provideService(Database, db),
           ),
         ),
-        tracked: (wallet) => wrap(tracked(wallet)),
         onUnclaimedFunds: (unclaimedFunds) =>
           wrap(
             ordersOnUnclaimedFunds(unclaimedFunds, decode).pipe(
@@ -633,13 +516,6 @@ export class AssetOrders extends Context.Service<
           ),
         linkCleaned: (id) =>
           wrap(linkCleaned(id).pipe(Effect.provideService(Database, db))),
-        forget: (wallet, asset) =>
-          wrap(
-            Clock.currentTimeMillis.pipe(
-              Effect.flatMap((now) => untrack(db, wallet, asset, now)),
-              Effect.asVoid,
-            ),
-          ),
       });
     }),
   );

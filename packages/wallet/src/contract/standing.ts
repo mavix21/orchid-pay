@@ -1,20 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { Asset, PositiveAmount } from "./assets";
 import { Profile } from "./identity";
-import { UnclaimedFundsId } from "./unclaimed-funds";
-
-export class UnclaimedFunds extends Schema.Class<UnclaimedFunds>(
-  "@workspace/wallet/UnclaimedFunds",
-)({
-  id: UnclaimedFundsId,
-  asset: Asset,
-  amount: PositiveAmount,
-  from: Profile,
-  to: Profile,
-  claimableAt: Schema.OptionFromNullOr(Schema.DateTimeUtcFromString),
-}) {}
 
 export class NotOpened extends Schema.TaggedClass<NotOpened>()("NotOpened", {
   profile: Schema.OptionFromNullOr(Profile).pipe(

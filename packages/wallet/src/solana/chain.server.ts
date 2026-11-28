@@ -60,10 +60,6 @@ export const solanaChainLayer = Layer.effect(
         ),
       unclaimedFunds,
       unclaimedFundsClosedAt,
-      draftClaimable: () =>
-        Effect.die(
-          new RangeError("A Solana transfer never waits as a claimable"),
-        ),
       validAddress: solanaAddressRules.hasValidChecksum,
       seal: solanaSeal(sponsor),
     });

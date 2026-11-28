@@ -2,7 +2,6 @@ import { activityFor } from "./activity-reads.server";
 import { unclaimedFundsToCheck } from "./balance-sweep.server";
 import {
   fundedLinkAt,
-  openUnclaimedFundsFor,
   openClaimableCountFrom,
   openFromAt,
   openPaymentLinksFor,
@@ -33,7 +32,7 @@ import {
   type TransferId,
   type TransferOrder,
 } from "../contract";
-import { approvalMargin, claimableQuota } from "../policy";
+import { approvalMargin, paymentLinkQuota } from "../policy";
 import { epochAt, network } from "../record-network";
 import { Applied, Expired, Rejected, Sealed } from "./Chain.server";
 import { StoreFailure } from "./Directory.server";
@@ -47,12 +46,10 @@ import { ReconcileTransfer, WorkQueue, announcer } from "./work-queue.server";
 import {
   AttemptsJson,
   type Authorized,
-  ClaimableKind,
   ClaimablesFull,
   type Concluded,
   type ConclusionColumns,
   type FundedLink,
-  OpenUnclaimedFunds,
   OpenLinkRecord,
   OrderJson,
   type Proposed,
@@ -67,11 +64,9 @@ import {
 
 export {
   Authorized,
-  ClaimableKind,
   ClaimablesFull,
   Concluded,
   FundedLink,
-  OpenUnclaimedFunds,
   OpenLinkRecord,
   OrderJson,
   Proposed,
@@ -119,19 +114,11 @@ export class Transfers extends Context.Service<
       ReadonlyArray<UnclaimedFundsId>,
       StoreFailure
     >;
-    openClaimables(
-      sender: AccountAddress,
-      kind?: ClaimableKind,
-    ): Effect.Effect<number, StoreFailure>;
+    openClaimables(sender: AccountAddress): Effect.Effect<number, StoreFailure>;
 
     settledOpenUnclaimedFunds(
       sender: AccountAddress,
-      kind: ClaimableKind,
     ): Effect.Effect<ReadonlyArray<UnclaimedFundsId>, StoreFailure>;
-
-    openUnclaimedFunds(
-      address: AccountAddress,
-    ): Effect.Effect<ReadonlyArray<OpenUnclaimedFunds>, StoreFailure>;
 
     openPaymentLinks(
       sender: AccountAddress,
@@ -217,7 +204,7 @@ export class Transfers extends Context.Service<
       ) {
         const now = yield* Clock.currentTimeMillis;
         const balanceId = Option.getOrNull(unclaimedFunds);
-        const claimableKind = claimableKindOf(order, unclaimedFunds);
+        const claimableKind = claimableKindOf(unclaimedFunds);
 
         const singleAttempt = Option.map(unclaimedFunds, (id) =>
           Schema.encodeSync(AttemptsJson)([id]),
@@ -300,7 +287,7 @@ export class Transfers extends Context.Service<
             envelope: request.envelope,
             expiresAt: DateTime.toDateUtc(request.expiresAt),
             balanceId: Option.getOrNull(unclaimedFunds),
-            claimableKind: claimableKindOf(proposed.order, unclaimedFunds),
+            claimableKind: claimableKindOf(unclaimedFunds),
             attemptBalanceIds:
               attempts.length > 0
                 ? Schema.encodeSync(AttemptsJson)(attempts)
@@ -384,13 +371,12 @@ export class Transfers extends Context.Service<
             if (elsewhere[0]) return new SlotOccupied();
 
             if (proposed.unclaimedFunds) {
-              const kind = proposed.claimableKind ?? "username";
-              const limit = claimableQuota[kind];
+              const limit = paymentLinkQuota;
 
               const open = yield* tx
                 .select({ total: count() })
                 .from(transfers)
-                .where(openFromAt(proposed.order.from, kind, lockedAt));
+                .where(openFromAt(proposed.order.from, lockedAt));
 
               if ((open[0]?.total ?? 0) >= limit)
                 return new ClaimablesFull({ limit });
@@ -549,21 +535,15 @@ export class Transfers extends Context.Service<
         unclaimedFundsToCheck: wrap(
           unclaimedFundsToCheck.pipe(Effect.provideService(Database, db)),
         ),
-        openClaimables: (sender, kind = "username") =>
+        openClaimables: (sender) =>
           wrap(
-            openClaimableCountFrom(sender, kind).pipe(
+            openClaimableCountFrom(sender).pipe(
               Effect.provideService(Database, db),
             ),
           ),
-        settledOpenUnclaimedFunds: (sender, kind) =>
+        settledOpenUnclaimedFunds: (sender) =>
           wrap(
-            settledOpenUnclaimedFundsFrom(sender, kind).pipe(
-              Effect.provideService(Database, db),
-            ),
-          ),
-        openUnclaimedFunds: (address) =>
-          wrap(
-            openUnclaimedFundsFor(address).pipe(
+            settledOpenUnclaimedFundsFrom(sender).pipe(
               Effect.provideService(Database, db),
             ),
           ),

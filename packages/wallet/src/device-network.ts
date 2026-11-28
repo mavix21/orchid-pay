@@ -9,12 +9,7 @@ import type { SigningScheme } from "./device/signing-scheme";
 import { deviceNetwork } from "./binding/networks";
 import type { DraftFacts } from "./draft-facts";
 
-export type {
-  ClaimableFacts,
-  DraftFacts,
-  PaymentFacts,
-  PaymentLinkFacts,
-} from "./draft-facts";
+export type { DraftFacts, PaymentFacts, PaymentLinkFacts } from "./draft-facts";
 
 export interface DeviceNetwork {
   readonly network: string;

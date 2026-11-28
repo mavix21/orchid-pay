@@ -219,10 +219,7 @@ export class Wallet extends Context.Service<
             }),
           ClaimablesFull: ({ limit }) =>
             Effect.gen(function* () {
-              const full = yield* quotaFull(
-                stored.order.from,
-                stored.claimableKind ?? "username",
-              );
+              const full = yield* quotaFull(stored.order.from);
 
               return full
                 ? new UnclaimedFundsLimitReached({ limit })

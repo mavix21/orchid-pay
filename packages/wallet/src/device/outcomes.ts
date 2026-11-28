@@ -395,7 +395,6 @@ export class ReclaimReview extends Schema.TaggedClass<ReclaimReview>()(
     unclaimedFunds: UnclaimedFundsId,
     asset: Asset,
     amount: PositiveAmount,
-    opensTrustline: Schema.optional(Asset),
   },
 ) {}
 

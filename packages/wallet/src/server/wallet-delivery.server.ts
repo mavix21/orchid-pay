@@ -7,7 +7,6 @@ import {
   AssetUnsupported,
   type DestinationAddress,
   UnclaimedFundsLimitReached,
-  ExternalRecipient,
   LinkRecipient,
   RecipientCannotReceive,
   type ResolvedRecipient,
@@ -15,7 +14,7 @@ import {
   sameAsset,
   isNativeAsset,
 } from "../contract";
-import { claimableQuota } from "../policy";
+import { paymentLinkQuota } from "../policy";
 import { Chain } from "./Chain.server";
 import { type QuotaCheck, claimableQuotaFlow } from "./claimable-quota.server";
 import type { Holdings } from "./holdings.server";
@@ -28,7 +27,6 @@ export type TransferTerms = Pick<
 
 export type DeliveryRoute = Data.TaggedEnum<{
   PaymentLink: { readonly address: AccountAddress };
-  Claimable: { readonly address: AccountAddress };
   Payment: { readonly address: DestinationAddress };
 }>;
 
@@ -43,7 +41,6 @@ export const isDeliveryRoute = (
   value: DeliveryRoute | DeliveryRefusal,
 ): value is DeliveryRoute =>
   DeliveryRoute.$is("PaymentLink")(value) ||
-  DeliveryRoute.$is("Claimable")(value) ||
   DeliveryRoute.$is("Payment")(value);
 
 export const paymentLinkAssetRefusal = Effect.gen(function* () {
@@ -104,10 +101,8 @@ export const deliveryFlow = Effect.gen(function* () {
 
       if (Option.isSome(refusal)) return refusal.value;
 
-      if (yield* quota(terms.from, "paymentLink"))
-        return new UnclaimedFundsLimitReached({
-          limit: claimableQuota.paymentLink,
-        });
+      if (yield* quota(terms.from))
+        return new UnclaimedFundsLimitReached({ limit: paymentLinkQuota });
 
       return DeliveryRoute.PaymentLink({ address: recipient.address });
     }
@@ -120,28 +115,14 @@ export const deliveryFlow = Effect.gen(function* () {
       terms.amount,
     );
 
-    if (Option.isSome(blocker)) {
-      const reason = blocker.value;
-
-      if (reason !== "no_trustline" || recipient instanceof ExternalRecipient) {
-        const missing = reason === "no_account" || reason === "no_trustline";
-
-        return new RecipientCannotReceive({
-          address: receivingAccount,
-          reason,
-          linkable:
-            missing &&
-            Option.isNone(yield* checkLinkAsset(terms, senderHoldings)),
-        });
-      }
-
-      if (yield* quota(terms.from, "username"))
-        return new UnclaimedFundsLimitReached({
-          limit: claimableQuota.username,
-        });
-
-      return DeliveryRoute.Claimable({ address: recipient.address });
-    }
+    if (Option.isSome(blocker))
+      return new RecipientCannotReceive({
+        address: receivingAccount,
+        reason: blocker.value,
+        linkable:
+          blocker.value === "no_account" &&
+          Option.isNone(yield* checkLinkAsset(terms, senderHoldings)),
+      });
 
     return DeliveryRoute.Payment({ address: recipient.address });
   });
@@ -150,8 +131,6 @@ export const deliveryFlow = Effect.gen(function* () {
     Match.valueTags(delivery, {
       PaymentLink: ({ address }) =>
         chain.draftPaymentLink(order.from, address, order.asset, order.amount),
-      Claimable: ({ address }) =>
-        chain.draftClaimable(order.from, address, order.asset, order.amount),
       Payment: ({ address }) =>
         chain.draftPayment(
           order.from,

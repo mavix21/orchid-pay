@@ -231,7 +231,7 @@ const receiveBlocker: Chain["Service"]["receiveBlocker"] = (
         sameAsset(candidate.asset, asset),
       );
 
-      if (!line) return Option.some("no_trustline");
+      if (!line) return Option.some("no_account");
 
       if (!line.authorized) return Option.some("not_authorized");
 
@@ -304,8 +304,6 @@ export const memoryChain = Layer.succeed(
       ),
     unclaimedFundsClosedAt: (id) =>
       Effect.succeed(Option.fromUndefinedOr(world.closures.get(id))),
-    draftClaimable: (from, to, asset, value) =>
-      heldDraft(from, to, asset, value, false),
     draftPaymentLink: (from, to, asset, value) =>
       heldDraft(from, to, asset, value, true),
     draftAsset: (address, plan) =>
