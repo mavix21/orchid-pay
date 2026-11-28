@@ -322,6 +322,7 @@ export class Reserved extends Schema.TaggedClass<Reserved>()(
 export class Claimed extends Schema.TaggedClass<Claimed>()("Claimed", {
   ...transferFields,
   by: Schema.optional(Schema.Union([Profile, ExternalRecipient])),
+  openedWallet: Schema.optional(Schema.Literal(true)),
   closedAt: Schema.DateTimeUtcFromString,
 }) {}
 

@@ -46,6 +46,19 @@ export function EntryAvatar({ media }: { media: EntryMedia }) {
       </ItemMedia>
     );
 
+  if ("linkClaimer" in media)
+    return (
+      <ItemMedia className="relative">
+        <FlowerAvatar username={media.linkClaimer.username} />
+        <span
+          aria-hidden="true"
+          className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-accent text-icon-accent ring-2 ring-background"
+        >
+          <LinkIcon absoluteStrokeWidth className="size-3" />
+        </span>
+      </ItemMedia>
+    );
+
   if (media instanceof Profile)
     return (
       <ItemMedia>

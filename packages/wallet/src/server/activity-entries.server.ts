@@ -37,7 +37,12 @@ import {
   type TransferRow,
 } from "./transfer-records.server";
 
-export type Closers = ReadonlyMap<string, StoredOrder>;
+export interface ClosingOrder {
+  readonly order: StoredOrder;
+  readonly enrollmentReceive: boolean;
+}
+
+export type Closers = ReadonlyMap<string, ClosingOrder>;
 
 export type Profiles = ReadonlyMap<string, Profile>;
 
@@ -98,11 +103,13 @@ const unclaimedFundsReceipt = (
 
   const closer = closerOf(row, closers);
 
-  return isReclaimBy(closer, row.sender)
+  return isReclaimBy(closer?.order, row.sender)
     ? new Refunded({ ...fields, closedAt: closed })
     : new Claimed({
         ...fields,
-        by: closer === undefined ? undefined : claimerOf(closer, profiles),
+        by:
+          closer === undefined ? undefined : claimerOf(closer.order, profiles),
+        openedWallet: closer?.enrollmentReceive ? true : undefined,
         closedAt: closed,
       });
 };
@@ -164,7 +171,7 @@ export const receivedEntry = (
           unclaimedFunds: Schema.decodeSync(UnclaimedFundsId)(row.balanceId),
         });
 
-      return isReclaimBy(closerOf(row, closers), row.sender)
+      return isReclaimBy(closerOf(row, closers)?.order, row.sender)
         ? new TakenBackActivity({ ...fields, closedAt: closed })
         : new ReceivedActivity({ ...fields, closedAt: closed });
     },

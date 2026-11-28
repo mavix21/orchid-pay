@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
   index,
   integer,
@@ -91,6 +92,7 @@ export const assetOrders = pgTable(
     order: text().notNull(),
 
     opens: text(),
+    enrollmentReceive: boolean().notNull().default(false),
     balanceId: text(),
     network: text().notNull(),
     testnetEpoch: text().notNull(),
