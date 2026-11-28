@@ -209,6 +209,8 @@ export function paint(
 
   context.fillStyle = withAlpha(palette.ink, 0.16);
 
+  const frontDots: Projected[] = [];
+
   for (let index = 0; index < landDots.length; index += 2) {
     const point = project(
       view,
@@ -224,6 +226,7 @@ export function paint(
         1.2,
         1.2,
       );
+    else frontDots.push(point);
   }
 
   const sphere = context.createRadialGradient(
@@ -249,25 +252,16 @@ export function paint(
   context.strokeStyle = withAlpha(palette.ink, 0.22);
   context.stroke(front);
 
-  for (let index = 0; index < landDots.length; index += 2) {
-    const point = project(
-      view,
-      landDots[index] ?? 0,
-      landDots[index + 1] ?? 0,
-      radius,
+  for (const point of frontDots) {
+    context.fillStyle = withAlpha(palette.ink, 0.18 + point.depth * 0.5);
+    const dot = 1 + point.depth * 0.9;
+
+    context.fillRect(
+      center.x + point.x - dot / 2,
+      center.y + point.y - dot / 2,
+      dot,
+      dot,
     );
-
-    if (point.depth >= 0) {
-      context.fillStyle = withAlpha(palette.ink, 0.18 + point.depth * 0.5);
-      const dot = 1 + point.depth * 0.9;
-
-      context.fillRect(
-        center.x + point.x - dot / 2,
-        center.y + point.y - dot / 2,
-        dot,
-        dot,
-      );
-    }
   }
 
   context.lineWidth = 1.5;

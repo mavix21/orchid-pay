@@ -1,7 +1,12 @@
 import { LockIcon } from "lucide-react";
-import { Link, createFileRoute, redirect } from "@tanstack/react-router";
+import {
+  ClientOnly,
+  Link,
+  createFileRoute,
+  redirect,
+} from "@tanstack/react-router";
 import { Button } from "@workspace/ui/components/button";
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 
 import { BrandLogo } from "@/components/brand-logo";
 import { LanguageSwitch } from "@/locale/language-switch";
@@ -9,8 +14,13 @@ import { m } from "@/paraglide/messages";
 import { useHomeForSavedWallet } from "@/wallet/use-home-for-saved-wallet";
 import { deviceHoldsWallet } from "@/wallet/wallet-cookie";
 import { type CashOut, cashOutAt } from "@/welcome/cash-out-methods";
-import { PaymentLinkGlobe } from "@/welcome/payment-link-globe";
 import { RotatingCashOutMethod } from "@/welcome/rotating-cash-out-method";
+
+const PaymentLinkGlobe = lazy(() =>
+  import("@/welcome/payment-link-globe").then(({ PaymentLinkGlobe }) => ({
+    default: PaymentLinkGlobe,
+  })),
+);
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
@@ -39,17 +49,17 @@ function Welcome() {
         <BrandLogo />
         <LanguageSwitch />
       </header>
-      <main className="mx-auto grid w-full max-w-md flex-1 gap-2 px-5 pb-6 md:max-w-6xl md:grid-cols-2 md:content-center md:items-center md:gap-x-10 md:gap-y-12 md:px-10">
-        <div className="flex flex-col gap-4 pt-4 md:pt-0">
-          <h1 className="font-display text-display md:text-8xl">
-            <span className="welcome-rise block">
+      <main className="mx-auto grid w-full max-w-md flex-1 gap-2 px-5 pb-safe max-md:welcome-layout md:pb-6 md:max-w-6xl md:grid-cols-2 md:content-center md:items-center md:gap-x-10 md:gap-y-12 md:px-10">
+        <div className="flex flex-col gap-2 pt-2 md:gap-4 md:pt-0">
+          <h1 className="font-display text-display max-md:welcome-headline md:text-8xl">
+            <span className="block md:welcome-rise">
               {m.welcome_headline_send()}
             </span>
-            <span className="welcome-rise welcome-delay-1 block">
+            <span className="block md:welcome-rise md:welcome-delay-1">
               {m.welcome_headline_link()}
             </span>
           </h1>
-          <p className="welcome-rise welcome-delay-2 flex flex-col gap-1 font-display text-h1 md:gap-2 md:text-5xl">
+          <p className="flex flex-col gap-1 font-display text-h1 max-md:text-2xl md:welcome-rise md:welcome-delay-2 md:gap-2 md:text-5xl">
             <span>{m.welcome_cash_out_in()}</span>
             <span>
               <RotatingCashOutMethod
@@ -64,10 +74,16 @@ function Welcome() {
             </span>
           </p>
         </div>
-        <div className="welcome-rise welcome-delay-3 mx-auto w-4/5 md:row-span-2 md:w-full">
-          <PaymentLinkGlobe onCashOut={onCashOut} />
+        <div className="welcome-rise welcome-delay-3 grid place-items-center max-md:welcome-globe-space md:row-span-2">
+          <div className="aspect-square w-full max-md:welcome-globe-size">
+            <ClientOnly>
+              <Suspense fallback={null}>
+                <PaymentLinkGlobe onCashOut={onCashOut} />
+              </Suspense>
+            </ClientOnly>
+          </div>
         </div>
-        <div className="welcome-rise welcome-delay-5 flex flex-col items-center gap-2 md:max-w-sm">
+        <div className="flex flex-col items-center gap-2 md:welcome-rise md:welcome-delay-5 md:max-w-sm">
           <Button
             className="w-full"
             nativeButton={false}
