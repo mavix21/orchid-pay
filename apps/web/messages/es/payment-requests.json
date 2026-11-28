@@ -58,5 +58,15 @@
   "pay_request_being_paid": "Hay un pago en curso para este cobro. Inténtalo de nuevo en unos minutos.",
   "pay_request_self": "No puedes pagar tu propio cobro.",
   "pay_request_requester_unavailable": "@{username} no puede recibir este pago en su cuenta por ahora.",
-  "pay_request_payment_taken": "Ese pago ya se usó fuera de este cobro. Este cobro sigue pendiente."
+  "pay_request_payment_taken": "Ese pago ya se usó fuera de este cobro. Este cobro sigue pendiente.",
+  "pay_request_external_title": "Paga desde una billetera de Solana",
+  "pay_request_external_note": "Escanea este código con una billetera de Solana, como Phantom o Solflare, para pagar {amount}.",
+  "pay_request_external_open": "Abrir en mi billetera",
+  "pay_request_external_qr_label": "Código de Solana Pay para pagar {amount}",
+  "pay_request_action_label": "Pagar {amount}",
+  "pay_request_action_description": "Págalo desde tu billetera de Solana. Llega directo a la cuenta de Orchid de @{username}.",
+  "pay_request_action_paying": "Pagando el cobro de {amount} de @{username}",
+  "pay_request_payer_unfunded": "Esta billetera no tiene saldo suficiente para pagar este cobro.",
+  "pay_request_account_invalid": "Esa dirección de billetera no es válida.",
+  "pay_request_requester_cannot_receive": "Quien cobra no puede recibir este pago por ahora."
 }

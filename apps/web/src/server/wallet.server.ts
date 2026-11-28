@@ -170,6 +170,18 @@ const answeringWith = <S, LE>(layer: Layer.Layer<S | Principal, LE>) => {
   };
 };
 
+export const runPublicRequestPayments = <A, E>(
+  clientAddress: Option.Option<string>,
+  program: Effect.Effect<A, E, RequestPayments | Principal>,
+) =>
+  Effect.runPromise(
+    concealedWith(requestRequestPaymentsLayer)(publicly(program)).pipe(
+      Effect.provideService(SessionCookie, Option.none()),
+      Effect.provideService(ClientAddress, clientAddress),
+      Effect.result,
+    ),
+  );
+
 export const answerWallet = answeringWith(requestWalletLayer);
 
 export const answerPaymentRequests = answeringWith(requestPaymentRequestsLayer);

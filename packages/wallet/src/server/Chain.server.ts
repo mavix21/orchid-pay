@@ -18,6 +18,7 @@ import type { DestinationChain } from "./chain-destinations.server";
 import type { DraftChain } from "./chain-drafts.server";
 import type { ChainUnreachable } from "./chain-errors.server";
 import type { LinkChain } from "./chain-links.server";
+import type { RequestPaymentChain } from "./chain-request-payments.server";
 import type { Sealed, Settlement } from "./chain-settlement.server";
 import type { StoreFailure } from "./store-failure.server";
 
@@ -30,6 +31,11 @@ export { MemoRule } from "./chain-destinations.server";
 export { DraftPurpose } from "./chain-drafts.server";
 
 export type { LinkReceive } from "./chain-links.server";
+
+export {
+  ExternalPayment,
+  type ExternalPaymentTerms,
+} from "./chain-request-payments.server";
 
 export {
   Applied,
@@ -59,7 +65,8 @@ export class Chain extends Context.Service<
     DestinationChain &
     DraftChain &
     LinkChain &
-    DepositChain & {
+    DepositChain &
+    RequestPaymentChain & {
       validAddress(address: DestinationAddress): boolean;
       pastOpeningWindow(
         sealed: Sealed,

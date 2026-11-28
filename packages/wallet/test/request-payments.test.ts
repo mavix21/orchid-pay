@@ -1,12 +1,14 @@
 import { expect, layer } from "@effect/vitest";
 import { Database } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Predicate from "effect/Predicate";
 import * as Schema from "effect/Schema";
 import {
+  type AccountAddress,
   NewPaymentRequest,
   PaymentRequestId,
   PaymentRequestRequesterUnavailable,
@@ -17,7 +19,7 @@ import {
   UsernameRecipient,
   baseAsset,
 } from "../src/contract";
-import { Rejected, Sealed } from "../src/server/Chain.server";
+import { Applied, Expired, Rejected, Sealed } from "../src/server/Chain.server";
 import { Directory } from "../src/server/Directory.server";
 import { PaymentRequests } from "../src/server/PaymentRequests.server";
 import { RequestPayments } from "../src/server/RequestPayments.server";
@@ -27,6 +29,7 @@ import { assertTagged } from "./tagged";
 import {
   accountState,
   addressOf,
+  amount,
   approve,
   authorizeTransfer,
   authorizedTransfers,
@@ -34,6 +37,7 @@ import {
   findTransfer,
   findWallet,
   fundedWallet,
+  memoryChain,
   orderFor,
   send,
   settleHash,
@@ -42,7 +46,7 @@ import {
   walletTestLayer,
   world,
 } from "./wallet-harness";
-import { randomKey, type TestKey } from "./test-keys";
+import { randomAddress, randomKey, type TestKey } from "./test-keys";
 
 const requestId = (text: string) =>
   Schema.decodeSync(PaymentRequestId)(text.padStart(10, "a"));
@@ -169,9 +173,26 @@ const authorizingDraftsOutside = (payer: TestKey) =>
     ),
   );
 
+const externalWallet = (overrides?: Parameters<typeof accountState>[0]) => {
+  const address = randomAddress();
+
+  world.accounts.set(address, accountState(overrides));
+
+  return address;
+};
+
+const payExternally = (id: PaymentRequestId, payer: AccountAddress) =>
+  RequestPayments.use((payments) => payments.payExternally(id, payer));
+
+const settleReference = (id: PaymentRequestId, settlement: Applied | Expired) =>
+  Effect.map(boundTo(id), (reference) =>
+    world.evidence.set(Option.getOrThrow(reference), settlement),
+  );
+
 const testLayer = RequestPayments.serviceLayer.pipe(
   Layer.provideMerge(PaymentRequests.serviceLayer),
   Layer.provideMerge(walletTestLayer),
+  Layer.provideMerge(memoryChain),
 );
 
 useDisposableDatabase();
@@ -441,6 +462,93 @@ layer(testLayer, { excludeTestServices: true, concurrent: false })(
           new PaymentRequestRequesterUnavailable(),
         );
       }),
+    );
+
+    it.effect(
+      "an external wallet's payment holds the request until its reference settles it",
+      () =>
+        Effect.gen(function* () {
+          const { maria, rosa, id } = yield* parties;
+          const payer = externalWallet();
+          const drafted = yield* payExternally(id, payer);
+
+          assertTagged(drafted, "PaymentRequestTransaction");
+          expect(yield* payExternally(id, payer)).toEqual(drafted);
+          assertTagged(
+            yield* payExternally(id, externalWallet()),
+            "PaymentRequestBeingPaid",
+          );
+          assertTagged(
+            yield* pay(id, orderFor(rosa, toMaria)),
+            "PaymentRequestBeingPaid",
+          );
+          assertTagged(yield* cancel(maria, id), "PaymentRequestBeingPaid");
+
+          yield* settleReference(id, new Applied({ at: DateTime.nowUnsafe() }));
+
+          assertTagged(yield* publicRead(id), "PaymentRequestPaid");
+          assertTagged(yield* payExternally(id, payer), "PaymentRequestPaid");
+        }),
+    );
+
+    it.effect(
+      "releases an external payment only once its transaction can no longer land",
+      () =>
+        Effect.gen(function* () {
+          const { rosa, id } = yield* parties;
+          const payer = externalWallet();
+
+          assertTagged(
+            yield* payExternally(id, payer),
+            "PaymentRequestTransaction",
+          );
+
+          yield* lapseBindings;
+
+          assertTagged(yield* publicRead(id), "PaymentRequestOpen");
+          expect(Option.isSome(yield* boundTo(id))).toBe(true);
+
+          yield* settleReference(id, new Expired());
+
+          assertTagged(yield* publicRead(id), "PaymentRequestOpen");
+          expect(yield* boundTo(id)).toEqual(Option.none());
+
+          const order = orderFor(rosa, toMaria);
+
+          yield* payUntilPending(rosa, id, order);
+          expect(yield* boundTo(id)).toEqual(Option.some(order.id));
+        }),
+    );
+
+    it.effect(
+      "refuses an external payment from the requester, from an unfunded wallet or to a requester who cannot receive it",
+      () =>
+        Effect.gen(function* () {
+          const { maria, id } = yield* parties;
+
+          assertTagged(
+            yield* payExternally(id, addressOf(maria)),
+            "PaymentRequestSelfPay",
+          );
+          assertTagged(
+            yield* payExternally(
+              id,
+              externalWallet({ balance: Option.some(amount("9999999")) }),
+            ),
+            "PaymentRequestPayerUnfunded",
+          );
+
+          world.accounts.set(
+            addressOf(maria),
+            accountState({ balance: Option.none() }),
+          );
+
+          assertTagged(
+            yield* payExternally(id, externalWallet()),
+            "PaymentRequestRequesterUnavailable",
+          );
+          expect(yield* boundTo(id)).toEqual(Option.none());
+        }),
     );
   },
 );

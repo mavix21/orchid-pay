@@ -2,7 +2,12 @@ import { expect, layer } from "@effect/vitest";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { concatBytes } from "@noble/hashes/utils.js";
 import { TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
-import { address, getBase58Decoder, getBase64Decoder } from "@solana/kit";
+import {
+  address,
+  getBase58Decoder,
+  getBase64Decoder,
+  getBase64Encoder,
+} from "@solana/kit";
 import { Database } from "@workspace/db";
 import { USDC_MINT_ADDRESS } from "@workspace/orchid-links";
 import * as DateTime from "effect/DateTime";
@@ -18,12 +23,17 @@ import * as FetchHttpClient from "effect/http/FetchHttpClient";
 import {
   Approval,
   Asset,
+  PaymentRequestId,
   PositiveAmount,
   type SigningRequest,
 } from "../src/contract";
 import { chainLayer } from "../src/binding/chain.server";
 import { Chain } from "../src/server/Chain.server";
 import type { DepositPosition } from "../src/server/chain-deposits.server";
+import type {
+  ExternalPayment,
+  ExternalPaymentTerms,
+} from "../src/server/chain-request-payments.server";
 import type { Sealed } from "../src/server/chain-settlement.server";
 import { WalletSettings } from "../src/server/settings.server";
 import { solanaAccountChain } from "../src/solana/account-chain.server";
@@ -36,6 +46,7 @@ import { solanaDraftChain } from "../src/solana/draft-chain.server";
 import { decodeSealedEnvelope } from "../src/solana/envelope-codec";
 import { solanaProfile } from "../src/solana/profile";
 import { usdcAccountOf } from "../src/solana/program-addresses";
+import { solanaRequestPayments } from "../src/solana/request-payments.server";
 import type { RpcValue } from "../src/solana/rpc.server";
 import {
   SolanaAccountAddress,
@@ -47,6 +58,10 @@ import { sponsoredFailuresIn } from "../src/solana/sponsored-failures.server";
 import { solanaSubmission } from "../src/solana/submission.server";
 import { solanaUnclaimedFunds } from "../src/solana/unclaimed-funds.server";
 import { assertTagged } from "../test/tagged";
+import {
+  decodeWireTransaction,
+  encodeWireTransaction,
+} from "../src/solana/wire-transaction";
 import { dbLayer, useMigratedDatabase } from "../test/test-database";
 import { Surfnet, surfnetLayer } from "./surfnet";
 
@@ -63,6 +78,7 @@ const SolanaClaimPlan = Schema.TaggedStruct("ClaimPlan", {
 
 const base58Decoder = getBase58Decoder();
 const base64Decoder = getBase64Decoder();
+const base64Encoder = getBase64Encoder();
 
 const newKey = Effect.sync(() => {
   const seed = ed25519.utils.randomSecretKey();
@@ -419,6 +435,83 @@ layer(Layer.mergeAll(surfnetLayer, dbLayer), {
         );
       }),
   );
+  it.effect(
+    "an external wallet pays a payment request with the transaction drafted for it, and an unsent one expires",
+    () =>
+      Effect.gen(function* () {
+        const { accounts, open } = yield* writer;
+        const rpc = yield* Surfnet;
+        const requests = solanaRequestPayments(rpc);
+        const requester = yield* open();
+        const payer = yield* newKey;
+
+        yield* cheat("surfnet_setAccount", [
+          payer.account,
+          { lamports: 1_000_000_000 },
+        ]);
+        yield* fundUsdc(payer, 5_000_000);
+
+        const terms: ExternalPaymentTerms = {
+          payer: payer.account,
+          requester: requester.account,
+          amount: amountOf(2_000_000n),
+          request: Schema.decodeSync(PaymentRequestId)("aaaaaaaaa1"),
+        };
+
+        const settled = (payment: ExternalPayment, asked = terms) =>
+          requests.externalPaymentSettlement(payment, asked).pipe(
+            Effect.repeat({
+              until: (settlement) =>
+                !Predicate.isTagged(settlement, "Undecided"),
+              schedule: Schedule.spaced("100 millis"),
+            }),
+          );
+
+        const payment = yield* requests.draftExternalPayment(terms);
+
+        expect(
+          (yield* requests.externalPaymentSettlement(payment, terms))._tag,
+        ).toBe("Undecided");
+
+        const { signatures, messageBytes } = decodeWireTransaction(
+          base64Encoder.encode(payment.transaction),
+        );
+
+        yield* rpc.call(
+          "sendTransaction",
+          [
+            base64Decoder.decode(
+              encodeWireTransaction({
+                signatures: [
+                  ed25519.sign(new Uint8Array(messageBytes), payer.seed),
+                  ...signatures.slice(1),
+                ],
+                messageBytes,
+              }),
+            ),
+            { encoding: "base64", preflightCommitment: "confirmed" },
+          ],
+          Schema.String,
+        );
+
+        expect((yield* settled(payment))._tag).toBe("Applied");
+        expect(
+          (yield* settled(payment, {
+            ...terms,
+            amount: amountOf(2_000_001n),
+          }))._tag,
+        ).toBe("Rejected");
+        expect(yield* balances(accounts, [requester, payer])).toEqual([
+          2_000_000n,
+          3_000_000n,
+        ]);
+
+        const unsent = yield* requests.draftExternalPayment(terms);
+
+        expect((yield* settled(unsent))._tag).toBe("Expired");
+      }),
+  );
+
   it.effect(
     "the bound chain layer opens a wallet with the sponsor from its settings and refuses a destination without a USDC account",
     () =>

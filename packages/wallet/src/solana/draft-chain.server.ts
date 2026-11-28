@@ -27,6 +27,7 @@ import type {
 import type { Sealed } from "../server/chain-settlement.server";
 import { decodeSealedEnvelope } from "./envelope-codec";
 import {
+  type DraftWindow,
   type Drafting,
   computeUnitLimits,
   draftLinkReceive,
@@ -96,36 +97,42 @@ const transferFrom = (facts: EnvelopeFacts, from: AccountAddress) =>
     Predicate.isTagged(facts, "PaymentLinkFacts")) &&
   facts.from === address(from);
 
+export const draftWindowFor = Effect.fn("Chain.draftWindow")(function* (
+  rpc: SolanaRpc,
+  computeUnitLimit: number,
+) {
+  const [latest, fees] = yield* Effect.all(
+    [
+      rpc.call(
+        "getLatestBlockhash",
+        [{ commitment: preflightCommitment }],
+        LatestBlockhash,
+      ),
+      rpc.call("getRecentPrioritizationFees", [], RecentPrioritizationFees),
+    ],
+    { concurrency: rpcReadConcurrency },
+  );
+
+  const recentPrice = medianOf(
+    fees.map(({ prioritizationFee }) => BigInt(prioritizationFee)),
+  );
+
+  const highestPrice = highestComputeUnitPrice(computeUnitLimit);
+
+  return {
+    blockhash: blockhash(latest.value.blockhash),
+    lastValidBlockHeight: BigInt(latest.value.lastValidBlockHeight),
+    draftedSlot: BigInt(latest.context.slot),
+    computeUnitPrice: recentPrice < highestPrice ? recentPrice : highestPrice,
+  } satisfies DraftWindow;
+});
+
 export const solanaDraftChain = (rpc: SolanaRpc, sponsor: Address) => {
-  const drafting = Effect.fn("Chain.drafting")(function* (
-    computeUnitLimit: number,
-  ) {
-    const [latest, fees] = yield* Effect.all(
-      [
-        rpc.call(
-          "getLatestBlockhash",
-          [{ commitment: preflightCommitment }],
-          LatestBlockhash,
-        ),
-        rpc.call("getRecentPrioritizationFees", [], RecentPrioritizationFees),
-      ],
-      { concurrency: rpcReadConcurrency },
-    );
-
-    const recentPrice = medianOf(
-      fees.map(({ prioritizationFee }) => BigInt(prioritizationFee)),
-    );
-
-    const highestPrice = highestComputeUnitPrice(computeUnitLimit);
-
-    return {
+  const drafting = (computeUnitLimit: number) =>
+    Effect.map(draftWindowFor(rpc, computeUnitLimit), (window): Drafting => ({
+      ...window,
       sponsor,
-      blockhash: blockhash(latest.value.blockhash),
-      lastValidBlockHeight: BigInt(latest.value.lastValidBlockHeight),
-      draftedSlot: BigInt(latest.context.slot),
-      computeUnitPrice: recentPrice < highestPrice ? recentPrice : highestPrice,
-    } satisfies Drafting;
-  });
+    }));
 
   const requestFor = (envelope: UnsignedEnvelope) =>
     Effect.map(

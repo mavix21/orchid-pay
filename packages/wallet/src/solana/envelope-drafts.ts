@@ -5,6 +5,7 @@ import {
   AuthorityType,
 } from "@solana-program/token";
 import {
+  AccountRole,
   type Address,
   type Blockhash,
   type Instruction,
@@ -35,12 +36,15 @@ import {
 } from "./program-addresses";
 import { solanaProfile } from "./profile";
 
-export interface Drafting {
-  readonly sponsor: Address;
+export interface DraftWindow {
   readonly blockhash: Blockhash;
   readonly lastValidBlockHeight: bigint;
   readonly draftedSlot: bigint;
   readonly computeUnitPrice: bigint;
+}
+
+export interface Drafting extends DraftWindow {
+  readonly sponsor: Address;
 }
 
 export interface OpeningInput extends Drafting {
@@ -68,6 +72,14 @@ export interface LinkReceiveInput extends Drafting {
   readonly memo?: TextMemo | undefined;
 }
 
+export interface ExternalPaymentInput extends DraftWindow {
+  readonly payer: Address;
+  readonly reference: Address;
+  readonly destinationTokenAccount: Address;
+  readonly amount: PositiveAmount;
+  readonly memo: TextMemo;
+}
+
 export interface ReclaimInput extends Drafting {
   readonly address: Address;
   readonly unclaimedFunds: Address;
@@ -82,13 +94,14 @@ export const computeUnitLimits = {
 };
 
 const draft = (
-  drafting: Drafting,
+  feePayer: Address,
+  drafting: DraftWindow,
   computeUnitLimit: number,
   instructions: ReadonlyArray<Instruction>,
 ): UnsignedEnvelope => {
   const message = pipe(
     createTransactionMessage({ version: 0 }),
-    (current) => setTransactionMessageFeePayer(drafting.sponsor, current),
+    (current) => setTransactionMessageFeePayer(feePayer, current),
     (current) =>
       setTransactionMessageLifetimeUsingBlockhash(
         {
@@ -114,7 +127,7 @@ const draft = (
 export const draftOpening = (input: OpeningInput) => {
   const account = usdcAccountOf(input.address);
 
-  return draft(input, computeUnitLimits.opening, [
+  return draft(input.sponsor, input, computeUnitLimits.opening, [
     getCreateAssociatedTokenIdempotentInstruction({
       payer: createNoopSigner(input.sponsor),
       ata: account,
@@ -131,7 +144,7 @@ export const draftOpening = (input: OpeningInput) => {
 };
 
 export const draftPayment = (input: PaymentInput) =>
-  draft(input, computeUnitLimits.payment, [
+  draft(input.sponsor, input, computeUnitLimits.payment, [
     ...memoInstructions(input.memo),
     getTransferCheckedInstruction({
       source: usdcAccountOf(input.from),
@@ -143,6 +156,28 @@ export const draftPayment = (input: PaymentInput) =>
     }),
   ]);
 
+export const draftExternalPayment = (input: ExternalPaymentInput) => {
+  const transfer = getTransferCheckedInstruction({
+    source: usdcAccountOf(input.payer),
+    mint: USDC_MINT_ADDRESS,
+    destination: input.destinationTokenAccount,
+    authority: createNoopSigner(input.payer),
+    amount: input.amount,
+    decimals: solanaProfile.precisionOf(USDC_MINT_ADDRESS).decimals,
+  });
+
+  return draft(input.payer, input, computeUnitLimits.payment, [
+    ...memoInstructions(input.memo),
+    {
+      ...transfer,
+      accounts: [
+        ...transfer.accounts,
+        { address: input.reference, role: AccountRole.READONLY_SIGNER },
+      ],
+    },
+  ]);
+};
+
 export const draftPaymentLink = (input: PaymentLinkInput) => {
   const unclaimedFunds = unclaimedFundsAddressOf(
     input.from,
@@ -150,7 +185,7 @@ export const draftPaymentLink = (input: PaymentLinkInput) => {
     input.orderId,
   );
 
-  return draft(input, computeUnitLimits.paymentLink, [
+  return draft(input.sponsor, input, computeUnitLimits.paymentLink, [
     buildCreateInstruction({
       sender: input.from,
       rentRecipient: input.sponsor,
@@ -165,7 +200,7 @@ export const draftPaymentLink = (input: PaymentLinkInput) => {
 };
 
 export const draftLinkReceive = (input: LinkReceiveInput) =>
-  draft(input, computeUnitLimits.linkReceive, [
+  draft(input.sponsor, input, computeUnitLimits.linkReceive, [
     ...memoInstructions(input.memo),
     buildClaimInstruction({
       signer: input.link,
@@ -177,7 +212,7 @@ export const draftLinkReceive = (input: LinkReceiveInput) =>
   ]);
 
 export const draftReclaim = (input: ReclaimInput) =>
-  draft(input, computeUnitLimits.reclaim, [
+  draft(input.sponsor, input, computeUnitLimits.reclaim, [
     buildReclaimInstruction({
       signer: input.address,
       unclaimedFunds: input.unclaimedFunds,
