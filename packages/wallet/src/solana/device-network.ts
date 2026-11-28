@@ -102,5 +102,4 @@ export const solanaDeviceNetwork: DeviceNetwork = {
   baseAccountOf: accountOf,
   creditedAccountOf: (destination) =>
     destinationOf(usdcAccountOf(address(destination))),
-  isIssuedBy: () => false,
 };

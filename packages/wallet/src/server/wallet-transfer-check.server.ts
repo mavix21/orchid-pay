@@ -29,7 +29,6 @@ import {
   UnknownRecipient,
   type UsernameRecipient,
   sameAsset,
-  isNativeAsset,
 } from "../contract";
 import { Chain, type ChainUnreachable, MemoRule } from "./Chain.server";
 import { type QuotaCheck, claimableQuotaFlow } from "./claimable-quota.server";
@@ -45,7 +44,6 @@ import {
   type TransferTerms,
   deliveryFlow,
   isDeliveryRoute,
-  paymentLinkAssetRefusal,
 } from "./wallet-delivery.server";
 
 export class Examined extends Data.TaggedClass("Examined")<{
@@ -68,7 +66,6 @@ export const transferCheckFlow = Effect.gen(function* () {
   const transfers = yield* Transfers;
   const { route } = yield* deliveryFlow;
   const { quotaReached } = yield* claimableQuotaFlow;
-  const checkLinkAsset = yield* paymentLinkAssetRefusal;
 
   const observing: TransferEffects = {
     settle: (held) => Effect.succeed(pending(held)),
@@ -211,22 +208,15 @@ export const transferCheckFlow = Effect.gen(function* () {
       return new NotOpened();
     }
 
-    if (recipient instanceof LinkRecipient) {
-      const linkRefusal = yield* checkLinkAsset(terms, state.value);
-
-      if (Option.isSome(linkRefusal)) return linkRefusal.value;
-    }
-
-    const balance = isNativeAsset(terms.asset)
-      ? state.value.native
-      : (state.value.lines.find(
-          (line) => sameAsset(line.asset, terms.asset) && line.authorized,
-        )?.spendable ?? Schema.decodeSync(Amount)("0"));
+    const balance =
+      state.value.lines.find(
+        (line) => sameAsset(line.asset, terms.asset) && line.authorized,
+      )?.spendable ?? Schema.decodeSync(Amount)("0");
 
     if (balance < terms.amount)
       return new InsufficientBalance({ available: balance });
 
-    const delivery = yield* route(terms, recipient, effects.quota, state.value);
+    const delivery = yield* route(terms, recipient, effects.quota);
 
     if (!isDeliveryRoute(delivery)) return delivery;
 

@@ -70,13 +70,7 @@ export class AssetBusy extends Schema.TaggedClass<AssetBusy>()("AssetBusy", {
 export class AssetUnsupported extends Schema.TaggedClass<AssetUnsupported>()(
   "AssetUnsupported",
   {
-    reason: Schema.Literals([
-      "issuer_missing",
-      "self_issued",
-      "base_asset",
-      "authorization_required",
-      "clawback_enabled",
-    ]),
+    reason: Schema.Literals(["issuer_missing"]),
   },
 ) {}
 
@@ -88,11 +82,7 @@ export class NotClaimable extends Schema.TaggedClass<NotClaimable>()(
 export class LinkUnclaimable extends Schema.TaggedClass<LinkUnclaimable>()(
   "LinkUnclaimable",
   {
-    reason: Schema.Literals([
-      "link_account_unexpected",
-      "destination_is_link",
-      "destination_is_issuer",
-    ]),
+    reason: Schema.Literals(["link_account_unexpected", "destination_is_link"]),
   },
 ) {}
 

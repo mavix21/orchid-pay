@@ -35,8 +35,7 @@ export type CreateAction =
   | "check"
   | "home"
   | "links"
-  | "assets"
-  | "elsewhere";
+  | "assets";
 
 export type CheckAction = "check" | "home" | "links";
 
@@ -73,25 +72,14 @@ const unavailable = (failure: WalletUnavailable, next: string) =>
 const creationDeviceFailure = () =>
   new LinkScreen(m.common_device_failed_title(), m.link_check_first(), "check");
 
-const unsupportedScreen = (
-  reason:
-    | "issuer_missing"
-    | "self_issued"
-    | "base_asset"
-    | "authorization_required"
-    | "clawback_enabled",
-  code: string,
-) => {
-  const elsewhere = reason === "clawback_enabled";
-
-  return new LinkScreen<CreateAction>(
+const unsupportedScreen = (code: string) =>
+  new LinkScreen<CreateAction>(
     m.link_unsupported_title({ asset: code }),
     thenUntouched(
-      `${m.link_unsupported_currency()} ${elsewhere ? m.link_unsupported_elsewhere() : m.link_unsupported_choose()}`,
+      `${m.link_unsupported_currency()} ${m.link_unsupported_choose()}`,
     ),
-    elsewhere ? "elsewhere" : "assets",
+    "assets",
   );
-};
 
 const stillCreating = () =>
   new LinkScreen(
@@ -198,7 +186,7 @@ export const createLinkResult = (
         thenUntouched(m.link_limit({ limit })),
         "links",
       ),
-    AssetUnsupported: ({ reason }) => unsupportedScreen(reason, asset.code),
+    AssetUnsupported: () => unsupportedScreen(asset.code),
     SenderBusy: busyCreating,
     AssetBusy: busyCreating,
     NotOpened: () =>

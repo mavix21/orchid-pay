@@ -31,12 +31,7 @@ import type {
   KeyStoreUnavailable,
   PublicDeviceWallet,
 } from "./key-store";
-import {
-  creditedAccountOf,
-  isIssuedBy,
-  network,
-  readDraft,
-} from "../device-network";
+import { creditedAccountOf, network, readDraft } from "../device-network";
 import {
   type ConfirmLinkReceiveOutcome,
   type LinkReceiveTarget,
@@ -92,8 +87,7 @@ export const receiveReviewOf = (
     receive.link === wallet.address ||
     receive.unclaimedFunds !== action.unclaimedFunds ||
     action.unclaimedFunds !== target.unclaimedFunds ||
-    !sameAsset(receive.asset, target.asset) ||
-    isIssuedBy(receive.asset, wallet.address)
+    !sameAsset(receive.asset, target.asset)
   )
     return Option.none();
 

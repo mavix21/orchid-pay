@@ -170,12 +170,6 @@ const mapResult = (
         Match.when("destination_is_link", () =>
           fieldProblem("destination", m.external_destination_is_link()),
         ),
-        Match.when("destination_is_issuer", () =>
-          fieldProblem(
-            "destination",
-            m.external_destination_is_issuer({ asset: code }),
-          ),
-        ),
         Match.when("link_account_unexpected", () =>
           concluded(
             outcome,

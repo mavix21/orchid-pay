@@ -108,42 +108,29 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
         name: "an absent account",
         reason: "no_account",
         linkable: true,
-        authRequired: false,
-        clawback: false,
         recipient: () => undefined,
       },
       {
         name: "a frozen token account",
         reason: "not_authorized",
         linkable: false,
-        authRequired: false,
-        clawback: false,
         recipient: (address: AccountAddress) =>
           holdingsFor(address, {
             lines: [{ ...euroLine("0"), authorized: false }],
           }),
       },
-      {
-        name: "an absent account with clawback on the sender's holding",
-        reason: "no_account",
-        linkable: false,
-        authRequired: false,
-        clawback: true,
-        recipient: () => undefined,
-      },
     ] as const)(
       "refuses an external recipient with $name and links it: $linkable",
-      ({ reason, linkable, authRequired, clawback, recipient }) =>
+      ({ reason, linkable, recipient }) =>
         Effect.gen(function* () {
           const sender = yield* fundedWallet("linkoffer");
           const senderAddr = addressOf(sender);
           const destination = randomAddress();
 
-          world.issuers.set(euro.id, { authRequired });
           world.holdings.set(
             senderAddr,
             holdingsFor(senderAddr, {
-              lines: [{ ...euroLine("50000000"), clawbackEnabled: clawback }],
+              lines: [euroLine("50000000")],
             }),
           );
 

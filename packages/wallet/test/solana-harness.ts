@@ -186,7 +186,6 @@ const solanaChain = Layer.effect(
             ),
           ),
       validAsset: (asset) => asset.id === baseAsset.id,
-      issuedBy: () => false,
       pastOpeningWindow: memory.pastOpeningWindow,
       seal: (request, approval, holder) =>
         seal(request, approval, holder).pipe(

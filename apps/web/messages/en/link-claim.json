@@ -77,7 +77,6 @@
   "external_not_sent_title": "We couldn't send this money",
   "external_deposit_needs_memo": "This address requires a memo. Copy it from the deposit screen.",
   "external_destination_is_link": "You can't send the money to the link's own address.",
-  "external_destination_is_issuer": "You can't send {asset} to the address that issues it.",
   "claim_used_title": "This link was already used",
   "claim_used": "It has no money left to receive.",
   "claim_unresolved_title": "We couldn't confirm what happened to this link",

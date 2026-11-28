@@ -33,7 +33,6 @@ import {
   type SigningRequest,
   sameAsset,
   baseAsset,
-  isNativeAsset,
 } from "../contract";
 import {
   type AssetAuthorized,
@@ -304,13 +303,9 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
       if (order.wallet === action.link)
         return new LinkUnclaimable({ reason: "destination_is_link" });
 
-      if (chain.issuedBy(asset, order.wallet))
-        return new LinkUnclaimable({ reason: "destination_is_issuer" });
-
       const blocker = yield* chain.receiveBlocker(order.wallet, asset, amount);
 
-      const openedByOpening =
-        walletOpening && (isNativeAsset(asset) || sameAsset(asset, baseAsset));
+      const openedByOpening = walletOpening && sameAsset(asset, baseAsset);
 
       if (Option.isSome(blocker)) {
         if (blocker.value !== "no_account")

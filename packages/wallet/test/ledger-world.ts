@@ -7,7 +7,6 @@ import {
   type AccountAddress,
   Amount,
   type Asset,
-  type AssetId,
   HumanCheckRefused,
   baseAsset,
   sameAsset,
@@ -31,7 +30,6 @@ export interface LedgerAccount {
   readonly accountSponsored: boolean;
   readonly sponsored: boolean;
   readonly untouched: boolean;
-  readonly nativeBalance: bigint;
   readonly balance: Option.Option<Amount>;
 }
 
@@ -52,7 +50,6 @@ export const world = {
   closures: new Map<string, DateTime.Utc>(),
   deposits: new Map<AccountAddress, Array<ChainDeposit>>(),
   unreadableDeposits: new Set<string>(),
-  issuers: new Map<AssetId, { readonly authRequired: boolean }>(),
 };
 
 export const resetWorld = () => {
@@ -62,7 +59,6 @@ export const resetWorld = () => {
   world.closures.clear();
   world.deposits.clear();
   world.unreadableDeposits.clear();
-  world.issuers.clear();
   world.evidence.clear();
   world.submitted.length = 0;
   world.queued.length = 0;
@@ -106,7 +102,6 @@ export const accountState = (
   accountSponsored: true,
   sponsored: true,
   untouched: true,
-  nativeBalance: 0n,
   balance: Option.some(amount("50000000")),
   ...overrides,
 });
@@ -115,11 +110,7 @@ export const holdingsFor = (
   address: AccountAddress,
   overrides: Partial<Holdings> = {},
 ): Holdings => ({
-  nativeTotal: amount(
-    (world.accounts.get(address) ?? accountState()).nativeBalance.toString(),
-  ),
   reserveSponsor: Option.none(),
-  native: amount("0"),
   lines: [],
   ...overrides,
 });
@@ -147,11 +138,9 @@ export const holdingsReader =
           Effect.map(
             Option.map((state) =>
               holdingsFor(address, {
-                nativeTotal: amount(state.nativeBalance.toString()),
                 reserveSponsor: state.accountSponsored
                   ? Option.some(reserveSponsor)
                   : Option.none(),
-                native: amount(state.nativeBalance.toString()),
                 lines: assets.flatMap((asset) =>
                   sameAsset(asset, baseAsset) && Option.isSome(state.balance)
                     ? [
@@ -161,7 +150,6 @@ export const holdingsReader =
                           spendable: state.balance.value,
                           capacity: amount("9223372036854775807"),
                           authorized: true,
-                          clawbackEnabled: false,
                           sponsored: true,
                         },
                       ]

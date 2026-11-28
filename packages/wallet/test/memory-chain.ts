@@ -19,10 +19,8 @@ import {
   SigningRequest,
   UnclaimedFundsId,
   UnsignedEnvelope,
-  isNativeAsset,
   sameAsset,
 } from "../src/contract";
-import { isIssuedBy } from "../src/device-network";
 import type { AssetPlan } from "../src/server/asset-plan.server";
 import {
   type AccountStanding,
@@ -225,8 +223,6 @@ const receiveBlocker: Chain["Service"]["receiveBlocker"] = (
     Effect.map((found) => {
       if (Option.isNone(found)) return Option.some("no_account");
 
-      if (isNativeAsset(asset)) return Option.none();
-
       const line = found.value.lines.find((candidate) =>
         sameAsset(candidate.asset, asset),
       );
@@ -284,12 +280,7 @@ export const memoryChain = Layer.succeed(
         Effect.map(Option.flatMap((state) => state.balance)),
       ),
     validAsset: () => true,
-    issuedBy: isIssuedBy,
     holdings,
-    issuer: (asset) =>
-      Effect.succeed(
-        Option.some(world.issuers.get(asset.id) ?? { authRequired: false }),
-      ),
     unclaimedFunds: (ids) =>
       Effect.suspend(() =>
         world.claimablesDown

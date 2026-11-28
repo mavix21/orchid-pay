@@ -637,16 +637,6 @@ export function LinkFlow({
                     {m.link_choose_asset()}
                   </ResultLink>
                 )),
-                Match.when("elsewhere", () => (
-                  <>
-                    <ResultButton onClick={onChangeDestination}>
-                      {m.link_send_another_way()}
-                    </ResultButton>
-                    <ResultLink variant="secondary" link={<Link to="/send" />}>
-                      {m.link_choose_asset()}
-                    </ResultLink>
-                  </>
-                )),
                 Match.exhaustive,
               )}
             </LinkResultScreen>

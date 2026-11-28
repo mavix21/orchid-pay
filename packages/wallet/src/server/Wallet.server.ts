@@ -1,8 +1,5 @@
 import { portfolioFlow } from "./wallet-portfolio.server";
-import {
-  deliveryFlow,
-  paymentLinkAssetRefusal,
-} from "./wallet-delivery.server";
+import { deliveryFlow } from "./wallet-delivery.server";
 import {
   Examined,
   type TransferEffects,
@@ -28,7 +25,6 @@ import {
   Approval,
   Holding,
   InvalidAddress,
-  LinkRecipient,
   MemoNotAllowed,
   ExternalMemoRequired,
   NeedsReopening,
@@ -112,7 +108,6 @@ export class Wallet extends Context.Service<
       const assetActions = yield* assetFlow;
       const { delivery, draft } = yield* deliveryFlow;
       const check = yield* transferCheckFlow;
-      const checkLinkAsset = yield* paymentLinkAssetRefusal;
       const { quotaFull } = yield* claimableQuotaFlow;
       const links = yield* paymentLinksFlow;
 
@@ -279,12 +274,6 @@ export class Wallet extends Context.Service<
           const refusal = memoRefusal(order, stored.recipient, requirement);
 
           if (Option.isSome(refusal)) return refusal.value;
-
-          if (stored.recipient instanceof LinkRecipient) {
-            const linkRefusal = yield* checkLinkAsset(stored.order);
-
-            if (Option.isSome(linkRefusal)) return linkRefusal.value;
-          }
 
           if (!(yield* currentDraft(stored)))
             return yield* redrafted(stored, requirement);

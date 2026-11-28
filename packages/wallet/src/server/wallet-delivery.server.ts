@@ -11,14 +11,10 @@ import {
   RecipientCannotReceive,
   type ResolvedRecipient,
   type TransferOrder,
-  sameAsset,
-  isNativeAsset,
 } from "../contract";
 import { paymentLinkQuota } from "../policy";
 import { Chain } from "./Chain.server";
 import { type QuotaCheck, claimableQuotaFlow } from "./claimable-quota.server";
-import type { Holdings } from "./holdings.server";
-import { rpcReadConcurrency } from "./settings.server";
 
 export type TransferTerms = Pick<
   TransferOrder,
@@ -43,64 +39,16 @@ export const isDeliveryRoute = (
   DeliveryRoute.$is("PaymentLink")(value) ||
   DeliveryRoute.$is("Payment")(value);
 
-export const paymentLinkAssetRefusal = Effect.gen(function* () {
-  const chain = yield* Chain;
-
-  return Effect.fn("Wallet.paymentLinkAssetRefusal")(function* (
-    order: TransferTerms,
-    senderHoldings?: Holdings,
-  ) {
-    const { asset } = order;
-
-    if (isNativeAsset(asset)) return Option.none<AssetUnsupported>();
-
-    const [holdings, issuer] = yield* Effect.all(
-      [
-        senderHoldings === undefined
-          ? chain.holdings(order.from, [asset])
-          : Effect.succeed(Option.some(senderHoldings)),
-        chain.issuer(asset),
-      ],
-      { concurrency: rpcReadConcurrency },
-    );
-
-    const sourceLine = Option.flatMap(holdings, (state) =>
-      Option.fromNullishOr(
-        state.lines.find((line) => sameAsset(line.asset, asset)),
-      ),
-    );
-
-    if (Option.isSome(sourceLine) && sourceLine.value.clawbackEnabled)
-      return Option.some(new AssetUnsupported({ reason: "clawback_enabled" }));
-
-    if (Option.isNone(issuer))
-      return Option.some(new AssetUnsupported({ reason: "issuer_missing" }));
-
-    if (issuer.value.authRequired)
-      return Option.some(
-        new AssetUnsupported({ reason: "authorization_required" }),
-      );
-
-    return Option.none<AssetUnsupported>();
-  });
-});
-
 export const deliveryFlow = Effect.gen(function* () {
   const chain = yield* Chain;
   const { quotaFull } = yield* claimableQuotaFlow;
-  const checkLinkAsset = yield* paymentLinkAssetRefusal;
 
   const route = Effect.fn("Wallet.deliveryRoute")(function* (
     terms: TransferTerms,
     recipient: ResolvedRecipient,
     quota: QuotaCheck,
-    senderHoldings?: Holdings,
   ) {
     if (recipient instanceof LinkRecipient) {
-      const refusal = yield* checkLinkAsset(terms, senderHoldings);
-
-      if (Option.isSome(refusal)) return refusal.value;
-
       if (yield* quota(terms.from))
         return new UnclaimedFundsLimitReached({ limit: paymentLinkQuota });
 
@@ -119,9 +67,7 @@ export const deliveryFlow = Effect.gen(function* () {
       return new RecipientCannotReceive({
         address: receivingAccount,
         reason: blocker.value,
-        linkable:
-          blocker.value === "no_account" &&
-          Option.isNone(yield* checkLinkAsset(terms, senderHoldings)),
+        linkable: blocker.value === "no_account",
       });
 
     return DeliveryRoute.Payment({ address: recipient.address });
@@ -144,9 +90,8 @@ export const deliveryFlow = Effect.gen(function* () {
   const delivery = Effect.fn("Wallet.delivery")(function* (
     order: TransferOrder,
     recipient: ResolvedRecipient,
-    senderHoldings?: Holdings,
   ) {
-    const routed = yield* route(order, recipient, quotaFull, senderHoldings);
+    const routed = yield* route(order, recipient, quotaFull);
 
     return isDeliveryRoute(routed) ? yield* draft(order, routed) : routed;
   });

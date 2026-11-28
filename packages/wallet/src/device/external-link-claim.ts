@@ -23,7 +23,6 @@ import { OpenedLink, openLink } from "./link-receive";
 import {
   baseAccountOf,
   creditedAccountOf,
-  isIssuedBy,
   network,
   readDraft,
 } from "../device-network";
@@ -74,7 +73,6 @@ export const externalReviewOf = (
     baseDestination === receive.link ||
     receive.reserveSponsor === receive.link ||
     !sameAsset(receive.asset, target.asset) ||
-    isIssuedBy(receive.asset, baseDestination) ||
     (forbidsMemo(order.destination) && receive.memo !== undefined) ||
     !sameMemo(receive.memo, order.memo) ||
     (draft.memoRequired && receive.memo === undefined)

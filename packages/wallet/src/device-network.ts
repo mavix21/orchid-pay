@@ -1,7 +1,6 @@
 import type * as Option from "effect/Option";
 import type {
   AccountAddress,
-  Asset,
   DestinationAddress,
   SigningRequest,
 } from "./contract";
@@ -19,7 +18,6 @@ export interface DeviceNetwork {
   readonly creditedAccountOf: (
     destination: DestinationAddress,
   ) => DestinationAddress;
-  readonly isIssuedBy: (asset: Asset, account: AccountAddress) => boolean;
 }
 
 export const {
@@ -28,5 +26,4 @@ export const {
   readDraft,
   baseAccountOf,
   creditedAccountOf,
-  isIssuedBy,
 } = deviceNetwork;

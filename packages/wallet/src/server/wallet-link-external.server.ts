@@ -178,9 +178,6 @@ export const externalLinkClaimFlow = (shared: LinkReceiveShared) =>
       if (receivingAccount === order.link)
         return new LinkUnclaimable({ reason: "destination_is_link" });
 
-      if (chain.issuedBy(asset, receivingAccount))
-        return new LinkUnclaimable({ reason: "destination_is_issuer" });
-
       const rule = yield* chain.memoRule(order.destination);
 
       const refusal = memoRefusal(

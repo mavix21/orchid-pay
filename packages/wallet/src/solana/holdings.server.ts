@@ -26,7 +26,6 @@ const lineOf = (
     frozen ? 0n : solanaProfile.precisionOf(asset.id).maximum - amount,
   ),
   authorized: !frozen,
-  clawbackEnabled: false,
   sponsored,
 });
 
@@ -38,9 +37,7 @@ const holdingsOf = (
   const sponsored = Option.contains(held.closeAuthority, address(sponsor));
 
   return {
-    nativeTotal: amountOf(0n),
     reserveSponsor: sponsored ? Option.some(sponsor) : Option.none(),
-    native: amountOf(0n),
     lines: assets.flatMap((asset) =>
       asset.id === solanaProfile.baseAsset.id
         ? [lineOf(asset, held, sponsored)]
