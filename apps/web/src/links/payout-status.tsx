@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 import { CheckIcon, FlaskConicalIcon } from "lucide-react";
 import type {
   LocalAmount,
+  PayoutDestination,
   PayoutStep,
-  PeruvianMobile,
 } from "@workspace/wallet";
 import { cn } from "@workspace/ui/lib/utils";
 import * as Match from "effect/Match";
@@ -15,7 +15,12 @@ import { Screen, ScreenActions } from "@/components/screen";
 import { ResultLink } from "@/links/link-result";
 import { m } from "@/paraglide/messages";
 
-import { localAmountLabel, mobileLabel } from "./payout-labels";
+import { localAmountLabel } from "./payout-labels";
+import {
+  type PayoutMethod,
+  payoutAccountLabel,
+  payoutMethodOf,
+} from "./payout-methods";
 
 export function SimulationNotice() {
   return (
@@ -37,9 +42,37 @@ export function SimulationNotice() {
   );
 }
 
+export function PayoutLogo({
+  method,
+  size = "chip",
+}: {
+  method: PayoutMethod;
+  size?: "chip" | "tile";
+}) {
+  return (
+    <span
+      className={cn(
+        "flex shrink-0 items-center justify-center bg-primary-foreground ring-1 ring-foreground/10",
+        size === "chip" && "h-6 rounded-full px-2",
+        size === "tile" && "h-11 w-16 rounded-lg px-2",
+      )}
+    >
+      <img
+        src={method.logo}
+        alt=""
+        className={cn(
+          "w-auto object-contain",
+          size === "chip" && "h-3.5",
+          size === "tile" && "max-h-7 max-w-full",
+        )}
+      />
+    </span>
+  );
+}
+
 type StageState = "done" | "current" | "upcoming";
 
-const stagesFor = (status: Option.Option<PayoutStep>) => {
+const stagesFor = (status: Option.Option<PayoutStep>, method: PayoutMethod) => {
   const reached = Option.match(status, {
     onNone: () => 1,
     onSome: (found) =>
@@ -70,13 +103,13 @@ const stagesFor = (status: Option.Option<PayoutStep>) => {
     {
       key: "processing",
       title: m.payout_step_processing(),
-      note: m.payout_step_processing_note(),
+      note: m.payout_step_processing_note({ currency: method.currency }),
       state: stateAt(2),
     },
     {
       key: "completed",
       title: m.payout_step_completed(),
-      note: m.payout_step_completed_note(),
+      note: m.payout_step_completed_note({ method: method.name }),
       state: stateAt(3),
     },
   ];
@@ -107,18 +140,20 @@ function StageMarker({ state }: { state: StageState }) {
 
 export function PayoutTracker({
   local,
-  mobile,
+  destination,
   status,
 }: {
   local: LocalAmount;
-  mobile: PeruvianMobile;
+  destination: PayoutDestination;
   status: Option.Option<PayoutStep>;
 }) {
+  const method = payoutMethodOf(destination);
+
   const completed = Option.exists(status, (found) =>
     Predicate.isTagged(found, "PayoutCompleted"),
   );
 
-  const stages = stagesFor(status);
+  const stages = stagesFor(status, method);
 
   return (
     <Screen>
@@ -140,18 +175,21 @@ export function PayoutTracker({
             className="size-24"
           />
           <h1 className="text-body text-muted-foreground">
-            {completed ? m.payout_completed_title() : m.payout_status_title()}
+            {completed
+              ? m.payout_completed_title({ method: method.name })
+              : m.payout_status_title({ method: method.name })}
           </h1>
           <p className="font-display text-display tabular-nums">
             {localAmountLabel(local)}
           </p>
-          <p className="inline-flex items-center gap-2 text-label text-muted-foreground">
-            <img
-              src="/cash-out/logos/yape.png"
-              alt=""
-              className="size-5 rounded-sm"
-            />
-            {m.payout_status_to({ mobile: mobileLabel(mobile) })}
+          <p className="inline-flex max-w-full items-center gap-2 text-label text-muted-foreground">
+            <PayoutLogo method={method} />
+            <span className="min-w-0 wrap-anywhere">
+              {m.payout_status_to({
+                method: method.name,
+                account: payoutAccountLabel(destination),
+              })}
+            </span>
           </p>
         </header>
         <ol className="flex flex-col">

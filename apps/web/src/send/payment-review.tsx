@@ -14,8 +14,8 @@ export function ReviewRow({
 }) {
   return (
     <div className="flex items-start justify-between gap-4 py-3">
-      <dt className="text-body text-muted-foreground">{label}</dt>
-      <dd className="text-right text-label-lg">{children}</dd>
+      <dt className="shrink-0 text-body text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 text-right text-label-lg">{children}</dd>
     </div>
   );
 }

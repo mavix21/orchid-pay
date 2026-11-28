@@ -423,7 +423,8 @@ export class Wallet extends Context.Service<
           wrap(assetActions.claimPaymentLink(order, approval)),
         resolvePaymentLink: (sender, receipt) =>
           wrap(links.resolvePaymentLink(sender, receipt)),
-        quotePayout: (link) => wrap(payouts.quotePayout(link)),
+        quotePayout: (link, currency) =>
+          wrap(payouts.quotePayout(link, currency)),
         requestPayout: (order, approval) =>
           wrap(payouts.requestPayout(order, approval)),
         payout: (id) => wrap(payouts.payout(id)),

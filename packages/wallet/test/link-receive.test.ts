@@ -170,7 +170,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       () =>
         Effect.gen(function* () {
           const { wallet, link } = yield* fundLink("sandboxfunder");
-          const quote = yield* wallet.quotePayout(addressOf(link));
+          const quote = yield* wallet.quotePayout(addressOf(link), "PEN");
 
           assertTagged(quote, "PayoutQuote");
           expect(quote.depositAddress).toBe(

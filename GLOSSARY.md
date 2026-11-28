@@ -64,7 +64,9 @@ _Avoid_: Withdrawal, cash-out, off-ramp.
 
 **Payout partner**: The company that receives a payout's funds on the network and pays its local amount. Until Orchid has a licensed partner, a **simulated partner** stands in on devnet: an Orchid-controlled address receives the funds and nobody is paid.
 
-**Payout destination**: Where the partner pays a payout, such as a Yape account identified by a Peruvian mobile number. It never goes on the network and is never shown to the link's sender.
+**Payout destination**: The local wallet where the partner pays a payout: a Yape account (Peru) or Nequi account (Colombia) identified by a mobile number, a PIX key (Brazil), or a Mercado Pago account identified by its email. Each destination is paid in its own **Local currency**. It never goes on the network and is never shown to the link's sender.
+
+**Local currency**: The currency a **Payout destination** is paid in: soles for Yape, Colombian pesos for Nequi, reais for PIX and Mexican pesos for Mercado Pago.
 
 **Payout quote**: The local-currency amount, such as S/ 187.40, that the partner pays for a link's asset amount.
 
@@ -110,7 +112,7 @@ Product names in English:
 | Enviar          | Send            |
 | Recibir         | Receive         |
 | Ajustes         | Settings        |
-| Recibir en Yape | Receive in Yape |
+| Billetera local | Local wallet    |
 | Enviando        | Sending         |
 | En proceso      | Processing      |
 | Completado      | Completed       |

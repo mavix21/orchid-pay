@@ -63,6 +63,7 @@ import {
   type PayoutStep,
   PayoutUnavailable,
   LocalAmount,
+  type LocalCurrency,
 } from "./payouts";
 import { NeedsReopening, NotOpened } from "./standing";
 
@@ -732,7 +733,10 @@ export interface WalletPort<E = WalletUnavailable> {
     sender: AccountAddress,
     receipt: PaymentLinkReceipt,
   ): Effect.Effect<ResolveReceiptStep, E>;
-  quotePayout(link: AccountAddress): Effect.Effect<PayoutQuoteStep, E>;
+  quotePayout(
+    link: AccountAddress,
+    currency: LocalCurrency,
+  ): Effect.Effect<PayoutQuoteStep, E>;
   requestPayout(
     order: PayoutOrder,
     approval: Option.Option<Approval>,

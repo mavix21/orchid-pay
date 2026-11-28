@@ -20,7 +20,7 @@ export function OptionRow({
   title: string;
   description: string;
   media: React.ReactNode;
-  mediaVariant?: "icon" | "muted";
+  mediaVariant?: "default" | "icon" | "muted";
   render?: useRender.RenderProp;
   disabled?: boolean;
 }) {

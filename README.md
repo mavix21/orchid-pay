@@ -13,13 +13,13 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/core-flow.gif" alt="Orchid Pay core flow: share a payment link, claim into a new passkey wallet or cash out via simulated Yape, and settle a payment request from an external Solana wallet" width="700" />
+  <img src="docs/assets/core-flow.gif" alt="Orchid Pay core flow: share a payment link, claim into a new passkey wallet or cash out via a simulated local wallet payout, and settle a payment request from an external Solana wallet" width="700" />
 </p>
 
 ## Why Orchid
 
 - **Every payment link is a new-user channel.** Send USDC in a chat message. The `orchid-links` Anchor program holds the unclaimed funds on Solana while the claim key stays in the URL `#fragment` (never sent to the server). A recipient with no wallet opens the link and claims straight into a new passkey-backed wallet in two taps, with fees and token-account rent sponsored. The sender can reclaim unclaimed funds at any time; whichever of claim or reclaim lands first wins.
-- **Local cash-out from the same link.** Recipients who want local currency instead of a wallet tap **Yape** on the exact same payment link, enter a Peruvian mobile number, review the soles quote, and track settlement. _(On devnet this uses a simulated payout partner — no real soles are transferred; live payouts require a licensed partner.)_
+- **Cash out to your local wallet from the same link.** Recipients who want local currency instead of a wallet tap **Local wallet** on the exact same payment link and pick the wallet they already use — Yape in Peru, PIX in Brazil, Nequi in Colombia, Mercado Pago across LatAm (quoted in Mexican pesos on devnet) — enter their phone number, PIX key or email, review the local-currency quote, and track settlement. _(On devnet this uses a simulated payout partner — no real money is paid out; live payouts require a licensed partner.)_
 - **Request links payable from any Solana wallet.** Share a public `/pay/<id>` link for an exact USDC amount and optional note. Payers settle in Orchid or from an external Solana wallet such as Phantom or Solflare via Solana Pay and Blinks (the external payer covers the network fee).
 
 ## Mobile screens
@@ -27,14 +27,14 @@
 <table>
   <tr>
     <td align="center" width="25%">
-      <img src="docs/assets/payment-link-offer.png" alt="Payment link offer screen showing 50 USDC from @rosa with Orchid, Yape, and external wallet options" width="195" />
+      <img src="docs/assets/payment-link-offer.png" alt="Payment link offer screen showing 50 USDC from @rosa with Orchid, local wallet, and external wallet options" width="195" />
       <br />
-      <sub><strong>Payment link</strong><br />Claim in Orchid, Yape, or another wallet</sub>
+      <sub><strong>Payment link</strong><br />Claim in Orchid, a local wallet, or another wallet</sub>
     </td>
     <td align="center" width="25%">
-      <img src="docs/assets/yape-payout-simulation.png" alt="Simulated Yape payout tracker showing devnet simulation notice and completed PEN payout" width="195" />
+      <img src="docs/assets/local-wallet-payout-simulation.png" alt="Local wallet picker offering Yape, PIX, Nequi and Mercado Pago under a devnet simulation notice" width="195" />
       <br />
-      <sub><strong>Yape cash-out (sim)</strong><br />Soles quote &amp; live status tracker</sub>
+      <sub><strong>Local wallet cash-out (sim)</strong><br />Yape, PIX, Nequi or Mercado Pago</sub>
     </td>
     <td align="center" width="25%">
       <img src="docs/assets/payment-request-solana-pay.png" alt="Public payment request page for 20 USDC with Solana Pay QR code and Orchid pay button" width="195" />
