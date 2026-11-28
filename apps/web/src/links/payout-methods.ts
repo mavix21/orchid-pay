@@ -22,6 +22,7 @@ export type PayoutMethodKind = PayoutDestination["_tag"];
 
 export type AccountEntry = Data.TaggedEnum<{
   Mobile: {
+    readonly flag: string;
     readonly dialCode: string;
     readonly groups: ReadonlyArray<number>;
     readonly placeholder: string;
@@ -38,7 +39,6 @@ export interface PayoutMethod {
   readonly kind: PayoutMethodKind;
   readonly name: string;
   readonly logo: string;
-  readonly flag: string;
   readonly currency: LocalCurrency;
   readonly country: () => string;
   readonly accountLabel: () => string;
@@ -68,10 +68,13 @@ const yapeGroups = [3, 3, 3];
 
 const nequiGroups = [3, 3, 4];
 
+const randomPixKey =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+
 const pixKeyOf = (typed: string) => {
   const trimmed = typed.trim();
 
-  return /^[\d\s().\-/+]+$/u.test(trimmed)
+  return !randomPixKey.test(trimmed) && /^[\d\s().\-/+]+$/u.test(trimmed)
     ? trimmed.replaceAll(/[\s().\-/]/gu, "")
     : trimmed.toLowerCase();
 };
@@ -80,13 +83,13 @@ const yape: PayoutMethod = {
   kind: "YapeAccount",
   name: "Yape",
   logo: cashOutAsset("logos/yape.png"),
-  flag: cashOutAsset("flags/pe.svg"),
   currency: payoutCurrencies.YapeAccount,
   country: m.payout_country_peru,
   accountLabel: m.payout_yape_label,
   accountHint: m.payout_yape_hint,
   accountInvalid: m.payout_yape_invalid,
   entry: AccountEntry.Mobile({
+    flag: cashOutAsset("flags/pe.svg"),
     dialCode: "+51",
     groups: yapeGroups,
     placeholder: "987 654 321",
@@ -101,7 +104,6 @@ const pix: PayoutMethod = {
   kind: "PixAccount",
   name: "PIX",
   logo: cashOutAsset("logos/pix.svg"),
-  flag: cashOutAsset("flags/br.svg"),
   currency: payoutCurrencies.PixAccount,
   country: m.payout_country_brazil,
   accountLabel: m.payout_pix_label,
@@ -118,13 +120,13 @@ const nequi: PayoutMethod = {
   kind: "NequiAccount",
   name: "Nequi",
   logo: cashOutAsset("logos/nequi.svg"),
-  flag: cashOutAsset("flags/co.svg"),
   currency: payoutCurrencies.NequiAccount,
   country: m.payout_country_colombia,
   accountLabel: m.payout_nequi_label,
   accountHint: m.payout_nequi_hint,
   accountInvalid: m.payout_nequi_invalid,
   entry: AccountEntry.Mobile({
+    flag: cashOutAsset("flags/co.svg"),
     dialCode: "+57",
     groups: nequiGroups,
     placeholder: "300 123 4567",
@@ -139,7 +141,6 @@ const mercadoPago: PayoutMethod = {
   kind: "MercadoPagoAccount",
   name: "Mercado Pago",
   logo: cashOutAsset("logos/mercadopago.svg"),
-  flag: cashOutAsset("flags/mx.svg"),
   currency: payoutCurrencies.MercadoPagoAccount,
   country: m.payout_country_mexico,
   accountLabel: m.payout_mercadopago_label,

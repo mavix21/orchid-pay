@@ -27,7 +27,7 @@
 <table>
   <tr>
     <td align="center" width="25%">
-      <img src="docs/assets/payment-link-offer.png" alt="Payment link offer screen showing a USDC payment link with Orchid, local wallet, and external wallet options" width="195" />
+      <img src="docs/assets/payment-link-offer.png" alt="Payment link offer screen showing 50 USDC from @rosa with Orchid, local wallet, and external wallet options" width="195" />
       <br />
       <sub><strong>Payment link</strong><br />Claim in Orchid, a local wallet, or another wallet</sub>
     </td>

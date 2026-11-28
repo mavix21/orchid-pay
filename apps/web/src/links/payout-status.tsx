@@ -182,12 +182,14 @@ export function PayoutTracker({
           <p className="font-display text-display tabular-nums">
             {localAmountLabel(local)}
           </p>
-          <p className="inline-flex items-center gap-2 text-label text-muted-foreground">
+          <p className="inline-flex max-w-full items-center gap-2 text-label text-muted-foreground">
             <PayoutLogo method={method} />
-            {m.payout_status_to({
-              method: method.name,
-              account: payoutAccountLabel(destination),
-            })}
+            <span className="min-w-0 wrap-anywhere">
+              {m.payout_status_to({
+                method: method.name,
+                account: payoutAccountLabel(destination),
+              })}
+            </span>
           </p>
         </header>
         <ol className="flex flex-col">

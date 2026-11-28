@@ -133,6 +133,7 @@ export function PayoutFlow({
   const choose = (method: PayoutMethod) => {
     setAccount("");
     setTouched(false);
+    setQuote(Option.none());
     setStep(PayoutFlowStep.Form({ method, notice: Option.none() }));
     task.run(walletEffects.quotePayout(code, method.currency), (answer) =>
       Predicate.isTagged(answer, "PayoutQuote")
@@ -389,11 +390,11 @@ export function PayoutFlow({
                   {method.accountLabel()}
                 </FieldLabel>
                 {Match.value(method.entry).pipe(
-                  Match.tag("Mobile", ({ dialCode, placeholder }) => (
+                  Match.tag("Mobile", ({ flag, dialCode, placeholder }) => (
                     <InputGroup>
                       <InputGroupAddon>
                         <img
-                          src={method.flag}
+                          src={flag}
                           alt=""
                           className="size-5 rounded-full"
                         />
@@ -490,12 +491,14 @@ export function PayoutFlow({
               className="flex flex-col divide-y divide-border rounded-lg border border-border px-4"
             >
               <ReviewRow label={m.payout_review_to()}>
-                <span className="inline-flex items-center gap-2">
+                <span className="inline-flex max-w-full items-center gap-2">
                   <PayoutLogo method={method} />
-                  {m.payout_review_account({
-                    method: method.name,
-                    account: payoutAccountLabel(shown.destination),
-                  })}
+                  <span className="min-w-0 wrap-anywhere">
+                    {m.payout_review_account({
+                      method: method.name,
+                      account: payoutAccountLabel(shown.destination),
+                    })}
+                  </span>
                 </span>
               </ReviewRow>
               <ReviewRow label={m.payout_review_from_link()}>
