@@ -72,9 +72,9 @@ export const assetFlow = Effect.gen(function* () {
 
   const links = yield* linkReceiveFlow(reconcileOrder);
 
-  const reconcile = reconcileOrder;
-
-  const stillPending = (step: Effect.Success<ReturnType<typeof reconcile>>) =>
+  const stillPending = (
+    step: Effect.Success<ReturnType<typeof reconcileOrder>>,
+  ) =>
     Predicate.isTagged(step, "AssetPending") ||
     Predicate.isTagged(step, "ExternalLinkPending");
 
@@ -89,7 +89,7 @@ export const assetFlow = Effect.gen(function* () {
         );
 
   const reconcileWallet = (stored: AssetAuthorized) =>
-    reconcile(stored).pipe(
+    reconcileOrder(stored).pipe(
       Effect.flatMap((step) =>
         Predicate.isTagged(step, "AssetPending") ||
         Predicate.isTagged(step, "AssetSettled") ||
@@ -154,7 +154,7 @@ export const assetFlow = Effect.gen(function* () {
 
     const held = yield* orders.inFlightFor(order.wallet);
 
-    if (Option.isSome(held) && stillPending(yield* reconcile(held.value)))
+    if (Option.isSome(held) && stillPending(yield* reconcileOrder(held.value)))
       return new AssetBusy({ inFlight: assetPending(held.value) });
 
     const action = order.action;
@@ -250,9 +250,9 @@ export const assetFlow = Effect.gen(function* () {
   return {
     manage,
     claimPaymentLink: links.claimExternal,
-    reconcile,
+    reconcile: reconcileOrder,
     reconcilePending: (stored: AssetAuthorized) =>
-      reconcile(stored).pipe(Effect.map(stillPending)),
+      reconcileOrder(stored).pipe(Effect.map(stillPending)),
     paymentLink: links.paymentLink,
   };
 });

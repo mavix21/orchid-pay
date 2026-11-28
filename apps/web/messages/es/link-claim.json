@@ -62,7 +62,6 @@
   "external_title": "Enviar a otra dirección",
   "external_from": "{amount} de @{username}",
   "external_memo_optional": "Memo (opcional)",
-  "external_memo_not_allowed": "Esta dirección no lleva memo. Quítalo e inténtalo de nuevo.",
   "external_memo_hint": "Si la app que recibe te dio un memo, pégalo aquí.",
   "external_preparing": "Preparando tu envío…",
   "external_summary": "Resumen del envío",

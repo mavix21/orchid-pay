@@ -5,7 +5,6 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import {
   AccountAddress,
-  AssetUnsupported,
   type DestinationAddress,
   UnclaimedFundsLimitReached,
   LinkRecipient,
@@ -30,7 +29,6 @@ export type DeliveryRoute = Data.TaggedEnum<{
 export const DeliveryRoute = Data.taggedEnum<DeliveryRoute>();
 
 export type DeliveryRefusal =
-  | AssetUnsupported
   | UnclaimedFundsLimitReached
   | RecipientCannotReceive;
 

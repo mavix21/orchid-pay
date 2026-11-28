@@ -162,7 +162,6 @@ it.live("reviews the envelope's facts without approving the draft", () =>
       asset: baseAsset,
       amount,
       memo,
-      claimable: false,
     });
     expect(approvals.filter(Option.isSome)).toHaveLength(0);
   }),

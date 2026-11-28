@@ -60,14 +60,6 @@ export function PaymentReviewCard({ review }: { review: PaymentReview }) {
         )}
         <ReviewRow label={m.common_fee()}>{m.send_fee_paid()}</ReviewRow>
       </dl>
-      {review.claimable ? (
-        <p className="text-body text-muted-foreground">
-          {m.send_needs_acceptance({
-            recipient:
-              review.username === undefined ? address : `@${review.username}`,
-          })}
-        </p>
-      ) : null}
     </div>
   );
 }

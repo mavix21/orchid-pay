@@ -1,5 +1,3 @@
-import {} from "../src/contract";
-import {} from "./wallet-harness";
 import { expect, layer } from "@effect/vitest";
 import { Database } from "@workspace/db";
 import { sql } from "drizzle-orm";

@@ -252,7 +252,6 @@ export class PaymentReview extends Schema.TaggedClass<PaymentReview>()(
     asset: Asset,
     amount: PositiveAmount,
     memo: Schema.optional(PaymentMemo),
-    claimable: Schema.Boolean,
     expiresAt: Schema.DateTimeUtcFromString,
   },
 ) {}

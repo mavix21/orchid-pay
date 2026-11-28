@@ -62,7 +62,6 @@
   "external_title": "Send to another address",
   "external_from": "{amount} from @{username}",
   "external_memo_optional": "Memo (optional)",
-  "external_memo_not_allowed": "This address doesn't take a memo. Remove it and try again.",
   "external_memo_hint": "If the receiving app gave you a memo, paste it here.",
   "external_preparing": "Preparing your transfer…",
   "external_summary": "Transfer summary",

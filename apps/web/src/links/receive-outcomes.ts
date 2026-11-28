@@ -94,8 +94,6 @@ export const receiveScreen = (
       ),
     RecipientCannotReceive: () =>
       notReceived(thenStillInLink(m.claim_currency_unsupported()), "done"),
-    AssetUnsupported: () =>
-      notReceived(thenStillInLink(m.claim_currency_unsupported()), "done"),
     NotOpened: () =>
       notReceived(thenStillInLink(m.common_account_activating())),
     SenderBusy: () => notReceived(thenStillInLink(m.common_other_operation())),

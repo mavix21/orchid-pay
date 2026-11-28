@@ -390,8 +390,6 @@ export const reclaimResult = (
           Match.exhaustive,
         ),
       ),
-    AssetUnsupported: () =>
-      cannotRecover(m.link_own_cannot_receive({ asset: code })),
     NotClaimable: ({ claimableAt }) =>
       Option.match(claimableAt, {
         onNone: recoverAgain,

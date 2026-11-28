@@ -37,24 +37,24 @@ const holdReclaim = Effect.fn(function* (
   key: TestKey,
   unclaimedFunds: UnclaimedFundsId,
 ) {
-  const opening = reclaim(key, unclaimedFunds);
-  const draft = yield* manage(opening);
+  const reclaimOrder = reclaim(key, unclaimedFunds);
+  const draft = yield* manage(reclaimOrder);
 
   assertTagged(draft, "AssetDraft");
   world.failSubmit = true;
   assertTagged(
-    yield* manage(opening, approve(draft.request, key)),
+    yield* manage(reclaimOrder, approve(draft.request, key)),
     "AssetPending",
   );
   world.failSubmit = false;
 
   const held = Option.getOrThrow(
-    yield* AssetOrders.use((orders) => orders.find(opening.id)),
+    yield* AssetOrders.use((orders) => orders.find(reclaimOrder.id)),
   );
 
   assertTagged(held, "AssetAuthorized");
 
-  return { opening, hash: held.sealed.hash };
+  return { reclaimOrder, hash: held.sealed.hash };
 });
 
 const heldReclaim = Effect.gen(function* () {
@@ -70,8 +70,8 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       "a queue message resubmits a lost asset order submission and concludes it",
       () =>
         Effect.gen(function* () {
-          const { opening, hash } = yield* heldReclaim;
-          const message = new ReconcileAssetOrder({ id: opening.id });
+          const { reclaimOrder, hash } = yield* heldReclaim;
+          const message = new ReconcileAssetOrder({ id: reclaimOrder.id });
 
           expect(world.queued).toContainEqual(message);
           assertTagged(yield* attend(message), "WorkRetry");
@@ -79,7 +79,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
 
           settleHash(hash);
           assertTagged(yield* attend(message, 2), "WorkFinished");
-          assertTagged(yield* manage(opening), "AssetSettled");
+          assertTagged(yield* manage(reclaimOrder), "AssetSettled");
         }),
     );
 
@@ -156,12 +156,12 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
       () =>
         Effect.gen(function* () {
           const { sender: key, unclaimedFunds } = yield* fundLink("assetowner");
-          const opening = reclaim(key, unclaimedFunds);
+          const reclaimOrder = reclaim(key, unclaimedFunds);
 
-          assertTagged(yield* manage(opening), "AssetDraft");
+          assertTagged(yield* manage(reclaimOrder), "AssetDraft");
 
           const proposed = Option.getOrThrow(
-            yield* AssetOrders.use((orders) => orders.find(opening.id)),
+            yield* AssetOrders.use((orders) => orders.find(reclaimOrder.id)),
           );
 
           assertTagged(proposed, "AssetProposed");
@@ -184,7 +184,7 @@ layer(walletTestLayer, { excludeTestServices: true, concurrent: false })(
           ).toEqual(new WalletInactive());
           assertTagged(
             Option.getOrThrow(
-              yield* AssetOrders.use((orders) => orders.find(opening.id)),
+              yield* AssetOrders.use((orders) => orders.find(reclaimOrder.id)),
             ),
             "AssetProposed",
           );

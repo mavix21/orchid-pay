@@ -84,7 +84,6 @@
   "link_unresolved_title": "No pudimos confirmar qué pasó",
   "link_unresolved": "Este link ya no tiene dinero, pero no podemos saber si alguien lo recibió o si volvió a ti. Revisa tu saldo.",
   "link_own_inactive": "Tu cuenta no está activa.",
-  "link_own_cannot_receive": "Tu cuenta no puede recibir {asset} en este momento.",
   "link_own_not_authorized": "El emisor de esta moneda no permite que tu cuenta reciba dinero.",
   "link_own_no_capacity": "Tu cuenta no puede recibir esta cantidad de {asset} en este momento.",
   "link_not_yet_recoverable_title": "Aún no puedes recuperar este dinero",

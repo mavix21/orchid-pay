@@ -146,7 +146,6 @@ const mapResult = (
       ),
     InvalidAddress: () =>
       fieldProblem("destination", m.common_address_invalid()),
-    MemoNotAllowed: () => fieldProblem("memo", m.external_memo_not_allowed()),
     RecipientCannotReceive: ({ reason }) =>
       fieldProblem(
         "destination",

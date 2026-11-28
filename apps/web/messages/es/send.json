@@ -39,7 +39,6 @@
   "send_asset": "Activo",
   "send_amount": "Monto",
   "send_fee_paid": "Orchid paga la comisión",
-  "send_needs_acceptance": "{recipient} tiene que aceptarlo para recibirlo.",
   "send_preparing": "Preparando tu pago…",
   "send_looking": "Buscando tu pago…",
   "send_check_details": "Revisa los datos de tu pago",

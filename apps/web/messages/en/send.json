@@ -39,7 +39,6 @@
   "send_asset": "Asset",
   "send_amount": "Amount",
   "send_fee_paid": "Orchid pays the fee",
-  "send_needs_acceptance": "{recipient} has to accept it to receive it.",
   "send_preparing": "Preparing your payment…",
   "send_looking": "Looking for your payment…",
   "send_check_details": "Check your payment details",

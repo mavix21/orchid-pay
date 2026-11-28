@@ -341,7 +341,6 @@ export const linkReceiveFlow = (reconcile: Reconcile) =>
       receive,
       claimExternal,
       paymentLink,
-      settled: reconcile,
       unclaimedFundsGone,
     };
   });
