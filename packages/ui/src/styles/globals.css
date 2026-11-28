@@ -407,3 +407,38 @@
     @apply bg-background font-sans text-foreground;
   }
 }
+
+@keyframes joined-burst {
+  from {
+    opacity: 1;
+    transform: rotate(var(--angle)) translate3d(0, 0, 0) scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: rotate(var(--angle)) translate3d(0, -64px, 0) scale(1);
+  }
+}
+
+@utility joined-burst {
+  animation: joined-burst 1s var(--ease-out-quint) 0.3s both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@utility joined-ring {
+  background: conic-gradient(
+    from 200deg,
+    var(--primary),
+    var(--icon-accent),
+    var(--flower-blush),
+    var(--primary)
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 2px),
+    black calc(100% - 2px)
+  );
+}
