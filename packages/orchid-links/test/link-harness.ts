@@ -200,12 +200,6 @@ export const createLinkHarness = async () => {
 
   const now = () => svm.getClock().unixTimestamp;
 
-  const setNow = (unixTimestamp: bigint) => {
-    const clock = svm.getClock();
-    clock.unixTimestamp = unixTimestamp;
-    svm.setClock(clock);
-  };
-
   const prefund = (account: Address, amount: bigint) =>
     svm.airdrop(account, lamports(amount));
 
@@ -278,7 +272,6 @@ export const createLinkHarness = async () => {
     lamportBalance,
     unclaimedFunds,
     now,
-    setNow,
     prefund,
     createLink,
     donate,

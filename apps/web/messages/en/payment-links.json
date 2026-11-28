@@ -86,8 +86,6 @@
   "link_own_inactive": "Your account isn't active.",
   "link_own_not_authorized": "This currency's issuer doesn't let your account receive money.",
   "link_own_no_capacity": "Your account can't receive that much {asset} right now.",
-  "link_not_yet_recoverable_title": "You can't take this money back yet",
-  "link_recoverable_from": "You can take it back starting {date}.",
   "link_operation_unconfirmed_title": "We couldn't confirm the operation",
   "link_cannot_recover_yet_title": "You can't take money back yet",
   "link_cannot_open_title": "We couldn't open your link",
