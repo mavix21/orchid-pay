@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { appendFileSync, chmodSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { createInterface } from "node:readline/promises";
 
 import {
   createPostgres,
@@ -119,39 +120,68 @@ const sponsorAddressOf = (devnet, secret) => {
   }
 };
 
-const ensureSponsor = async (devnet, existing, rpcUrl) => {
-  const existingSecret = existing.get("SPONSOR_SECRET");
-  const secret = existingSecret ?? devnet.newSponsorSecret();
-  const address = sponsorAddressOf(devnet, secret);
+const askProviderRpcUrl = async () => {
+  if (process.env.SOLANA_RPC_URL) return process.env.SOLANA_RPC_URL;
 
-  if (existingSecret === undefined) {
+  if (!process.stdin.isTTY) return "";
+
+  const prompt = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const answer = await prompt.question(
+    "setup: Solana devnet RPC URL from a provider such as Helius (leave empty to set it later): ",
+  );
+
+  prompt.close();
+
+  return answer.trim();
+};
+
+const warnAboutRpcUrl = (devnet, rpcUrl) => {
+  if (rpcUrl !== "" && rpcUrl !== devnet.publicDevnetRpcUrl) return;
+
+  report(
+    `warning: SOLANA_RPC_URL in apps/web/.dev.vars is ${rpcUrl === "" ? "empty" : "the public devnet RPC, which refuses the dev server's requests"}. Set it to a provider devnet RPC URL, such as one from https://dashboard.helius.dev, before \`bun run dev\`.`,
+  );
+};
+
+const faucetHint = (address) =>
+  `fund the sponsor ${address} with devnet SOL at https://faucet.solana.com, then run setup again.`;
+
+const airdropped = async (devnet, rpcUrl, address) => {
+  try {
     await devnet.airdrop(rpcUrl, address);
-    report(`created and airdropped the sponsor ${address}.`);
-  } else report(`the sponsor is ${address}.`);
+    report(`airdropped devnet SOL to the sponsor ${address}.`);
+
+    return true;
+  } catch (error) {
+    report(`warning: the devnet airdrop failed (${error.message}).`);
+
+    return false;
+  }
+};
+
+const prepareSponsor = async (devnet, rpcUrl, secret, address) => {
+  const funded =
+    (await devnet.isFunded(rpcUrl, address)) ||
+    (await airdropped(devnet, rpcUrl, address));
+
+  if (!funded) {
+    report(
+      `warning: skipped opening the sandbox payout partner because the sponsor has no SOL; ${faucetHint(address)}`,
+    );
+
+    return;
+  }
 
   if (await devnet.openSandboxPartner(rpcUrl, secret))
     report("the sponsor opened the sandbox payout partner's USDC account.");
-
-  return existingSecret === undefined ? [["SPONSOR_SECRET", secret]] : [];
 };
 
-const ensureDevVars = async () => {
-  if (!existsSync(devVarsPath) && linkMainCheckoutDevVars())
-    report("linked apps/web/.dev.vars to the main checkout.");
-
-  const devnet = await import("@workspace/wallet/devnet");
-  const existing = readDevVars();
-  const rpcUrl = existing.get("SOLANA_RPC_URL") ?? devnet.publicDevnetRpcUrl;
-  const funded = await ensureSponsor(devnet, existing, rpcUrl);
-
-  const generated = [
-    ["SOLANA_RPC_URL", devnet.publicDevnetRpcUrl],
-    ...funded,
-    ["SESSION_SECRET", randomBytes(32).toString("base64url")],
-    ...Object.entries(humanCheckTestKeys),
-  ].filter(([key]) => !existing.has(key));
-
-  if (generated.length === 0) {
+const appendDevVars = (existing, entries) => {
+  if (entries.length === 0) {
     report("apps/web/.dev.vars already has every key.");
 
     return;
@@ -164,12 +194,48 @@ const ensureDevVars = async () => {
 
   appendFileSync(
     devVarsPath,
-    `${separator}${generated.map(([key, value]) => `${key}=${value}\n`).join("")}`,
+    `${separator}${entries.map(([key, value]) => `${key}=${value}\n`).join("")}`,
     { mode: 0o600 },
   );
   chmodSync(devVarsPath, 0o600);
   report(
-    `added ${generated.map(([key]) => key).join(", ")} to apps/web/.dev.vars.`,
+    `added ${entries.map(([key]) => key).join(", ")} to apps/web/.dev.vars.`,
+  );
+};
+
+const ensureDevVars = async () => {
+  if (!existsSync(devVarsPath) && linkMainCheckoutDevVars())
+    report("linked apps/web/.dev.vars to the main checkout.");
+
+  const devnet = await import("@workspace/wallet/devnet");
+  const existing = readDevVars();
+  const rpcUrl = existing.get("SOLANA_RPC_URL") ?? (await askProviderRpcUrl());
+  const existingSecret = existing.get("SPONSOR_SECRET");
+  const sponsorSecret = existingSecret ?? devnet.newSponsorSecret();
+  const sponsorAddress = sponsorAddressOf(devnet, sponsorSecret);
+
+  appendDevVars(
+    existing,
+    [
+      ["SOLANA_RPC_URL", rpcUrl],
+      ["SPONSOR_SECRET", sponsorSecret],
+      ["SESSION_SECRET", randomBytes(32).toString("base64url")],
+      ...Object.entries(humanCheckTestKeys),
+    ].filter(([key]) => !existing.has(key)),
+  );
+  report(
+    existingSecret === undefined
+      ? `created the sponsor ${sponsorAddress}.`
+      : `the sponsor is ${sponsorAddress}.`,
+  );
+
+  warnAboutRpcUrl(devnet, rpcUrl);
+
+  await prepareSponsor(
+    devnet,
+    rpcUrl || devnet.publicDevnetRpcUrl,
+    sponsorSecret,
+    sponsorAddress,
   );
 };
 
