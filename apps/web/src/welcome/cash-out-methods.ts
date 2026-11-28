@@ -42,7 +42,7 @@ export const cashOuts: CashOuts = [
   },
   {
     flag: asset("flags/br.svg"),
-    method: "PIX",
+    method: "Pix",
     logo: asset("logos/pix.svg"),
     amount: "R$ 108,00",
     receiverUsername: "camila",
